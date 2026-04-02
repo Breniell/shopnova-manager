@@ -4,8 +4,9 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, ShoppingCart, Package, Warehouse,
-  Receipt, BarChart3, Settings, LogOut, Zap
+  Receipt, BarChart3, Settings, LogOut
 } from 'lucide-react';
+import { UserRole } from '@/stores/useAuthStore';
 
 const navItems = [
   { path: '/', label: 'Tableau de bord', icon: LayoutDashboard },
