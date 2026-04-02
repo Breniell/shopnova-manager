@@ -6,10 +6,9 @@ import {
   LayoutDashboard, ShoppingCart, Package, Warehouse,
   Receipt, BarChart3, Settings, LogOut
 } from 'lucide-react';
-import { UserRole } from '@/stores/useAuthStore';
 
 const navItems = [
-  { path: '/', label: 'Tableau de bord', icon: LayoutDashboard },
+  { path: '/', label: 'Tableau de bord', icon: LayoutDashboard, roles: ['gérant', 'caissier'] as const },
   { path: '/caisse', label: 'Point de vente', icon: ShoppingCart, roles: ['gérant', 'caissier'] as const },
   { path: '/produits', label: 'Produits', icon: Package, roles: ['gérant'] as const },
   { path: '/stock', label: 'Stock', icon: Warehouse, roles: ['gérant'] as const },
