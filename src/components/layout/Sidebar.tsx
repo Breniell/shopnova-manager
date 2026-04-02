@@ -28,8 +28,7 @@ export const Sidebar: React.FC = () => {
   };
 
   const filteredItems = navItems.filter(item => {
-    if (!item.roles) return true;
-    return currentUser && item.roles.includes(currentUser.role);
+    return currentUser && (item.roles as readonly string[]).includes(currentUser.role);
   });
 
   return (
