@@ -14,7 +14,7 @@ const ParametresPage: React.FC = () => {
   const [showPinModal, setShowPinModal] = useState<User | null>(null);
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
-  const [newUser, setNewUser] = useState({ prenom: '', nom: '', role: 'caissier' as const, pin: '', confirmPin: '' });
+  const [newUser, setNewUser] = useState({ prenom: '', nom: '', role: 'caissier' as 'gérant' | 'caissier', pin: '', confirmPin: '' });
 
   const handleSaveShop = () => {
     toast.success('Paramètres enregistrés');
