@@ -4,8 +4,10 @@ import { useProductStore } from '@/stores/useProductStore';
 import { StatCard } from '@/components/ui/StatCard';
 import { NovaCard } from '@/components/ui/NovaCard';
 import { formatFCFA, getStockStatus, cn } from '@/lib/utils';
-import { DollarSign, ShoppingCart, TrendingUp, Percent } from 'lucide-react';
+import { DollarSign, ShoppingCart, TrendingUp, Percent, Download } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid } from 'recharts';
+import { exportCSV, exportPDF } from '@/lib/export';
+import { toast } from 'sonner';
 
 type Period = 'today' | 'week' | 'month';
 
