@@ -4,8 +4,10 @@ import { useProductStore } from '@/stores/useProductStore';
 import { StatCard } from '@/components/ui/StatCard';
 import { NovaCard } from '@/components/ui/NovaCard';
 import { formatFCFA, getStockStatus, cn } from '@/lib/utils';
-import { DollarSign, ShoppingCart, TrendingUp, Percent } from 'lucide-react';
+import { DollarSign, ShoppingCart, TrendingUp, Percent, Download } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid } from 'recharts';
+import { exportCSV, exportPDF } from '@/lib/export';
+import { toast } from 'sonner';
 
 type Period = 'today' | 'week' | 'month';
 
@@ -68,12 +70,32 @@ const RapportsPage: React.FC = () => {
     <div className="p-8 animate-fade-in">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl nova-heading text-foreground">Rapports</h1>
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1">
+            <button onClick={() => {
+              const headers = ['#', 'Produit', 'Quantité', 'Revenu', '% du total'];
+              const rows = top10.map((p, i) => [String(i + 1), p.nom, String(p.qty), formatFCFA(p.revenue), totalRevenue > 0 ? (p.revenue / totalRevenue * 100).toFixed(1) + '%' : '0%']);
+              exportCSV('rapport-ventes', headers, rows);
+              toast.success('Export CSV téléchargé');
+            }} className="nova-btn-secondary flex items-center gap-2 px-3 py-2 text-sm">
+              <Download className="w-4 h-4" /> CSV
+            </button>
+            <button onClick={() => {
+              const headers = ['#', 'Produit', 'Quantité', 'Revenu', '% du total'];
+              const rows = top10.map((p, i) => [String(i + 1), p.nom, String(p.qty), formatFCFA(p.revenue), totalRevenue > 0 ? (p.revenue / totalRevenue * 100).toFixed(1) + '%' : '0%']);
+              const summary = [`<strong>${formatFCFA(totalRevenue)}</strong>Revenu total`, `<strong>${periodSales.length}</strong>Ventes`, `<strong>${formatFCFA(avgCart)}</strong>Panier moyen`, `<strong>${margin.toFixed(1)}%</strong>Marge`];
+              exportPDF('Rapport des ventes — ShopNova', headers, rows, summary);
+            }} className="nova-btn-secondary flex items-center gap-2 px-3 py-2 text-sm">
+              <Download className="w-4 h-4" /> PDF
+            </button>
+          </div>
         <div className="flex gap-1 bg-muted rounded-lg p-1">
           {([['today', "Aujourd'hui"], ['week', 'Cette semaine'], ['month', 'Ce mois']] as const).map(([k, label]) => (
             <button key={k} onClick={() => setPeriod(k)} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all', period === k ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
               {label}
             </button>
           ))}
+        </div>
         </div>
       </div>
 
