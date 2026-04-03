@@ -3,9 +3,10 @@ import { useProductStore, Product } from '@/stores/useProductStore';
 import { useSaleStore, PaymentMode, MobileOperator } from '@/stores/useSaleStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useStockStore } from '@/stores/useStockStore';
-import { NovaCard } from '@/components/ui/NovaCard';
+
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ReceiptModal } from '@/components/ui/ReceiptModal';
+import { BarcodeScanner } from '@/components/ui/BarcodeScanner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { formatFCFA, getStockStatus, cn } from '@/lib/utils';
@@ -30,6 +31,8 @@ const CaissePage: React.FC = () => {
   const [isDone, setIsDone] = useState(false);
   const [receiptSale, setReceiptSale] = useState<Sale | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [addedProductId, setAddedProductId] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Barcode scanner via keyboard (USB scanner)
@@ -65,6 +68,8 @@ const CaissePage: React.FC = () => {
         return;
       }
       addToCart({ productId: product.id, nom: product.nom, prixVente: product.prixVente });
+      setAddedProductId(product.id);
+      setTimeout(() => setAddedProductId(null), 500);
       toast.success(`${product.nom} ajouté au panier`);
     } else {
       toast.error(`Produit non trouvé: ${barcode}`);
@@ -77,6 +82,8 @@ const CaissePage: React.FC = () => {
       return;
     }
     addToCart({ productId: product.id, nom: product.nom, prixVente: product.prixVente });
+    setAddedProductId(product.id);
+    setTimeout(() => setAddedProductId(null), 500);
     toast.success(`${product.nom} ajouté`);
   };
 
@@ -105,7 +112,6 @@ const CaissePage: React.FC = () => {
         userName: `${currentUser.prenom} ${currentUser.nom}`,
       });
 
-      // Update stock for each item
       sale.items.forEach(item => {
         const product = products.find(p => p.id === item.productId);
         if (product) {
@@ -170,7 +176,10 @@ const CaissePage: React.FC = () => {
               onChange={e => setSearch(e.target.value)}
               className="nova-input w-full pl-12 pr-12 py-3 text-sm"
             />
-            <button className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-muted transition-colors">
+            <button
+              onClick={() => setShowScanner(true)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-muted transition-colors"
+            >
               <ScanBarcode className="w-5 h-5 text-muted-foreground" />
             </button>
           </div>
@@ -181,17 +190,22 @@ const CaissePage: React.FC = () => {
             {filteredProducts.map(product => {
               const status = getStockStatus(product.stock, product.seuilAlerte);
               const isOut = status === 'out';
+              const justAdded = addedProductId === product.id;
               return (
                 <button
                   key={product.id}
                   onClick={() => handleAddProduct(product)}
                   disabled={isOut}
                   className={cn(
-                    'nova-card p-4 text-left transition-all duration-150 group',
-                    isOut ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/10',
-                    status === 'low' && 'border-amber-500/30'
+                    'nova-card p-4 text-left transition-all duration-150 group relative',
+                    isOut ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/10 active:scale-95',
+                    status === 'low' && 'border-amber-500/30',
+                    justAdded && 'ring-2 ring-secondary scale-95'
                   )}
                 >
+                  {justAdded && (
+                    <div className="absolute inset-0 bg-secondary/10 rounded-xl animate-fade-in pointer-events-none" />
+                  )}
                   <div className="w-full h-16 rounded-lg bg-muted/50 flex items-center justify-center text-2xl mb-3">
                     {categoryIcons[product.categorie] || '📦'}
                   </div>
@@ -231,20 +245,24 @@ const CaissePage: React.FC = () => {
         ) : (
           <>
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
-              {cart.map(item => (
-                <div key={item.productId} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 animate-fade-in">
+              {cart.map((item, index) => (
+                <div
+                  key={item.productId}
+                  className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 animate-slide-in-right"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{item.nom}</p>
                     <p className="text-xs text-muted-foreground">{formatFCFA(item.prixVente)} / unité</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => updateCartQuantity(item.productId, item.quantity - 1)}
-                      className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-colors">
+                      className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-all active:scale-90">
                       <Minus className="w-3 h-3 text-foreground" />
                     </button>
                     <span className="w-8 text-center text-sm font-medium text-foreground tabular-nums">{item.quantity}</span>
                     <button onClick={() => updateCartQuantity(item.productId, item.quantity + 1)}
-                      className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-colors">
+                      className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-all active:scale-90">
                       <Plus className="w-3 h-3 text-foreground" />
                     </button>
                   </div>
@@ -252,7 +270,7 @@ const CaissePage: React.FC = () => {
                     {formatFCFA(item.prixVente * item.quantity)}
                   </span>
                   <button onClick={() => removeFromCart(item.productId)}
-                    className="p-1.5 rounded-lg hover:bg-destructive/20 transition-colors text-muted-foreground hover:text-destructive">
+                    className="p-1.5 rounded-lg hover:bg-destructive/20 transition-all active:scale-90 text-muted-foreground hover:text-destructive">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -362,6 +380,11 @@ const CaissePage: React.FC = () => {
         )}
       </div>
 
+      <BarcodeScanner
+        open={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScan={handleBarcodeScanned}
+      />
       <ReceiptModal sale={receiptSale} open={showReceipt} onClose={() => setShowReceipt(false)} />
     </div>
   );

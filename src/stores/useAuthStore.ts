@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export type UserRole = 'gérant' | 'caissier';
 
@@ -22,33 +23,43 @@ interface AuthState {
   deleteUser: (userId: string) => void;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
-  users: [
-    { id: '1', prenom: 'Marie', nom: 'Nguema', role: 'gérant', pin: '0000', color: '#6C63FF' },
-    { id: '2', prenom: 'Paul', nom: 'Mbarga', role: 'caissier', pin: '1234', color: '#00D4AA' },
-    { id: '3', prenom: 'Fatou', nom: 'Diallo', role: 'caissier', pin: '5678', color: '#F59E0B' },
-  ],
-  currentUser: null,
-  isAuthenticated: false,
-  login: (userId, pin) => {
-    const user = get().users.find(u => u.id === userId);
-    if (user && user.pin === pin) {
-      set({ currentUser: user, isAuthenticated: true });
-      return true;
+const defaultUsers: User[] = [
+  { id: '1', prenom: 'Marie', nom: 'Nguema', role: 'gérant', pin: '0000', color: '#6C63FF' },
+  { id: '2', prenom: 'Paul', nom: 'Mbarga', role: 'caissier', pin: '1234', color: '#00D4AA' },
+  { id: '3', prenom: 'Fatou', nom: 'Diallo', role: 'caissier', pin: '5678', color: '#F59E0B' },
+];
+
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set, get) => ({
+      users: defaultUsers,
+      currentUser: null,
+      isAuthenticated: false,
+      login: (userId, pin) => {
+        const user = get().users.find(u => u.id === userId);
+        if (user && user.pin === pin) {
+          set({ currentUser: user, isAuthenticated: true });
+          return true;
+        }
+        return false;
+      },
+      logout: () => set({ currentUser: null, isAuthenticated: false }),
+      addUser: (userData) => {
+        const id = Date.now().toString();
+        set(state => ({ users: [...state.users, { ...userData, id }] }));
+      },
+      updateUserPin: (userId, newPin) => {
+        set(state => ({
+          users: state.users.map(u => u.id === userId ? { ...u, pin: newPin } : u)
+        }));
+      },
+      deleteUser: (userId) => {
+        set(state => ({ users: state.users.filter(u => u.id !== userId) }));
+      },
+    }),
+    {
+      name: 'shopnova-auth',
+      partialize: (state) => ({ users: state.users }),
     }
-    return false;
-  },
-  logout: () => set({ currentUser: null, isAuthenticated: false }),
-  addUser: (userData) => {
-    const id = Date.now().toString();
-    set(state => ({ users: [...state.users, { ...userData, id }] }));
-  },
-  updateUserPin: (userId, newPin) => {
-    set(state => ({
-      users: state.users.map(u => u.id === userId ? { ...u, pin: newPin } : u)
-    }));
-  },
-  deleteUser: (userId) => {
-    set(state => ({ users: state.users.filter(u => u.id !== userId) }));
-  },
-}));
+  )
+);

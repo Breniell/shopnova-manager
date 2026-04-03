@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 interface ShopSettings {
   nom: string;
@@ -16,16 +17,21 @@ interface SettingsState {
   updateShop: (data: Partial<ShopSettings>) => void;
 }
 
-export const useSettingsStore = create<SettingsState>((set) => ({
-  shop: {
-    nom: 'ShopNova Store',
-    adresse: 'Rue de la Joie, Douala, Cameroun',
-    telephone: '+237 699 123 456',
-    email: 'contact@shopnova.cm',
-    nui: '',
-    enteteRecu: 'Bienvenue chez ShopNova !',
-    piedPageRecu: 'Merci pour votre achat ! À bientôt.',
-    devise: 'FCFA',
-  },
-  updateShop: (data) => set(state => ({ shop: { ...state.shop, ...data } })),
-}));
+export const useSettingsStore = create<SettingsState>()(
+  persist(
+    (set) => ({
+      shop: {
+        nom: 'ShopNova Store',
+        adresse: 'Rue de la Joie, Douala, Cameroun',
+        telephone: '+237 699 123 456',
+        email: 'contact@shopnova.cm',
+        nui: '',
+        enteteRecu: 'Bienvenue chez ShopNova !',
+        piedPageRecu: 'Merci pour votre achat ! À bientôt.',
+        devise: 'FCFA',
+      },
+      updateShop: (data) => set(state => ({ shop: { ...state.shop, ...data } })),
+    }),
+    { name: 'shopnova-settings' }
+  )
+);
