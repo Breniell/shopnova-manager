@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export type PaymentMode = 'especes' | 'mobile_money' | 'credit';
 export type MobileOperator = 'mtn' | 'orange';
@@ -74,53 +75,61 @@ const initialSales: Sale[] = [
   { id: 's20', saleNumber: 'SHP-2026-00020', date: day(6, 17, 0), items: [{ productId: 'p15', nom: 'Gaz Butane 6kg', prixVente: 6500, quantity: 2 }, { productId: 'p25', nom: 'Spaghetti Barilla 500g', prixVente: 1000, quantity: 5 }], subtotal: 18000, discount: 0, total: 18000, paymentMode: 'especes', amountReceived: 18000, changeGiven: 0, userId: '2', userName: 'Paul Mbarga' },
 ];
 
-export const useSaleStore = create<SaleState>((set, get) => ({
-  sales: initialSales,
-  cart: [],
-  discount: 0,
-  addToCart: (item) => {
-    const existing = get().cart.find(c => c.productId === item.productId);
-    if (existing) {
-      set(state => ({
-        cart: state.cart.map(c => c.productId === item.productId ? { ...c, quantity: c.quantity + 1 } : c)
-      }));
-    } else {
-      set(state => ({ cart: [...state.cart, { ...item, quantity: 1 }] }));
+export const useSaleStore = create<SaleState>()(
+  persist(
+    (set, get) => ({
+      sales: initialSales,
+      cart: [],
+      discount: 0,
+      addToCart: (item) => {
+        const existing = get().cart.find(c => c.productId === item.productId);
+        if (existing) {
+          set(state => ({
+            cart: state.cart.map(c => c.productId === item.productId ? { ...c, quantity: c.quantity + 1 } : c)
+          }));
+        } else {
+          set(state => ({ cart: [...state.cart, { ...item, quantity: 1 }] }));
+        }
+      },
+      removeFromCart: (productId) => {
+        set(state => ({ cart: state.cart.filter(c => c.productId !== productId) }));
+      },
+      updateCartQuantity: (productId, quantity) => {
+        if (quantity <= 0) {
+          get().removeFromCart(productId);
+          return;
+        }
+        set(state => ({
+          cart: state.cart.map(c => c.productId === productId ? { ...c, quantity } : c)
+        }));
+      },
+      clearCart: () => set({ cart: [], discount: 0 }),
+      setDiscount: (discount) => set({ discount }),
+      getCartSubtotal: () => get().cart.reduce((sum, item) => sum + item.prixVente * item.quantity, 0),
+      getCartTotal: () => {
+        const subtotal = get().getCartSubtotal();
+        const discount = get().discount;
+        return Math.round(subtotal * (1 - discount / 100));
+      },
+      completeSale: (saleData) => {
+        const state = get();
+        const sale: Sale = {
+          id: 's' + Date.now(),
+          saleNumber: `SHP-${new Date().getFullYear()}-${String(state.sales.length + 1).padStart(5, '0')}`,
+          date: new Date(),
+          items: [...state.cart],
+          subtotal: state.getCartSubtotal(),
+          discount: state.discount,
+          total: state.getCartTotal(),
+          ...saleData,
+        };
+        set(state => ({ sales: [sale, ...state.sales], cart: [], discount: 0 }));
+        return sale;
+      },
+    }),
+    {
+      name: 'shopnova-sales',
+      partialize: (state) => ({ sales: state.sales }),
     }
-  },
-  removeFromCart: (productId) => {
-    set(state => ({ cart: state.cart.filter(c => c.productId !== productId) }));
-  },
-  updateCartQuantity: (productId, quantity) => {
-    if (quantity <= 0) {
-      get().removeFromCart(productId);
-      return;
-    }
-    set(state => ({
-      cart: state.cart.map(c => c.productId === productId ? { ...c, quantity } : c)
-    }));
-  },
-  clearCart: () => set({ cart: [], discount: 0 }),
-  setDiscount: (discount) => set({ discount }),
-  getCartSubtotal: () => get().cart.reduce((sum, item) => sum + item.prixVente * item.quantity, 0),
-  getCartTotal: () => {
-    const subtotal = get().getCartSubtotal();
-    const discount = get().discount;
-    return Math.round(subtotal * (1 - discount / 100));
-  },
-  completeSale: (saleData) => {
-    const state = get();
-    const sale: Sale = {
-      id: 's' + Date.now(),
-      saleNumber: `SHP-${new Date().getFullYear()}-${String(state.sales.length + 1).padStart(5, '0')}`,
-      date: new Date(),
-      items: [...state.cart],
-      subtotal: state.getCartSubtotal(),
-      discount: state.discount,
-      total: state.getCartTotal(),
-      ...saleData,
-    };
-    set(state => ({ sales: [sale, ...state.sales], cart: [], discount: 0 }));
-    return sale;
-  },
-}));
+  )
+);

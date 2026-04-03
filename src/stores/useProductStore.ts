@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export type Category = 'Alimentation' | 'Boissons' | 'Hygiène' | 'Électronique' | 'Vêtements' | 'Électroménager' | 'Autre';
 
@@ -52,27 +53,32 @@ const initialProducts: Product[] = [
   { id: 'p25', nom: 'Spaghetti Barilla 500g', categorie: 'Alimentation', codeBarre: '6901234568132', prixAchat: 700, prixVente: 1000, stock: 55, seuilAlerte: 15 },
 ];
 
-export const useProductStore = create<ProductState>((set, get) => ({
-  products: initialProducts,
-  categories: ['Alimentation', 'Boissons', 'Hygiène', 'Électronique', 'Vêtements', 'Électroménager', 'Autre'],
-  addProduct: (product) => {
-    const id = 'p' + Date.now();
-    set(state => ({ products: [...state.products, { ...product, id }] }));
-  },
-  updateProduct: (id, data) => {
-    set(state => ({
-      products: state.products.map(p => p.id === id ? { ...p, ...data } : p)
-    }));
-  },
-  deleteProduct: (id) => {
-    set(state => ({ products: state.products.filter(p => p.id !== id) }));
-  },
-  updateStock: (id, quantity) => {
-    set(state => ({
-      products: state.products.map(p => p.id === id ? { ...p, stock: p.stock + quantity } : p)
-    }));
-  },
-  getProductByBarcode: (barcode) => {
-    return get().products.find(p => p.codeBarre === barcode);
-  },
-}));
+export const useProductStore = create<ProductState>()(
+  persist(
+    (set, get) => ({
+      products: initialProducts,
+      categories: ['Alimentation', 'Boissons', 'Hygiène', 'Électronique', 'Vêtements', 'Électroménager', 'Autre'],
+      addProduct: (product) => {
+        const id = 'p' + Date.now();
+        set(state => ({ products: [...state.products, { ...product, id }] }));
+      },
+      updateProduct: (id, data) => {
+        set(state => ({
+          products: state.products.map(p => p.id === id ? { ...p, ...data } : p)
+        }));
+      },
+      deleteProduct: (id) => {
+        set(state => ({ products: state.products.filter(p => p.id !== id) }));
+      },
+      updateStock: (id, quantity) => {
+        set(state => ({
+          products: state.products.map(p => p.id === id ? { ...p, stock: p.stock + quantity } : p)
+        }));
+      },
+      getProductByBarcode: (barcode) => {
+        return get().products.find(p => p.codeBarre === barcode);
+      },
+    }),
+    { name: 'shopnova-products' }
+  )
+);

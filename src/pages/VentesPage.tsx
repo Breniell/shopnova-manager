@@ -1,11 +1,16 @@
 import React, { useState, useMemo } from 'react';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import { useSaleStore, Sale } from '@/stores/useSaleStore';
 import { PaymentBadge } from '@/components/ui/PaymentBadge';
 import { SideDrawer } from '@/components/ui/SideDrawer';
 import { ReceiptModal } from '@/components/ui/ReceiptModal';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { formatFCFA, formatDateShort, formatTime } from '@/lib/utils';
-import { Receipt, Search, Eye, Printer } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import { formatFCFA, formatDateShort, formatTime, cn } from '@/lib/utils';
+import { Receipt, Search, Eye, Printer, CalendarIcon } from 'lucide-react';
 
 const VentesPage: React.FC = () => {
   const { sales } = useSaleStore();
@@ -13,6 +18,8 @@ const VentesPage: React.FC = () => {
   const [paymentFilter, setPaymentFilter] = useState('');
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [receiptSale, setReceiptSale] = useState<Sale | null>(null);
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
   const filtered = useMemo(() => {
     let result = [...sales];
@@ -22,8 +29,18 @@ const VentesPage: React.FC = () => {
     if (paymentFilter) {
       result = result.filter(s => s.paymentMode === paymentFilter);
     }
+    if (dateFrom) {
+      const start = new Date(dateFrom);
+      start.setHours(0, 0, 0, 0);
+      result = result.filter(s => new Date(s.date) >= start);
+    }
+    if (dateTo) {
+      const end = new Date(dateTo);
+      end.setHours(23, 59, 59, 999);
+      result = result.filter(s => new Date(s.date) <= end);
+    }
     return result;
-  }, [sales, search, paymentFilter]);
+  }, [sales, search, paymentFilter, dateFrom, dateTo]);
 
   const totalRevenue = filtered.reduce((sum, s) => sum + s.total, 0);
   const avgSale = filtered.length > 0 ? Math.round(totalRevenue / filtered.length) : 0;
@@ -33,11 +50,42 @@ const VentesPage: React.FC = () => {
       <h1 className="text-2xl nova-heading text-foreground mb-6">Historique des ventes</h1>
 
       {/* Filters */}
-      <div className="flex gap-3 mb-6">
-        <div className="relative flex-1">
+      <div className="flex flex-wrap gap-3 mb-6">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="nova-input w-full pl-10" placeholder="Rechercher par ID ou caissier..." />
         </div>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className={cn("min-w-[150px] justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Date début"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus className="p-3 pointer-events-auto" />
+          </PopoverContent>
+        </Popover>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className={cn("min-w-[150px] justify-start text-left font-normal", !dateTo && "text-muted-foreground")}>
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {dateTo ? format(dateTo, "dd/MM/yyyy") : "Date fin"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus className="p-3 pointer-events-auto" />
+          </PopoverContent>
+        </Popover>
+
+        {(dateFrom || dateTo) && (
+          <Button variant="ghost" onClick={() => { setDateFrom(undefined); setDateTo(undefined); }} className="text-muted-foreground hover:text-foreground">
+            Réinitialiser
+          </Button>
+        )}
+
         <select value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)} className="nova-input min-w-[160px]">
           <option value="">Tous les paiements</option>
           <option value="especes">Espèces</option>
@@ -94,7 +142,6 @@ const VentesPage: React.FC = () => {
         </>
       )}
 
-      {/* Side drawer for sale detail */}
       <SideDrawer open={!!selectedSale} onClose={() => setSelectedSale(null)} title={`Vente ${selectedSale?.saleNumber || ''}`}>
         {selectedSale && (
           <div className="space-y-6">
