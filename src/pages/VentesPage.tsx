@@ -9,7 +9,9 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { formatFCFA, formatDateShort, formatTime, cn } from '@/lib/utils';
-import { Receipt, Search, Eye, Printer, CalendarIcon } from 'lucide-react';
+import { Receipt, Search, Eye, Printer, CalendarIcon, Download } from 'lucide-react';
+import { exportCSV, exportPDF } from '@/lib/export';
+import { toast } from 'sonner';
 
 const VentesPage: React.FC = () => {
   const { sales } = useSaleStore();
