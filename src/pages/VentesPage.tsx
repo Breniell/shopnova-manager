@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 import { useSaleStore, Sale } from '@/stores/useSaleStore';
 import { PaymentBadge } from '@/components/ui/PaymentBadge';
 import { SideDrawer } from '@/components/ui/SideDrawer';

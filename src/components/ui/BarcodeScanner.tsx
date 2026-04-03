@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { X, Camera } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Camera } from 'lucide-react';
 
 interface BarcodeScannerProps {
   open: boolean;

@@ -3,7 +3,7 @@ import { useProductStore, Product } from '@/stores/useProductStore';
 import { useSaleStore, PaymentMode, MobileOperator } from '@/stores/useSaleStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useStockStore } from '@/stores/useStockStore';
-import { NovaCard } from '@/components/ui/NovaCard';
+
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ReceiptModal } from '@/components/ui/ReceiptModal';
 import { BarcodeScanner } from '@/components/ui/BarcodeScanner';
