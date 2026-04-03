@@ -96,6 +96,7 @@ const RapportsPage: React.FC = () => {
             </button>
           ))}
         </div>
+        </div>
       </div>
 
       {/* KPIs */}

@@ -48,7 +48,27 @@ const VentesPage: React.FC = () => {
 
   return (
     <div className="p-8 animate-fade-in">
-      <h1 className="text-2xl nova-heading text-foreground mb-6">Historique des ventes</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl nova-heading text-foreground">Historique des ventes</h1>
+        <div className="flex gap-1">
+          <button onClick={() => {
+            const headers = ['ID', 'Date', 'Heure', 'Caissier', 'Articles', 'Total', 'Paiement'];
+            const rows = filtered.map(s => [s.saleNumber, formatDateShort(new Date(s.date)), formatTime(new Date(s.date)), s.userName, String(s.items.reduce((sum, i) => sum + i.quantity, 0)), formatFCFA(s.total), s.paymentMode]);
+            exportCSV('historique-ventes', headers, rows);
+            toast.success('Export CSV téléchargé');
+          }} className="nova-btn-secondary flex items-center gap-2 px-3 py-2 text-sm">
+            <Download className="w-4 h-4" /> CSV
+          </button>
+          <button onClick={() => {
+            const headers = ['ID', 'Date', 'Heure', 'Caissier', 'Articles', 'Total', 'Paiement'];
+            const rows = filtered.map(s => [s.saleNumber, formatDateShort(new Date(s.date)), formatTime(new Date(s.date)), s.userName, String(s.items.reduce((sum, i) => sum + i.quantity, 0)), formatFCFA(s.total), s.paymentMode]);
+            const summary = [`<strong>${filtered.length}</strong>Ventes`, `<strong>${formatFCFA(totalRevenue)}</strong>Total`, `<strong>${formatFCFA(avgSale)}</strong>Moyenne`];
+            exportPDF('Historique des ventes — ShopNova', headers, rows, summary);
+          }} className="nova-btn-secondary flex items-center gap-2 px-3 py-2 text-sm">
+            <Download className="w-4 h-4" /> PDF
+          </button>
+        </div>
+      </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-6">
