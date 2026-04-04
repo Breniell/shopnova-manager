@@ -17,7 +17,7 @@ import type { Sale } from '@/stores/useSaleStore';
 
 const CaissePage: React.FC = () => {
   const { products } = useProductStore();
-  const { cart, discount, addToCart, removeFromCart, updateCartQuantity, clearCart, setDiscount, getCartSubtotal, getCartTotal, completeSale } = useSaleStore();
+  const { cart, discount, addToCart, removeFromCart, updateCartQuantity, setDiscount, getCartSubtotal, getCartTotal, completeSale } = useSaleStore();
   const { currentUser } = useAuthStore();
   const { addMovement } = useStockStore();
   const { updateStock } = useProductStore();
