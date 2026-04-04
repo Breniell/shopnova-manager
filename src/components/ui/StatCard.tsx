@@ -34,4 +34,5 @@ export const StatCard = forwardRef<HTMLDivElement, StatCardProps>(({ icon, iconB
       </div>
     </div>
   );
-};
+});
+StatCard.displayName = 'StatCard';

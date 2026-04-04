@@ -14,11 +14,12 @@ interface StatusBadgeProps {
   className?: string;
 }
 
-export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className }) => {
+export const StatusBadge = forwardRef<HTMLSpanElement, StatusBadgeProps>(({ status, className }, ref) => {
   const config = statusConfig[status];
   return (
-    <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border', config.className, className)}>
+    <span ref={ref} className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border', config.className, className)}>
       {config.label}
     </span>
   );
-};
+});
+StatusBadge.displayName = 'StatusBadge';
