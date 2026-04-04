@@ -10,6 +10,7 @@ import { BarcodeScanner } from '@/components/ui/BarcodeScanner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { formatFCFA, getStockStatus, cn } from '@/lib/utils';
+import { productImages } from '@/assets/productImages';
 import { Search, ScanBarcode, Minus, Plus, Trash2, ShoppingCart, Check, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Sale } from '@/stores/useSaleStore';
