@@ -17,7 +17,7 @@ import type { Sale } from '@/stores/useSaleStore';
 
 const CaissePage: React.FC = () => {
   const { products } = useProductStore();
-  const { cart, discount, addToCart, removeFromCart, updateCartQuantity, clearCart, setDiscount, getCartSubtotal, getCartTotal, completeSale } = useSaleStore();
+  const { cart, discount, addToCart, removeFromCart, updateCartQuantity, setDiscount, getCartSubtotal, getCartTotal, completeSale } = useSaleStore();
   const { currentUser } = useAuthStore();
   const { addMovement } = useStockStore();
   const { updateStock } = useProductStore();
@@ -40,6 +40,22 @@ const CaissePage: React.FC = () => {
   const barcodeBuffer = useRef('');
   const barcodeTimeout = useRef<NodeJS.Timeout>();
 
+  const handleBarcodeScanned = useCallback((barcode: string) => {
+    const product = products.find(p => p.codeBarre === barcode);
+    if (product) {
+      if (product.stock <= 0) {
+        toast.error(`${product.nom} est en rupture de stock`);
+        return;
+      }
+      addToCart({ productId: product.id, nom: product.nom, prixVente: product.prixVente });
+      setAddedProductId(product.id);
+      setTimeout(() => setAddedProductId(null), 500);
+      toast.success(`${product.nom} ajouté au panier`);
+    } else {
+      toast.error(`Produit non trouvé: ${barcode}`);
+    }
+  }, [products, addToCart]);
+
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
@@ -59,23 +75,7 @@ const CaissePage: React.FC = () => {
     };
     window.addEventListener('keypress', handleKeyPress);
     return () => window.removeEventListener('keypress', handleKeyPress);
-  }, []);
-
-  const handleBarcodeScanned = useCallback((barcode: string) => {
-    const product = products.find(p => p.codeBarre === barcode);
-    if (product) {
-      if (product.stock <= 0) {
-        toast.error(`${product.nom} est en rupture de stock`);
-        return;
-      }
-      addToCart({ productId: product.id, nom: product.nom, prixVente: product.prixVente });
-      setAddedProductId(product.id);
-      setTimeout(() => setAddedProductId(null), 500);
-      toast.success(`${product.nom} ajouté au panier`);
-    } else {
-      toast.error(`Produit non trouvé: ${barcode}`);
-    }
-  }, [products, addToCart]);
+  }, [handleBarcodeScanned]);
 
   const handleAddProduct = (product: Product) => {
     if (product.stock <= 0) {
@@ -93,7 +93,10 @@ const CaissePage: React.FC = () => {
   const change = paymentMode === 'especes' && amountReceived ? parseInt(amountReceived) - total : 0;
 
   const canValidate = cart.length > 0 && !isProcessing && (
-    paymentMode !== 'especes' || (amountReceived && parseInt(amountReceived) >= total)
+    paymentMode === 'especes' ? (amountReceived && parseInt(amountReceived) >= total) :
+    paymentMode === 'mobile_money' ? !!mobileRef.trim() :
+    paymentMode === 'credit' ? !!creditName.trim() :
+    false
   );
 
   const handleValidate = async () => {
