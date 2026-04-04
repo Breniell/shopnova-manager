@@ -13,7 +13,7 @@ interface StatCardProps {
 
 export const StatCard = forwardRef<HTMLDivElement, StatCardProps>(({ icon, iconBg = 'bg-primary/20', value, label, trend, className }, ref) => {
   return (
-    <div className={cn('nova-card-accent p-5', className)}>
+    <div ref={ref} className={cn('nova-card-accent p-5', className)}>
       <div className="flex items-start justify-between">
         <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', iconBg)}>
           {icon}
