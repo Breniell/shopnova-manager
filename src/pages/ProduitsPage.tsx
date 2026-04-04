@@ -4,6 +4,7 @@ import { NovaCard } from '@/components/ui/NovaCard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { formatFCFA, getStockStatus, generateEAN13, cn } from '@/lib/utils';
+import { productImages } from '@/assets/productImages';
 import { Search, Plus, Edit, Trash2, Package, X } from 'lucide-react';
 import { toast } from 'sonner';
 
