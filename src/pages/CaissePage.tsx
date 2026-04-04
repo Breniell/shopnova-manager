@@ -188,28 +188,40 @@ const CaissePage: React.FC = () => {
               const status = getStockStatus(product.stock, product.seuilAlerte);
               const isOut = status === 'out';
               const justAdded = addedProductId === product.id;
+              const image = getProductImage(product);
               return (
                 <button
                   key={product.id}
                   onClick={() => handleAddProduct(product)}
                   disabled={isOut}
                   className={cn(
-                    'nova-card p-4 text-left transition-all duration-150 group relative',
-                    isOut ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/10 active:scale-95',
+                    'nova-card p-0 text-left transition-all duration-200 group relative overflow-hidden',
+                    isOut ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.03] hover:shadow-xl hover:shadow-primary/15 hover:border-primary/30 active:scale-[0.97]',
                     status === 'low' && 'border-amber-500/30',
-                    justAdded && 'ring-2 ring-secondary scale-95'
+                    justAdded && 'ring-2 ring-secondary scale-[0.97]'
                   )}
                 >
                   {justAdded && (
-                    <div className="absolute inset-0 bg-secondary/10 rounded-xl animate-fade-in pointer-events-none" />
+                    <div className="absolute inset-0 bg-secondary/20 rounded-xl animate-fade-in pointer-events-none z-10" />
                   )}
-                  <div className="w-full h-16 rounded-lg bg-muted/50 flex items-center justify-center text-2xl mb-3">
-                    {categoryIcons[product.categorie] || '📦'}
+                  <div className="w-full h-24 bg-muted/30 flex items-center justify-center overflow-hidden relative">
+                    {image ? (
+                      <img src={image} alt={product.nom} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                    ) : (
+                      <Package className="w-8 h-8 text-muted-foreground/40" />
+                    )}
+                    {isOut && (
+                      <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-destructive bg-destructive/10 px-2 py-1 rounded">Rupture</span>
+                      </div>
+                    )}
+                    <div className="absolute top-1.5 right-1.5">
+                      <StatusBadge status={status} className="text-[9px] px-1.5 py-0 shadow-sm" />
+                    </div>
                   </div>
-                  <p className="text-sm font-medium text-foreground line-clamp-2 h-10">{product.nom}</p>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-sm font-semibold text-primary tabular-nums">{formatFCFA(product.prixVente)}</span>
-                    <StatusBadge status={status} className="text-[10px] px-1.5 py-0" />
+                  <div className="p-3">
+                    <p className="text-xs font-medium text-foreground line-clamp-2 h-8 leading-4">{product.nom}</p>
+                    <p className="text-sm font-bold text-primary tabular-nums mt-1">{formatFCFA(product.prixVente)}</p>
                   </div>
                 </button>
               );

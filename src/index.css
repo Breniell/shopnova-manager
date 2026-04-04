@@ -84,17 +84,27 @@
   }
   .nova-btn-primary {
     background: linear-gradient(135deg, #6C63FF, #8B5CF6);
-    @apply text-white font-medium rounded-lg px-4 py-2 transition-all duration-150;
+    @apply text-white font-medium rounded-lg px-4 py-2 transition-all duration-200;
   }
   .nova-btn-primary:hover {
-    box-shadow: 0 4px 20px rgba(108, 99, 255, 0.4);
+    box-shadow: 0 4px 24px rgba(108, 99, 255, 0.45);
     transform: translateY(-1px);
+  }
+  .nova-btn-primary:active {
+    transform: translateY(0) scale(0.98);
   }
   .nova-btn-primary:disabled {
     opacity: 0.5;
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
+  }
+  .nova-btn-secondary {
+    @apply bg-muted border border-border text-foreground font-medium rounded-lg px-4 py-2 transition-all duration-200;
+  }
+  .nova-btn-secondary:hover {
+    @apply bg-muted/80 border-primary/30;
+    transform: translateY(-1px);
   }
   .nova-table-header {
     @apply bg-muted text-muted-foreground uppercase text-[11px] tracking-[0.08em] font-medium;
@@ -106,6 +116,14 @@
   .nova-heading {
     @apply font-semibold tracking-tight;
     letter-spacing: -0.02em;
+  }
+  .nova-card-hover {
+    @apply nova-card transition-all duration-200;
+  }
+  .nova-card-hover:hover {
+    @apply border-primary/20;
+    box-shadow: 0 8px 30px rgba(108, 99, 255, 0.08);
+    transform: translateY(-2px);
   }
 }
 
