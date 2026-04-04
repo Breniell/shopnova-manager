@@ -153,12 +153,8 @@ const CaissePage: React.FC = () => {
     p.codeBarre.includes(search)
   );
 
-  const categoryIcons: Record<string, string> = {
-    'Alimentation': '🍚',
-    'Boissons': '🥤',
-    'Hygiène': '🧴',
-    'Électronique': '📱',
-    'Autre': '📦',
+  const getProductImage = (product: Product) => {
+    return productImages[product.id] || null;
   };
 
   return (
