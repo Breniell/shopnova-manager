@@ -154,8 +154,15 @@ const DashboardPage: React.FC = () => {
             ) : (
               <div className="space-y-2">
                 {alertProducts.map(p => (
-                  <div key={p.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div key={p.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                     <div className="flex items-center gap-3">
+                      {productImages[p.id] ? (
+                        <img src={productImages[p.id]} alt={p.nom} className="w-9 h-9 rounded-lg object-cover" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
+                          <Package className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                      )}
                       <span className="text-sm font-medium text-foreground">{p.nom}</span>
                       <StatusBadge status={getStockStatus(p.stock, p.seuilAlerte)} />
                     </div>
