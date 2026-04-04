@@ -4,6 +4,7 @@ import { NovaCard } from '@/components/ui/NovaCard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { formatFCFA, getStockStatus, generateEAN13, cn } from '@/lib/utils';
+import { productImages } from '@/assets/productImages';
 import { Search, Plus, Edit, Trash2, Package, X } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -130,8 +131,19 @@ const ProduitsPage: React.FC = () => {
                   <tr key={p.id} className="border-t border-border hover:bg-muted/30 transition-colors group">
                     <td className="p-3 text-sm text-muted-foreground">{i + 1}</td>
                     <td className="p-3">
-                      <p className="text-sm font-medium text-foreground">{p.nom}</p>
-                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{p.categorie}</span>
+                      <div className="flex items-center gap-3">
+                        {productImages[p.id] ? (
+                          <img src={productImages[p.id]} alt={p.nom} className="w-10 h-10 rounded-lg object-cover" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                            <Package className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{p.nom}</p>
+                          <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{p.categorie}</span>
+                        </div>
+                      </div>
                     </td>
                     <td className="p-3 text-sm font-mono text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => { navigator.clipboard.writeText(p.codeBarre); toast.success('Copié !'); }}>
                       {p.codeBarre}
