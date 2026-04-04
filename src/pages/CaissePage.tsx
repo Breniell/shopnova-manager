@@ -59,7 +59,7 @@ const CaissePage: React.FC = () => {
     };
     window.addEventListener('keypress', handleKeyPress);
     return () => window.removeEventListener('keypress', handleKeyPress);
-  }, []);
+  }, [handleBarcodeScanned]);
 
   const handleBarcodeScanned = useCallback((barcode: string) => {
     const product = products.find(p => p.codeBarre === barcode);
