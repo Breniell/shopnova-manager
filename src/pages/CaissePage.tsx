@@ -257,9 +257,16 @@ const CaissePage: React.FC = () => {
               {cart.map((item, index) => (
                 <div
                   key={item.productId}
-                  className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 animate-slide-in-right"
+                  className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors animate-slide-in-right"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
+                  {productImages[item.productId] ? (
+                    <img src={productImages[item.productId]} alt={item.nom} className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                      <Package className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{item.nom}</p>
                     <p className="text-xs text-muted-foreground">{formatFCFA(item.prixVente)} / unité</p>
