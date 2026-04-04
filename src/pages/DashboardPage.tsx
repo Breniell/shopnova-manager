@@ -8,6 +8,7 @@ import { PaymentBadge } from '@/components/ui/PaymentBadge';
 import { useProductStore } from '@/stores/useProductStore';
 import { useSaleStore } from '@/stores/useSaleStore';
 import { formatFCFA, formatTime, getStockStatus } from '@/lib/utils';
+import { productImages } from '@/assets/productImages';
 import { DollarSign, ShoppingCart, AlertTriangle, Package, Plus, ArrowRight } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, CartesianGrid } from 'recharts';
 
