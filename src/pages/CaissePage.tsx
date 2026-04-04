@@ -93,7 +93,10 @@ const CaissePage: React.FC = () => {
   const change = paymentMode === 'especes' && amountReceived ? parseInt(amountReceived) - total : 0;
 
   const canValidate = cart.length > 0 && !isProcessing && (
-    paymentMode !== 'especes' || (amountReceived && parseInt(amountReceived) >= total)
+    paymentMode === 'especes' ? (amountReceived && parseInt(amountReceived) >= total) :
+    paymentMode === 'mobile_money' ? !!mobileRef.trim() :
+    paymentMode === 'credit' ? !!creditName.trim() :
+    false
   );
 
   const handleValidate = async () => {
