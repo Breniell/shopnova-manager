@@ -1,0 +1,14 @@
+{
+  "name": "ShopNova - Gestion de boutique",
+  "short_name": "ShopNova",
+  "description": "Application de gestion de boutique hors-ligne",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a12",
+  "theme_color": "#6C63FF",
+  "icons": [
+    { "src": "/pwa-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/pwa-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/pwa-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
