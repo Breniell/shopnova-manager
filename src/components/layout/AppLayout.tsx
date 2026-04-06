@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { forwardRef, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { useAuthStore } from '@/stores/useAuthStore';
 
-export const AppLayout: React.FC = () => {
+export const AppLayout = forwardRef<HTMLDivElement>((_props, ref) => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
 
@@ -35,11 +35,13 @@ export const AppLayout: React.FC = () => {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div ref={ref} className="min-h-screen bg-background">
       <Sidebar />
       <main className="ml-60 min-h-screen">
         <Outlet />
       </main>
     </div>
   );
-};
+});
+
+AppLayout.displayName = 'AppLayout';
