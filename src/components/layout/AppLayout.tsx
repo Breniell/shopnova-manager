@@ -35,11 +35,13 @@ export const AppLayout = forwardRef<HTMLDivElement>((_props, ref) => {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div ref={ref} className="min-h-screen bg-background">
       <Sidebar />
       <main className="ml-60 min-h-screen">
         <Outlet />
       </main>
     </div>
   );
-};
+});
+
+AppLayout.displayName = 'AppLayout';
