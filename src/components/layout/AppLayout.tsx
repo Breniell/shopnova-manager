@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { forwardRef, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { useAuthStore } from '@/stores/useAuthStore';
 
-export const AppLayout: React.FC = () => {
+export const AppLayout = forwardRef<HTMLDivElement>((_props, ref) => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
 
