@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useProductStore, Product, Category } from '@/stores/useProductStore';
+import { useSaleStore } from '@/stores/useSaleStore';
 import { NovaCard } from '@/components/ui/NovaCard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -10,6 +11,7 @@ import { toast } from 'sonner';
 
 const ProduitsPage: React.FC = () => {
   const { products, categories, addProduct, updateProduct, deleteProduct } = useProductStore();
+  const { cart } = useSaleStore();
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState<string>('');
   const [stockFilter, setStockFilter] = useState<string>('');
@@ -45,9 +47,9 @@ const ProduitsPage: React.FC = () => {
     }
     const data = {
       nom: form.nom, categorie: form.categorie, codeBarre: form.codeBarre || generateEAN13(),
-      prixAchat: parseInt(form.prixAchat), prixVente: parseInt(form.prixVente),
-      stock: editingProduct ? editingProduct.stock : parseInt(form.stock || '0'),
-      seuilAlerte: parseInt(form.seuilAlerte || '5'), description: form.description,
+      prixAchat: parseInt(form.prixAchat, 10) || 0, prixVente: parseInt(form.prixVente, 10) || 0,
+      stock: editingProduct ? editingProduct.stock : (parseInt(form.stock, 10) || 0),
+      seuilAlerte: parseInt(form.seuilAlerte, 10) || 5, description: form.description,
     };
     if (editingProduct) {
       updateProduct(editingProduct.id, data);
@@ -60,15 +62,20 @@ const ProduitsPage: React.FC = () => {
   };
 
   const handleDelete = () => {
-    if (deleteTarget) {
-      deleteProduct(deleteTarget.id);
-      toast.success('Produit supprimé');
+    if (!deleteTarget) return;
+    const inCart = cart.find(c => c.productId === deleteTarget.id);
+    if (inCart) {
+      toast.error("Ce produit est dans le panier. Videz le panier d'abord.");
       setDeleteTarget(null);
+      return;
     }
+    deleteProduct(deleteTarget.id);
+    toast.success('Produit supprimé');
+    setDeleteTarget(null);
   };
 
   const marge = form.prixAchat && form.prixVente
-    ? ((parseInt(form.prixVente) - parseInt(form.prixAchat)) / parseInt(form.prixAchat) * 100)
+    ? (((parseInt(form.prixVente, 10) || 0) - (parseInt(form.prixAchat, 10) || 0)) / (parseInt(form.prixAchat, 10) || 1) * 100)
     : 0;
 
   let filtered = products.filter(p => p.nom.toLowerCase().includes(search.toLowerCase()) || p.codeBarre.includes(search));
@@ -217,7 +224,7 @@ const ProduitsPage: React.FC = () => {
               </div>
               {form.prixAchat && form.prixVente && (
                 <div className={cn('text-sm font-medium', marge >= 20 ? 'text-emerald-400' : marge >= 10 ? 'text-amber-400' : 'text-red-400')}>
-                  Marge: {formatFCFA(parseInt(form.prixVente) - parseInt(form.prixAchat))} ({marge.toFixed(1)}%)
+                  Marge: {formatFCFA((parseInt(form.prixVente, 10) || 0) - (parseInt(form.prixAchat, 10) || 0))} ({marge.toFixed(1)}%)
                 </div>
               )}
               {!editingProduct && (

@@ -55,11 +55,10 @@ const RapportsPage: React.FC = () => {
   }));
   const top10 = Array.from(productMap.values()).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
 
-  // Payment distribution
+  // Payment distribution (no credit)
   const paymentDist = [
     { name: 'Espèces', value: periodSales.filter(s => s.paymentMode === 'especes').reduce((sum, s) => sum + s.total, 0), color: '#00D4AA' },
     { name: 'Mobile Money', value: periodSales.filter(s => s.paymentMode === 'mobile_money').reduce((sum, s) => sum + s.total, 0), color: '#6C63FF' },
-    { name: 'Crédit', value: periodSales.filter(s => s.paymentMode === 'credit').reduce((sum, s) => sum + s.total, 0), color: '#F59E0B' },
   ].filter(d => d.value > 0);
 
   // Critical stock

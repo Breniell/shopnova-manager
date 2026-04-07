@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore, User } from '@/stores/useAuthStore';
-import { ArrowLeft, Shield, ShoppingCart, Zap, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Shield, ShoppingCart, BarChart3, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const LoginPage: React.FC = () => {
@@ -10,29 +10,63 @@ const LoginPage: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
+  const [locked, setLocked] = useState(false);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const lockTimerRef = useRef<ReturnType<typeof setInterval>>();
+
+  useEffect(() => {
+    return () => {
+      if (lockTimerRef.current) clearInterval(lockTimerRef.current);
+    };
+  }, []);
+
+  const startLockTimer = (seconds: number) => {
+    setLocked(true);
+    setRemainingSeconds(seconds);
+    if (lockTimerRef.current) clearInterval(lockTimerRef.current);
+    lockTimerRef.current = setInterval(() => {
+      setRemainingSeconds(prev => {
+        if (prev <= 1) {
+          clearInterval(lockTimerRef.current!);
+          setLocked(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   const handleUserSelect = (user: User) => {
     setSelectedUser(user);
     setPin('');
     setError(false);
+    setLocked(false);
+    if (lockTimerRef.current) clearInterval(lockTimerRef.current);
   };
 
   const handleBack = () => {
     setSelectedUser(null);
     setPin('');
     setError(false);
+    setLocked(false);
+    if (lockTimerRef.current) clearInterval(lockTimerRef.current);
   };
 
-  const handlePinDigit = useCallback((digit: string) => {
-    if (pin.length >= 4) return;
+  const handlePinDigit = useCallback(async (digit: string) => {
+    if (pin.length >= 4 || isLoggingIn || locked) return;
     const newPin = pin + digit;
     setPin(newPin);
     setError(false);
 
     if (newPin.length === 4 && selectedUser) {
-      const success = login(selectedUser.id, newPin);
-      if (success) {
+      setIsLoggingIn(true);
+      const result = await login(selectedUser.id, newPin);
+      if (result.success) {
         navigate('/');
+      } else if (result.locked && result.remainingSeconds) {
+        startLockTimer(result.remainingSeconds);
+        setPin('');
       } else {
         setError(true);
         setTimeout(() => {
@@ -40,12 +74,20 @@ const LoginPage: React.FC = () => {
           setError(false);
         }, 600);
       }
+      setIsLoggingIn(false);
     }
-  }, [pin, selectedUser, login, navigate]);
+  }, [pin, selectedUser, login, navigate, isLoggingIn, locked]);
 
   const handleBackspace = () => {
+    if (locked) return;
     setPin(p => p.slice(0, -1));
     setError(false);
+  };
+
+  const formatLockTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
   };
 
   const features = [
@@ -56,12 +98,10 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Animated mesh background */}
       <div className="login-mesh-bg">
         <div className="mesh-3" />
       </div>
 
-      {/* Left branding panel */}
       <div className="hidden lg:flex w-[40%] flex-col justify-center items-center relative z-10 p-12">
         <div className="max-w-sm">
           <div className="flex items-center gap-3 mb-8">
@@ -88,7 +128,6 @@ const LoginPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Right login panel */}
       <div className="flex-1 flex items-center justify-center relative z-10 p-8">
         <div className="w-full max-w-md nova-card p-8 backdrop-blur-xl bg-card/80">
           {!selectedUser ? (
@@ -138,43 +177,56 @@ const LoginPage: React.FC = () => {
                   {selectedUser.prenom[0]}{selectedUser.nom[0]}
                 </div>
                 <p className="font-medium text-foreground text-lg">{selectedUser.prenom} {selectedUser.nom}</p>
-                <p className="text-sm text-muted-foreground mt-1">Entrez votre code PIN</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {locked ? '' : 'Entrez votre code PIN'}
+                </p>
               </div>
 
-              {/* PIN dots */}
-              <div className={cn('flex justify-center gap-4 mb-8', error && 'pin-shake')}>
-                {[0, 1, 2, 3].map(i => (
-                  <div
-                    key={i}
-                    className={cn(
-                      'w-4 h-4 rounded-full transition-all duration-150',
-                      i < pin.length
-                        ? error ? 'bg-destructive scale-110' : 'bg-primary scale-110'
-                        : 'bg-muted-foreground/30'
-                    )}
-                  />
-                ))}
-              </div>
-
-              {error && (
-                <p className="text-center text-sm text-destructive mb-4 animate-fade-in">Code PIN incorrect</p>
+              {locked && (
+                <div className="text-center mb-6 p-4 rounded-xl bg-destructive/10 border border-destructive/20 animate-fade-in">
+                  <Lock className="w-6 h-6 text-destructive mx-auto mb-2" />
+                  <p className="text-sm text-destructive font-medium">Compte bloqué</p>
+                  <p className="text-sm text-destructive/80 mt-1">Réessayez dans {formatLockTime(remainingSeconds)}</p>
+                </div>
               )}
 
-              {/* PIN pad */}
-              <div className="grid grid-cols-3 gap-3 max-w-[240px] mx-auto">
-                {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '←'].map((key, i) => {
-                  if (key === '') return <div key={i} />;
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => key === '←' ? handleBackspace() : handlePinDigit(key)}
-                      className="w-16 h-16 rounded-xl bg-muted border border-border text-foreground text-xl font-medium hover:bg-muted/80 active:scale-95 transition-all duration-100 mx-auto flex items-center justify-center"
-                    >
-                      {key}
-                    </button>
-                  );
-                })}
-              </div>
+              {!locked && (
+                <>
+                  <div className={cn('flex justify-center gap-4 mb-8', error && 'pin-shake')}>
+                    {[0, 1, 2, 3].map(i => (
+                      <div
+                        key={i}
+                        className={cn(
+                          'w-4 h-4 rounded-full transition-all duration-150',
+                          i < pin.length
+                            ? error ? 'bg-destructive scale-110' : 'bg-primary scale-110'
+                            : 'bg-muted-foreground/30'
+                        )}
+                      />
+                    ))}
+                  </div>
+
+                  {error && (
+                    <p className="text-center text-sm text-destructive mb-4 animate-fade-in">Code PIN incorrect</p>
+                  )}
+
+                  <div className="grid grid-cols-3 gap-3 max-w-[240px] mx-auto">
+                    {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '←'].map((key, i) => {
+                      if (key === '') return <div key={i} />;
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => key === '←' ? handleBackspace() : handlePinDigit(key)}
+                          disabled={isLoggingIn}
+                          className="w-16 h-16 rounded-xl bg-muted border border-border text-foreground text-xl font-medium hover:bg-muted/80 active:scale-95 transition-all duration-100 mx-auto flex items-center justify-center disabled:opacity-50"
+                        >
+                          {key}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

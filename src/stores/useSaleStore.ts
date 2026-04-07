@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type PaymentMode = 'especes' | 'mobile_money' | 'credit';
+export type PaymentMode = 'especes' | 'mobile_money';
 export type MobileOperator = 'mtn' | 'orange';
 
 export interface CartItem {
@@ -22,8 +22,6 @@ export interface Sale {
   paymentMode: PaymentMode;
   mobileOperator?: MobileOperator;
   mobileReference?: string;
-  creditClientName?: string;
-  creditClientPhone?: string;
   amountReceived?: number;
   changeGiven?: number;
   userId: string;
@@ -58,7 +56,7 @@ const initialSales: Sale[] = [
   { id: 's3', saleNumber: 'SHP-2026-00003', date: day(0, 11, 45), items: [{ productId: 'p16', nom: 'Téléphone Samsung A05', prixVente: 65000, quantity: 1 }], subtotal: 65000, discount: 0, total: 65000, paymentMode: 'mobile_money', mobileOperator: 'orange', mobileReference: 'OM-44521', userId: '1', userName: 'Marie Nguema' },
   { id: 's4', saleNumber: 'SHP-2026-00004', date: day(0, 14, 20), items: [{ productId: 'p5', nom: 'Savon OMO 500g', prixVente: 1100, quantity: 2 }, { productId: 'p11', nom: 'Dentifrice Colgate 75ml', prixVente: 900, quantity: 1 }], subtotal: 3100, discount: 0, total: 3100, paymentMode: 'especes', amountReceived: 3500, changeGiven: 400, userId: '3', userName: 'Fatou Diallo' },
   { id: 's5', saleNumber: 'SHP-2026-00005', date: day(1, 8, 0), items: [{ productId: 'p9', nom: 'Lait Nido 400g', prixVente: 4200, quantity: 1 }, { productId: 'p12', nom: 'Sucre cristallisé 1kg', prixVente: 750, quantity: 2 }], subtotal: 5700, discount: 0, total: 5700, paymentMode: 'especes', amountReceived: 6000, changeGiven: 300, userId: '2', userName: 'Paul Mbarga' },
-  { id: 's6', saleNumber: 'SHP-2026-00006', date: day(1, 10, 30), items: [{ productId: 'p14', nom: 'Café Nescafé Classic 200g', prixVente: 3800, quantity: 1 }, { productId: 'p25', nom: 'Spaghetti Barilla 500g', prixVente: 1000, quantity: 3 }], subtotal: 6800, discount: 0, total: 6800, paymentMode: 'credit', creditClientName: 'Jean Kamga', creditClientPhone: '677123456', userId: '3', userName: 'Fatou Diallo' },
+  { id: 's6', saleNumber: 'SHP-2026-00006', date: day(1, 10, 30), items: [{ productId: 'p14', nom: 'Café Nescafé Classic 200g', prixVente: 3800, quantity: 1 }, { productId: 'p25', nom: 'Spaghetti Barilla 500g', prixVente: 1000, quantity: 3 }], subtotal: 6800, discount: 0, total: 6800, paymentMode: 'especes', amountReceived: 6800, changeGiven: 0, userId: '3', userName: 'Fatou Diallo' },
   { id: 's7', saleNumber: 'SHP-2026-00007', date: day(1, 15, 0), items: [{ productId: 'p1', nom: 'Bière Castel 33cl', prixVente: 600, quantity: 12 }, { productId: 'p2', nom: 'Eau minérale Supermont 1.5L', prixVente: 300, quantity: 6 }], subtotal: 9000, discount: 0, total: 9000, paymentMode: 'especes', amountReceived: 10000, changeGiven: 1000, userId: '2', userName: 'Paul Mbarga' },
   { id: 's8', saleNumber: 'SHP-2026-00008', date: day(2, 9, 15), items: [{ productId: 'p18', nom: 'Couche Pampers taille 3', prixVente: 6000, quantity: 2 }], subtotal: 12000, discount: 0, total: 12000, paymentMode: 'mobile_money', mobileOperator: 'mtn', mobileReference: 'MTN-55123', userId: '3', userName: 'Fatou Diallo' },
   { id: 's9', saleNumber: 'SHP-2026-00009', date: day(2, 12, 0), items: [{ productId: 'p7', nom: 'Sardines Saupiquet 200g', prixVente: 950, quantity: 4 }, { productId: 'p19', nom: 'Tomate concentrée Heinz 400g', prixVente: 1200, quantity: 2 }], subtotal: 6200, discount: 0, total: 6200, paymentMode: 'especes', amountReceived: 6500, changeGiven: 300, userId: '2', userName: 'Paul Mbarga' },
@@ -67,7 +65,7 @@ const initialSales: Sale[] = [
   { id: 's12', saleNumber: 'SHP-2026-00012', date: day(3, 11, 15), items: [{ productId: 'p20', nom: 'Piles AA Duracell x4', prixVente: 1500, quantity: 2 }, { productId: 'p17', nom: 'Câble USB-C 1m', prixVente: 2500, quantity: 1 }], subtotal: 5500, discount: 0, total: 5500, paymentMode: 'mobile_money', mobileOperator: 'orange', mobileReference: 'OM-33789', userId: '2', userName: 'Paul Mbarga' },
   { id: 's13', saleNumber: 'SHP-2026-00013', date: day(3, 14, 0), items: [{ productId: 'p24', nom: 'Chips Pringles Original', prixVente: 2800, quantity: 3 }, { productId: 'p23', nom: 'Jus de fruit Joker Orange 1L', prixVente: 1300, quantity: 2 }], subtotal: 11000, discount: 5, total: 10450, paymentMode: 'especes', amountReceived: 11000, changeGiven: 550, userId: '2', userName: 'Paul Mbarga' },
   { id: 's14', saleNumber: 'SHP-2026-00014', date: day(4, 9, 0), items: [{ productId: 'p21', nom: 'Lessive Omo poudre 1kg', prixVente: 1900, quantity: 1 }, { productId: 'p5', nom: 'Savon OMO 500g', prixVente: 1100, quantity: 2 }], subtotal: 4100, discount: 0, total: 4100, paymentMode: 'especes', amountReceived: 4500, changeGiven: 400, userId: '3', userName: 'Fatou Diallo' },
-  { id: 's15', saleNumber: 'SHP-2026-00015', date: day(4, 13, 30), items: [{ productId: 'p3', nom: 'Riz parfumé Thaï 5kg', prixVente: 4500, quantity: 1 }, { productId: 'p4', nom: 'Huile végétale Azur 1L', prixVente: 1400, quantity: 2 }], subtotal: 7300, discount: 0, total: 7300, paymentMode: 'credit', creditClientName: 'Amina Bello', creditClientPhone: '699887766', userId: '2', userName: 'Paul Mbarga' },
+  { id: 's15', saleNumber: 'SHP-2026-00015', date: day(4, 13, 30), items: [{ productId: 'p3', nom: 'Riz parfumé Thaï 5kg', prixVente: 4500, quantity: 1 }, { productId: 'p4', nom: 'Huile végétale Azur 1L', prixVente: 1400, quantity: 2 }], subtotal: 7300, discount: 0, total: 7300, paymentMode: 'especes', amountReceived: 7300, changeGiven: 0, userId: '2', userName: 'Paul Mbarga' },
   { id: 's16', saleNumber: 'SHP-2026-00016', date: day(5, 8, 45), items: [{ productId: 'p1', nom: 'Bière Castel 33cl', prixVente: 600, quantity: 24 }], subtotal: 14400, discount: 0, total: 14400, paymentMode: 'especes', amountReceived: 15000, changeGiven: 600, userId: '2', userName: 'Paul Mbarga' },
   { id: 's17', saleNumber: 'SHP-2026-00017', date: day(5, 12, 15), items: [{ productId: 'p22', nom: 'Tablette de chocolat Noir', prixVente: 900, quantity: 5 }, { productId: 'p8', nom: 'Biscuits Petit LU 100g', prixVente: 400, quantity: 10 }], subtotal: 8500, discount: 0, total: 8500, paymentMode: 'mobile_money', mobileOperator: 'mtn', mobileReference: 'MTN-99234', userId: '3', userName: 'Fatou Diallo' },
   { id: 's18', saleNumber: 'SHP-2026-00018', date: day(6, 9, 30), items: [{ productId: 'p2', nom: 'Eau minérale Supermont 1.5L', prixVente: 300, quantity: 10 }, { productId: 'p7', nom: 'Sardines Saupiquet 200g', prixVente: 950, quantity: 3 }], subtotal: 5850, discount: 0, total: 5850, paymentMode: 'especes', amountReceived: 6000, changeGiven: 150, userId: '2', userName: 'Paul Mbarga' },

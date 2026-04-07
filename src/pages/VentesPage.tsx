@@ -111,7 +111,6 @@ const VentesPage: React.FC = () => {
           <option value="">Tous les paiements</option>
           <option value="especes">Espèces</option>
           <option value="mobile_money">Mobile Money</option>
-          <option value="credit">Crédit</option>
         </select>
       </div>
 
