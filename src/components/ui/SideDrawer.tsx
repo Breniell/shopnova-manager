@@ -20,7 +20,7 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({ open, onClose, title, ch
         'fixed right-0 top-0 h-full w-[480px] bg-card border-l border-border z-50 animate-slide-in-right overflow-y-auto',
         className
       )}>
-        <div className="flex items-center justify-between p-5 border-b border-border">
+        <div className="flex items-center justify-between p-5 border-b border-">
           {title && <h2 className="nova-heading text-lg text-foreground">{title}</h2>}
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-muted transition-colors">
             <X className="w-5 h-5 text-muted-foreground" />

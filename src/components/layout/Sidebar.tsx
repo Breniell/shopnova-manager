@@ -57,7 +57,7 @@ export const Sidebar: React.FC = () => {
 
         {/* Logo */}
         <div className="p-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-grid">
             <div className="w-9 h-9 flex items-center justify-center">
               <svg viewBox="0 0 40 40" className="w-9 h-9">
                 <polygon points="20,2 36,11 36,29 20,38 4,29 4,11" fill="none" stroke="#6C63FF" strokeWidth="2" />
@@ -86,7 +86,7 @@ export const Sidebar: React.FC = () => {
                 to={item.path}
                 onClick={handleNavClick}
                 className={cn(
-                  'flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative',
+                  'flex items-center gap-grid px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative',
                   isActive
                     ? 'text-foreground bg-primary/15'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -104,10 +104,10 @@ export const Sidebar: React.FC = () => {
 
         {/* User section */}
         {currentUser && (
-          <div className="p-4 border-t border-border">
-            <div className="flex items-center gap-3">
+          <div className="p-4 border-t border-">
+            <div className="flex items-center gap-grid">
               <div
-                className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold text-white"
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-semibold text-white"
                 style={{ backgroundColor: currentUser.color }}
               >
                 {currentUser.prenom[0]}{currentUser.nom[0]}

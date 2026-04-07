@@ -78,7 +78,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ open, onClose, o
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-md bg-card border-border">
+      <DialogContent className="sm:max-w-md bg-card border-">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <Camera className="w-5 h-5 text-primary" />
@@ -99,10 +99,10 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ open, onClose, o
                 {/* Scan frame corners */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="relative w-3/4 h-1/2">
-                    <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-primary" />
-                    <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-primary" />
-                    <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-primary" />
-                    <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-primary" />
+                    <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 -primary" />
+                    <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 -primary" />
+                    <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 -primary" />
+                    <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 -primary" />
                     {/* Scan line */}
                     <div className="absolute left-0 right-0 h-0.5 bg-primary/80 scan-line" />
                   </div>
@@ -113,7 +113,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ open, onClose, o
             {/* Detected overlay */}
             {detectedCode && (
               <div className="absolute inset-0 bg-secondary/20 flex items-center justify-center animate-fade-in">
-                <div className="bg-card border border-secondary rounded-lg px-4 py-2">
+                <div className="bg-card border -secondary rounded-lg px-4 py-2">
                   <p className="text-sm text-secondary font-medium">Code détecté: {detectedCode}</p>
                 </div>
               </div>

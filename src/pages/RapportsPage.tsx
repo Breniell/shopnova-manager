@@ -68,8 +68,8 @@ const RapportsPage: React.FC = () => {
   return (
     <div className="p-8 animate-fade-in">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl nova-heading text-foreground">Rapports</h1>
-        <div className="flex items-center gap-3">
+        <h1 className="text-headline-lg nova-heading text-foreground">Rapports</h1>
+        <div className="flex items-center gap-grid">
           <div className="flex gap-1">
             <button onClick={() => {
               const headers = ['#', 'Produit', 'Quantité', 'Revenu', '% du total'];
@@ -90,7 +90,7 @@ const RapportsPage: React.FC = () => {
           </div>
         <div className="flex gap-1 bg-muted rounded-lg p-1">
           {([['today', "Aujourd'hui"], ['week', 'Cette semaine'], ['month', 'Ce mois']] as const).map(([k, label]) => (
-            <button key={k} onClick={() => setPeriod(k)} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all', period === k ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+            <button key={k} onClick={() => setPeriod(k)} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all', period === k ? 'bg-card text-foreground ' : 'text-muted-foreground hover:text-foreground')}>
               {label}
             </button>
           ))}
@@ -142,7 +142,7 @@ const RapportsPage: React.FC = () => {
             </thead>
             <tbody>
               {top10.map((p, i) => (
-                <tr key={i} className="border-t border-border">
+                <tr key={i} className="border-t border-">
                   <td className="p-2 text-sm text-muted-foreground">{i + 1}</td>
                   <td className="p-2 text-sm text-foreground">{p.nom}</td>
                   <td className="p-2 text-sm text-right text-foreground tabular-nums">{p.qty}</td>
@@ -168,9 +168,9 @@ const RapportsPage: React.FC = () => {
           <div className="flex flex-col gap-2 mt-2">
             {paymentDist.map((d, i) => (
               <div key={i} className="flex items-center gap-2 text-sm">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: d.color }} />
+                <div className="w-3 h-3 rounded-lg" style={{ backgroundColor: d.color }} />
                 <span className="text-muted-foreground flex-1">{d.name}</span>
-                <span className="text-foreground tabular-nums">{formatFCFA(d.value)}</span>
+                <span className="text-foreground tabular-nums" className="tabular-nums">{formatPrice($2)}</span>
               </div>
             ))}
           </div>
@@ -193,7 +193,7 @@ const RapportsPage: React.FC = () => {
             </thead>
             <tbody>
               {criticalProducts.map(p => (
-                <tr key={p.id} className="border-t border-border">
+                <tr key={p.id} className="border-t border-">
                   <td className="p-2 text-sm text-foreground">{p.nom}</td>
                   <td className={cn('p-2 text-sm text-right tabular-nums', p.stock <= 0 ? 'text-destructive' : 'text-amber-400')}>{p.stock}</td>
                   <td className="p-2 text-sm text-right text-muted-foreground tabular-nums">{p.seuilAlerte}</td>

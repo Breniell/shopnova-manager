@@ -41,7 +41,7 @@ export const AppLayout = forwardRef<HTMLDivElement>((_props, ref) => {
       <Sidebar />
       {/* Mobile header */}
       {isMobile && (
-        <div className="fixed top-0 left-0 right-0 z-10 bg-card border-b border-border px-4 py-3 flex items-center gap-3">
+        <div className="fixed top-0 left-0 right-0 z-10 bg-card border-b border- px-4 py-3 flex items-center gap-grid">
           <button onClick={toggleSidebar} aria-label="Ouvrir le menu" className="p-2 rounded-lg hover:bg-muted transition-colors">
             <Menu className="w-5 h-5 text-foreground" />
           </button>

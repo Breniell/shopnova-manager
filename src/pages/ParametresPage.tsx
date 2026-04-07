@@ -49,13 +49,13 @@ const ParametresPage: React.FC = () => {
 
   return (
     <div className="p-8 animate-fade-in">
-      <h1 className="text-2xl nova-heading text-foreground mb-6">Paramètres</h1>
+      <h1 className="text-headline-lg nova-heading text-foreground mb-6">Paramètres</h1>
 
       <div className="flex gap-1 mb-6 bg-muted rounded-lg p-1 w-fit">
-        <button onClick={() => setActiveTab('boutique')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2', activeTab === 'boutique' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground')}>
+        <button onClick={() => setActiveTab('boutique')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2', activeTab === 'boutique' ? 'bg-card text-foreground ' : 'text-muted-foreground')}>
           <Store className="w-4 h-4" /> Boutique
         </button>
-        <button onClick={() => setActiveTab('users')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2', activeTab === 'users' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground')}>
+        <button onClick={() => setActiveTab('users')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2', activeTab === 'users' ? 'bg-card text-foreground ' : 'text-muted-foreground')}>
           <Users className="w-4 h-4" /> Utilisateurs
         </button>
       </div>
@@ -110,7 +110,7 @@ const ParametresPage: React.FC = () => {
           <div className="grid grid-cols-3 gap-4">
             {users.map(user => (
               <NovaCard key={user.id} accent className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-semibold text-white mb-3" style={{ backgroundColor: user.color }}>
+                <div className="w-16 h-16 rounded-lg flex items-center justify-center text-title-lg font-semibold text-white mb-3" style={{ backgroundColor: user.color }}>
                   {user.prenom[0]}{user.nom[0]}
                 </div>
                 <p className="font-medium text-foreground">{user.prenom} {user.nom}</p>
@@ -168,7 +168,7 @@ const ParametresPage: React.FC = () => {
                 <input type="password" maxLength={4} value={newUser.confirmPin} onChange={e => setNewUser({ ...newUser, confirmPin: e.target.value.replace(/\D/g, '') })} className="nova-input w-full text-center tracking-[1em] text-lg" />
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-grid mt-6">
               <button onClick={() => setShowUserModal(false)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors">Annuler</button>
               <button onClick={handleAddUser} className="flex-1 nova-btn-primary py-2.5">Ajouter</button>
             </div>
@@ -191,7 +191,7 @@ const ParametresPage: React.FC = () => {
                 <input type="password" maxLength={4} value={confirmPin} onChange={e => setConfirmPin(e.target.value.replace(/\D/g, ''))} className="nova-input w-full text-center tracking-[1em] text-lg" />
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-grid mt-6">
               <button onClick={() => setShowPinModal(null)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors">Annuler</button>
               <button onClick={handleChangePin} className="flex-1 nova-btn-primary py-2.5">Confirmer</button>
             </div>

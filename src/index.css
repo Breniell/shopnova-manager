@@ -1,5 +1,6 @@
 ﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-@import url('https://fonts.cdnfonts.com/css/cal-sans');
+/* Cal Sans remplacée par Space Grotesk (alternative gratuite) */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -49,7 +50,7 @@
   }
   
   h1, h2, h3, .heading {
-    font-family: 'Cal Sans', 'Inter', system-ui, sans-serif;
+    font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
     font-weight: 700;
   }
 }

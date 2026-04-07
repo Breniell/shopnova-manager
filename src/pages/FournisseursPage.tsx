@@ -56,8 +56,8 @@ const FournisseursPage: React.FC = () => {
 
   return (
     <div className="p-4 lg:p-8 animate-fade-in">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
-        <h1 className="text-2xl nova-heading text-foreground">Fournisseurs</h1>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-grid">
+        <h1 className="text-headline-lg nova-heading text-foreground">Fournisseurs</h1>
         <button onClick={openAdd} className="nova-btn-primary flex items-center gap-2 px-5 py-2.5">
           <Plus className="w-4 h-4" /> Ajouter un fournisseur
         </button>
@@ -75,7 +75,7 @@ const FournisseursPage: React.FC = () => {
           {filtered.map(s => (
             <NovaCard key={s.id} accent>
               <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-grid">
                   <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center">
                     <Truck className="w-5 h-5 text-primary" />
                   </div>
@@ -131,7 +131,7 @@ const FournisseursPage: React.FC = () => {
                 <textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} className="nova-input w-full h-16 resize-none" />
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-grid mt-6">
               <button onClick={() => setShowModal(false)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors">Annuler</button>
               <button onClick={handleSubmit} className="flex-1 nova-btn-primary py-2.5">{editing ? 'Enregistrer' : 'Ajouter'}</button>
             </div>
@@ -147,7 +147,7 @@ const FournisseursPage: React.FC = () => {
             <p className="text-sm text-muted-foreground mb-6">
               Êtes-vous sûr de vouloir supprimer <strong className="text-foreground">{deleteTarget.nom}</strong> ?
             </p>
-            <div className="flex gap-3">
+            <div className="flex gap-grid">
               <button onClick={() => setDeleteTarget(null)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors">Annuler</button>
               <button onClick={handleDelete} className="flex-1 py-2.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors">Supprimer</button>
             </div>

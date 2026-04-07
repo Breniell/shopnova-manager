@@ -49,7 +49,7 @@ const VentesPage: React.FC = () => {
   return (
     <div className="p-8 animate-fade-in">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl nova-heading text-foreground">Historique des ventes</h1>
+        <h1 className="text-headline-lg nova-heading text-foreground">Historique des ventes</h1>
         <div className="flex gap-1">
           <button onClick={() => {
             const headers = ['ID', 'Date', 'Heure', 'Caissier', 'Articles', 'Total', 'Paiement'];
@@ -71,7 +71,7 @@ const VentesPage: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-6">
+      <div className="flex flex-wrap gap-grid mb-6">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="nova-input w-full pl-10" placeholder="Rechercher par ID ou caissier..." />
@@ -133,7 +133,7 @@ const VentesPage: React.FC = () => {
               </thead>
               <tbody>
                 {filtered.map(s => (
-                  <tr key={s.id} className="border-t border-border hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setSelectedSale(s)}>
+                  <tr key={s.id} className="border-t border- hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setSelectedSale(s)}>
                     <td className="p-3 text-sm font-mono text-primary">{s.saleNumber}</td>
                     <td className="p-3 text-sm text-muted-foreground">{formatDateShort(new Date(s.date))} {formatTime(new Date(s.date))}</td>
                     <td className="p-3 text-sm text-foreground">{s.userName}</td>
@@ -154,7 +154,7 @@ const VentesPage: React.FC = () => {
           {/* Summary bar */}
           <div className="mt-4 nova-card px-5 py-3 flex items-center justify-between">
             <span className="text-sm text-muted-foreground">{filtered.length} vente{filtered.length > 1 ? 's' : ''}</span>
-            <div className="flex gap-6">
+            <div className="flex gap-grid-3">
               <span className="text-sm text-muted-foreground">Total: <strong className="text-foreground tabular-nums">{formatFCFA(totalRevenue)}</strong></span>
               <span className="text-sm text-muted-foreground">Moyenne: <strong className="text-foreground tabular-nums">{formatFCFA(avgSale)}</strong>/vente</span>
             </div>
@@ -180,16 +180,16 @@ const VentesPage: React.FC = () => {
                       <span className="text-foreground">{item.nom}</span>
                       <span className="text-muted-foreground ml-2">{item.quantity} × {formatFCFA(item.prixVente)}</span>
                     </div>
-                    <span className="font-medium text-foreground tabular-nums">{formatFCFA(item.quantity * item.prixVente)}</span>
+                    <span className="font-medium text-foreground tabular-nums" className="tabular-nums">{formatPrice($2)}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="border-t border-border pt-4 space-y-2">
-              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Sous-total</span><span className="text-foreground tabular-nums">{formatFCFA(selectedSale.subtotal)}</span></div>
+            <div className="border-t border- pt-4 space-y-2">
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Sous-total</span><span className="text-foreground tabular-nums" className="tabular-nums">{formatPrice($2)}</span></div>
               {selectedSale.discount > 0 && <div className="flex justify-between text-sm"><span className="text-muted-foreground">Remise</span><span className="text-destructive">{selectedSale.discount}%</span></div>}
-              <div className="flex justify-between text-base font-semibold"><span className="text-foreground">Total</span><span className="text-primary tabular-nums">{formatFCFA(selectedSale.total)}</span></div>
+              <div className="flex justify-between text-base font-semibold"><span className="text-foreground">Total</span><span className="text-primary tabular-nums" className="tabular-nums">{formatPrice($2)}</span></div>
             </div>
 
             <button onClick={() => { setReceiptSale(selectedSale); setSelectedSale(null); }} className="nova-btn-primary w-full flex items-center justify-center gap-2 py-3">

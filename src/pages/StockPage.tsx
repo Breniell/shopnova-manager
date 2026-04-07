@@ -68,7 +68,7 @@ const StockPage: React.FC = () => {
   return (
     <div className="p-8 animate-fade-in">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl nova-heading text-foreground">Gestion du stock</h1>
+        <h1 className="text-headline-lg nova-heading text-foreground">Gestion du stock</h1>
         <button onClick={() => setShowModal(true)} className="nova-btn-primary flex items-center gap-2 px-5 py-2.5">
           <Plus className="w-4 h-4" /> Entrée de stock
         </button>
@@ -76,10 +76,10 @@ const StockPage: React.FC = () => {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 bg-muted rounded-lg p-1 w-fit">
-        <button onClick={() => setActiveTab('etat')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all', activeTab === 'etat' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+        <button onClick={() => setActiveTab('etat')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all', activeTab === 'etat' ? 'bg-card text-foreground ' : 'text-muted-foreground hover:text-foreground')}>
           État du stock
         </button>
-        <button onClick={() => setActiveTab('historique')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all', activeTab === 'historique' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+        <button onClick={() => setActiveTab('historique')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all', activeTab === 'historique' ? 'bg-card text-foreground ' : 'text-muted-foreground hover:text-foreground')}>
           Historique des mouvements
         </button>
       </div>
@@ -106,7 +106,7 @@ const StockPage: React.FC = () => {
               </thead>
               <tbody>
                 {products.map(p => (
-                  <tr key={p.id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                  <tr key={p.id} className="border-t border- hover:bg-muted/30 transition-colors">
                     <td className="p-3 text-sm font-medium text-foreground">{p.nom}</td>
                     <td className="p-3 text-sm text-muted-foreground">{p.categorie}</td>
                     <td className="p-3 text-sm text-right font-medium text-foreground tabular-nums">{p.stock}</td>
@@ -140,7 +140,7 @@ const StockPage: React.FC = () => {
               </thead>
               <tbody>
                 {movements.map(m => (
-                  <tr key={m.id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                  <tr key={m.id} className="border-t border- hover:bg-muted/30 transition-colors">
                     <td className="p-3 text-sm text-muted-foreground">{formatDateShort(new Date(m.date))} {formatTime(new Date(m.date))}</td>
                     <td className="p-3 text-sm font-medium text-foreground">{m.productName}</td>
                     <td className="p-3">
@@ -196,7 +196,7 @@ const StockPage: React.FC = () => {
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} className="nova-input w-full h-20 resize-none" />
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-grid mt-6">
               <button onClick={() => setShowModal(false)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors">Annuler</button>
               <button onClick={handleSubmit} className="flex-1 nova-btn-primary py-2.5">Valider l'entrée</button>
             </div>

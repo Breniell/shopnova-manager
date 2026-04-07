@@ -48,7 +48,7 @@ export const PinInput: React.FC<PinInputProps> = ({ length = 4, onComplete, erro
   };
 
   return (
-    <div className={cn('flex gap-3 justify-center', error && 'pin-shake')}>
+    <div className={cn('flex gap-grid justify-center', error && 'pin-shake')}>
       {values.map((val, i) => (
         <div key={i} className={cn(
           'w-14 h-14 rounded-xl border-2 flex items-center justify-center transition-all duration-150',
@@ -63,7 +63,7 @@ export const PinInput: React.FC<PinInputProps> = ({ length = 4, onComplete, erro
             value={val}
             onChange={e => handleChange(i, e.target.value)}
             onKeyDown={e => handleKeyDown(i, e)}
-            className="w-full h-full bg-transparent text-center text-2xl font-bold text-foreground outline-none"
+            className="w-full h-full bg-transparent text-center text-headline-lg font-bold text-foreground outline-none"
           />
         </div>
       ))}

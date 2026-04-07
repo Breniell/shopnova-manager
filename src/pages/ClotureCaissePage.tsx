@@ -102,13 +102,13 @@ const ClotureCaissePage: React.FC = () => {
 
   return (
     <div className="p-4 lg:p-8 animate-fade-in">
-      <h1 className="text-2xl nova-heading text-foreground mb-6">Clôture de caisse</h1>
+      <h1 className="text-headline-lg nova-heading text-foreground mb-6">Clôture de caisse</h1>
 
       <div className="flex gap-1 mb-6 bg-muted rounded-lg p-1 w-fit">
-        <button onClick={() => setActiveTab('cloture')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2', activeTab === 'cloture' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground')}>
+        <button onClick={() => setActiveTab('cloture')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2', activeTab === 'cloture' ? 'bg-card text-foreground ' : 'text-muted-foreground')}>
           <Calculator className="w-4 h-4" /> Clôture du jour
         </button>
-        <button onClick={() => setActiveTab('historique')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2', activeTab === 'historique' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground')}>
+        <button onClick={() => setActiveTab('historique')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2', activeTab === 'historique' ? 'bg-card text-foreground ' : 'text-muted-foreground')}>
           <History className="w-4 h-4" /> Historique
         </button>
       </div>
@@ -128,9 +128,9 @@ const ClotureCaissePage: React.FC = () => {
             <NovaCard accent title="Comptage physique de la caisse" className="lg:col-span-3">
               <div className="space-y-3">
                 <p className="text-xs text-muted-foreground mb-4">Saisissez le nombre de chaque coupure/pièce comptée</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-grid">
                   {denominations.map(d => (
-                    <div key={d.value} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
+                    <div key={d.value} className="flex items-center gap-grid p-2 rounded-lg bg-muted/30">
                       <span className={cn('text-sm font-medium w-20', d.type === 'billet' ? 'text-emerald-400' : 'text-amber-400')}>
                         {d.label} F
                       </span>
@@ -163,17 +163,17 @@ const ClotureCaissePage: React.FC = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Montant compté</span>
-                    <span className="text-foreground font-medium tabular-nums">{formatFCFA(totalCompte)}</span>
+                    <span className="text-foreground font-medium tabular-nums" className="tabular-nums">{formatPrice($2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Montant attendu</span>
-                    <span className="text-foreground font-medium tabular-nums">{formatFCFA(totalAttendu)}</span>
+                    <span className="text-foreground font-medium tabular-nums" className="tabular-nums">{formatPrice($2)}</span>
                   </div>
-                  <div className="border-t border-border pt-3">
+                  <div className="border-t border- pt-3">
                     <div className="flex justify-between items-center">
                       <span className="text-base font-semibold text-foreground">Écart</span>
                       <span className={cn(
-                        'text-2xl font-bold tabular-nums',
+                        'text-headline-lg font-bold tabular-nums',
                         ecart === 0 ? 'text-emerald-400' : ecart > 0 ? 'text-amber-400' : 'text-destructive'
                       )}>
                         {ecart >= 0 ? '+' : ''}{formatFCFA(ecart)}
@@ -186,7 +186,7 @@ const ClotureCaissePage: React.FC = () => {
                 </div>
 
                 {ecart < -500 && (
-                  <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border -destructive/20">
                     <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
                     <p className="text-xs text-destructive">Écart important détecté. Vérifiez le comptage ou signalez l'anomalie.</p>
                   </div>
@@ -233,7 +233,7 @@ const ClotureCaissePage: React.FC = () => {
                 </thead>
                 <tbody>
                   {clotures.map(c => (
-                    <tr key={c.id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                    <tr key={c.id} className="border-t border- hover:bg-muted/30 transition-colors">
                       <td className="p-3 text-sm text-muted-foreground">{formatDateShort(new Date(c.date))} {formatTime(new Date(c.date))}</td>
                       <td className="p-3 text-sm text-foreground">{c.userName}</td>
                       <td className="p-3 text-sm text-right text-foreground tabular-nums">{formatFCFA(c.totalVentesEspeces)}</td>

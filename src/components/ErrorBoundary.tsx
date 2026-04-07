@@ -19,10 +19,10 @@ class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="min-h-screen bg-background flex items-center justify-center p-8">
           <div className="nova-card p-8 max-w-md text-center">
-            <div className="w-16 h-16 rounded-full bg-destructive/15 flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl">⚠️</span>
+            <div className="w-16 h-16 rounded-lg bg-destructive/15 flex items-center justify-center mx-auto mb-4">
+              <span className="text-headline-lg">⚠️</span>
             </div>
-            <h2 className="text-xl font-semibold text-foreground mb-2">Oups ! Une erreur est survenue</h2>
+            <h2 className="text-title-lg font-semibold text-foreground mb-2">Oups ! Une erreur est survenue</h2>
             <p className="text-sm text-muted-foreground mb-6">{this.state.error?.message || 'Erreur inconnue'}</p>
             <button
               onClick={() => window.location.reload()}

@@ -3,13 +3,14 @@ import { useProductStore, Product } from '@/stores/useProductStore';
 import { useSaleStore, PaymentMode, MobileOperator } from '@/stores/useSaleStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useStockStore } from '@/stores/useStockStore';
+import { formatPrice, formatFCFA } from '@/utils/formatters';
 
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ReceiptModal } from '@/components/ui/ReceiptModal';
 import { BarcodeScanner } from '@/components/ui/BarcodeScanner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { formatFCFA, getStockStatus, cn } from '@/lib/utils';
+import { getStockStatus, cn } from '@/lib/utils';
 import { productImages } from '@/assets/productImages';
 import { Search, ScanBarcode, Minus, Plus, Trash2, ShoppingCart, Check, Package } from 'lucide-react';
 import { toast } from 'sonner';
@@ -168,8 +169,8 @@ const CaissePage: React.FC = () => {
   return (
     <div className="h-screen flex animate-fade-in">
       {/* Left: Products */}
-      <div className="flex-[58] flex flex-col border-r border-border">
-        <div className="p-5 border-b border-border">
+      <div className="flex-[58] flex flex-col border-r border-">
+        <div className="p-5 border-b border-">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <input
@@ -191,7 +192,7 @@ const CaissePage: React.FC = () => {
         </div>
 
         <div className="flex-1 overflow-y-auto p-5">
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-4 gap-grid">
             {filteredProducts.map(product => {
               const status = getStockStatus(product.stock, product.seuilAlerte);
               const isOut = status === 'out';
@@ -224,7 +225,7 @@ const CaissePage: React.FC = () => {
                       </div>
                     )}
                     <div className="absolute top-1.5 right-1.5">
-                      <StatusBadge status={status} className="text-[9px] px-1.5 py-0 shadow-sm" />
+                      <StatusBadge status={status} className="text-[9px] px-1.5 py-0" />
                     </div>
                   </div>
                   <div className="p-3">
@@ -240,8 +241,8 @@ const CaissePage: React.FC = () => {
 
       {/* Right: Cart */}
       <div className="flex-[42] flex flex-col bg-card">
-        <div className="p-5 border-b border-border flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="p-5 border-b border- flex items-center justify-between">
+          <div className="flex items-center gap-grid">
             <ShoppingCart className="w-5 h-5 text-primary" />
             <h2 className="nova-heading text-foreground">Panier en cours</h2>
           </div>
@@ -265,7 +266,7 @@ const CaissePage: React.FC = () => {
               {cart.map((item, index) => (
                 <div
                   key={item.productId}
-                  className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors animate-slide-in-right"
+                  className="flex items-center gap-grid p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors animate-slide-in-right"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
                   {productImages[item.productId] ? (
@@ -281,7 +282,7 @@ const CaissePage: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => updateCartQuantity(item.productId, item.quantity - 1)}
-                      className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-all active:scale-90">
+                      className="w-8 h-8 rounded-lg bg-muted border border- flex items-center justify-center hover:bg-muted/80 transition-all active:scale-90">
                       <Minus className="w-3 h-3 text-foreground" />
                     </button>
                     <span className="w-8 text-center text-sm font-medium text-foreground tabular-nums">{item.quantity}</span>
@@ -293,13 +294,11 @@ const CaissePage: React.FC = () => {
                       }
                       updateCartQuantity(item.productId, item.quantity + 1);
                     }}
-                      className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-all active:scale-90">
+                      className="w-8 h-8 rounded-lg bg-muted border border- flex items-center justify-center hover:bg-muted/80 transition-all active:scale-90">
                       <Plus className="w-3 h-3 text-foreground" />
                     </button>
                   </div>
-                  <span className="text-sm font-semibold text-foreground tabular-nums w-24 text-right">
-                    {formatFCFA(item.prixVente * item.quantity)}
-                  </span>
+                  <span className="text-sm font-semibold text-foreground tabular-nums w-24 text-right" className="tabular-nums">{formatPrice($2)}</span>
                   <button onClick={() => removeFromCart(item.productId)}
                     className="p-1.5 rounded-lg hover:bg-destructive/20 transition-all active:scale-90 text-muted-foreground hover:text-destructive">
                     <Trash2 className="w-4 h-4" />
@@ -309,11 +308,11 @@ const CaissePage: React.FC = () => {
             </div>
 
             {/* Totals & Payment */}
-            <div className="border-t border-border p-5 space-y-4">
+            <div className="border-t border- p-5 space-y-4">
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Sous-total</span>
-                  <span className="text-foreground tabular-nums">{formatFCFA(subtotal)}</span>
+                  <span className="text-foreground tabular-nums" className="tabular-nums">{formatPrice($2)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Remise (%)</span>
@@ -330,9 +329,9 @@ const CaissePage: React.FC = () => {
                     placeholder="0"
                   />
                 </div>
-                <div className="flex justify-between items-center pt-2 border-t border-border">
+                <div className="flex justify-between items-center pt-2 border-t border-">
                   <span className="text-lg font-semibold text-foreground">TOTAL</span>
-                  <span className="text-[32px] font-bold text-primary tabular-nums">{formatFCFA(total)}</span>
+                  <span className="text-[32px] font-bold text-primary tabular-nums" className="tabular-nums">{formatPrice($2)}</span>
                 </div>
               </div>
 

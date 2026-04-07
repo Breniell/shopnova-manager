@@ -179,7 +179,7 @@ const DashboardPage: React.FC = () => {
               <div className="space-y-2">
                 {alertProducts.map(p => (
                   <div key={p.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-grid">
                       {productImages[p.id] ? (
                         <img src={productImages[p.id]} alt={p.nom} className="w-9 h-9 rounded-lg object-cover" />
                       ) : (
@@ -211,8 +211,8 @@ const DashboardPage: React.FC = () => {
                       <span className="text-xs text-muted-foreground">{formatTime(new Date(s.date))}</span>
                       <span className="text-sm text-foreground ml-3">{s.items.length} article{s.items.length > 1 ? 's' : ''}</span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-semibold text-foreground tabular-nums">{formatFCFA(s.total)}</span>
+                    <div className="flex items-center gap-grid">
+                      <span className="text-sm font-semibold text-foreground tabular-nums" className="tabular-nums">{formatPrice($2)}</span>
                       <PaymentBadge mode={s.paymentMode} />
                     </div>
                   </div>
@@ -223,7 +223,7 @@ const DashboardPage: React.FC = () => {
         </div>
 
         {/* Quick action bar */}
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 ml-[120px] flex gap-3 z-20">
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 ml-[120px] flex gap-grid z-20">
           <button onClick={() => navigate('/caisse')} className="nova-btn-primary flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium">
             <Plus className="w-4 h-4" /> Nouvelle vente
           </button>
