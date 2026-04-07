@@ -26,6 +26,24 @@ const DashboardPage: React.FC = () => {
   const lowStock = products.filter(p => p.stock > 0 && p.stock <= p.seuilAlerte);
   const totalStockValue = products.reduce((sum, p) => sum + p.prixVente * p.stock, 0);
 
+  // Dynamic trends vs yesterday
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayEnd = new Date(today);
+  const yesterdaySales = sales.filter(s => {
+    const sd = new Date(s.date);
+    return sd >= yesterday && sd < yesterdayEnd;
+  });
+  const yesterdayRevenue = yesterdaySales.reduce((sum, s) => sum + s.total, 0);
+
+  const revenueTrend = yesterdayRevenue > 0
+    ? ((todayRevenue - yesterdayRevenue) / yesterdayRevenue * 100).toFixed(0)
+    : null;
+
+  const salesTrend = yesterdaySales.length > 0
+    ? ((todaySales.length - yesterdaySales.length) / yesterdaySales.length * 100).toFixed(0)
+    : null;
+
   // Last 7 days chart data
   const last7Days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(now);
@@ -74,14 +92,20 @@ const DashboardPage: React.FC = () => {
             iconBg="bg-primary/20"
             value={formatFCFA(todayRevenue)}
             label="Chiffre d'affaires du jour"
-            trend={{ value: '+12% vs hier', positive: true }}
+            trend={revenueTrend !== null ? {
+              value: `${Number(revenueTrend) >= 0 ? '+' : ''}${revenueTrend}% vs hier`,
+              positive: Number(revenueTrend) >= 0
+            } : undefined}
           />
           <StatCard
             icon={<ShoppingCart className="w-4 h-4 text-secondary" />}
             iconBg="bg-secondary/20"
             value={String(todaySales.length)}
             label="Ventes aujourd'hui"
-            trend={{ value: '+8% vs hier', positive: true }}
+            trend={salesTrend !== null ? {
+              value: `${Number(salesTrend) >= 0 ? '+' : ''}${salesTrend}% vs hier`,
+              positive: Number(salesTrend) >= 0
+            } : undefined}
           />
           <StatCard
             icon={<AlertTriangle className="w-4 h-4 text-destructive" />}

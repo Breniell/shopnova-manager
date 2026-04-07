@@ -5,7 +5,6 @@ import { PaymentMode } from '@/stores/useSaleStore';
 const paymentConfig: Record<PaymentMode, { label: string; className: string }> = {
   especes: { label: '💵 Espèces', className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
   mobile_money: { label: '📱 Mobile Money', className: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-  credit: { label: '📝 Crédit', className: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
 };
 
 interface PaymentBadgeProps {

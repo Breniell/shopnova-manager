@@ -16,26 +16,30 @@ const ParametresPage: React.FC = () => {
   const [confirmPin, setConfirmPin] = useState('');
   const [newUser, setNewUser] = useState({ prenom: '', nom: '', role: 'caissier' as 'gérant' | 'caissier', pin: '', confirmPin: '' });
 
+  // Local state for shop settings with save button
+  const [localShop, setLocalShop] = useState(shop);
+
   const handleSaveShop = () => {
+    updateShop(localShop);
     toast.success('Paramètres enregistrés');
   };
 
-  const handleAddUser = () => {
+  const handleAddUser = async () => {
     if (!newUser.prenom || !newUser.nom) { toast.error('Prénom et nom requis'); return; }
     if (newUser.pin.length !== 4) { toast.error('Le PIN doit contenir 4 chiffres'); return; }
     if (newUser.pin !== newUser.confirmPin) { toast.error('Les PINs ne correspondent pas'); return; }
     const colors = ['#6C63FF', '#00D4AA', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
-    addUser({ ...newUser, color: colors[users.length % colors.length] });
+    await addUser({ prenom: newUser.prenom, nom: newUser.nom, role: newUser.role, pin: newUser.pin, color: colors[users.length % colors.length] });
     toast.success('Utilisateur ajouté');
     setShowUserModal(false);
     setNewUser({ prenom: '', nom: '', role: 'caissier', pin: '', confirmPin: '' });
   };
 
-  const handleChangePin = () => {
+  const handleChangePin = async () => {
     if (newPin.length !== 4) { toast.error('Le PIN doit contenir 4 chiffres'); return; }
     if (newPin !== confirmPin) { toast.error('Les PINs ne correspondent pas'); return; }
     if (showPinModal) {
-      updateUserPin(showPinModal.id, newPin);
+      await updateUserPin(showPinModal.id, newPin);
       toast.success('PIN mis à jour');
       setShowPinModal(null);
       setNewPin('');
@@ -61,33 +65,33 @@ const ParametresPage: React.FC = () => {
           <div className="space-y-4">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Nom de la boutique</label>
-              <input type="text" value={shop.nom} onChange={e => updateShop({ nom: e.target.value })} className="nova-input w-full" />
+              <input type="text" value={localShop.nom} onChange={e => setLocalShop({ ...localShop, nom: e.target.value })} className="nova-input w-full" />
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Adresse</label>
-              <input type="text" value={shop.adresse} onChange={e => updateShop({ adresse: e.target.value })} className="nova-input w-full" />
+              <input type="text" value={localShop.adresse} onChange={e => setLocalShop({ ...localShop, adresse: e.target.value })} className="nova-input w-full" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Téléphone</label>
-                <input type="text" value={shop.telephone} onChange={e => updateShop({ telephone: e.target.value })} className="nova-input w-full" />
+                <input type="text" value={localShop.telephone} onChange={e => setLocalShop({ ...localShop, telephone: e.target.value })} className="nova-input w-full" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Email (optionnel)</label>
-                <input type="email" value={shop.email} onChange={e => updateShop({ email: e.target.value })} className="nova-input w-full" />
+                <input type="email" value={localShop.email} onChange={e => setLocalShop({ ...localShop, email: e.target.value })} className="nova-input w-full" />
               </div>
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">NUI (optionnel)</label>
-              <input type="text" value={shop.nui} onChange={e => updateShop({ nui: e.target.value })} className="nova-input w-full" placeholder="Numéro Unique d'Identification" />
+              <input type="text" value={localShop.nui} onChange={e => setLocalShop({ ...localShop, nui: e.target.value })} className="nova-input w-full" placeholder="Numéro Unique d'Identification" />
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">En-tête du reçu</label>
-              <textarea value={shop.enteteRecu} onChange={e => updateShop({ enteteRecu: e.target.value })} className="nova-input w-full h-20 resize-none" />
+              <textarea value={localShop.enteteRecu} onChange={e => setLocalShop({ ...localShop, enteteRecu: e.target.value })} className="nova-input w-full h-20 resize-none" />
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Pied de page du reçu</label>
-              <textarea value={shop.piedPageRecu} onChange={e => updateShop({ piedPageRecu: e.target.value })} className="nova-input w-full h-20 resize-none" />
+              <textarea value={localShop.piedPageRecu} onChange={e => setLocalShop({ ...localShop, piedPageRecu: e.target.value })} className="nova-input w-full h-20 resize-none" />
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Devise</label>

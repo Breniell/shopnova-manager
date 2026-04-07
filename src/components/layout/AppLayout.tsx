@@ -2,10 +2,13 @@ import React, { forwardRef, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 
 export const AppLayout = forwardRef<HTMLDivElement>((_props, ref) => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
+
+  useSessionTimeout(15);
 
   useEffect(() => {
     if (!isAuthenticated) {

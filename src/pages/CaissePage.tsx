@@ -26,8 +26,6 @@ const CaissePage: React.FC = () => {
   const [amountReceived, setAmountReceived] = useState('');
   const [mobileOperator, setMobileOperator] = useState<MobileOperator>('mtn');
   const [mobileRef, setMobileRef] = useState('');
-  const [creditName, setCreditName] = useState('');
-  const [creditPhone, setCreditPhone] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const [receiptSale, setReceiptSale] = useState<Sale | null>(null);
@@ -38,13 +36,19 @@ const CaissePage: React.FC = () => {
 
   // Barcode scanner via keyboard (USB scanner)
   const barcodeBuffer = useRef('');
-  const barcodeTimeout = useRef<NodeJS.Timeout>();
+  const barcodeTimeout = useRef<ReturnType<typeof setTimeout>>();
 
   const handleBarcodeScanned = useCallback((barcode: string) => {
     const product = products.find(p => p.codeBarre === barcode);
     if (product) {
+      const inCart = cart.find(c => c.productId === product.id);
+      const qtyInCart = inCart ? inCart.quantity : 0;
       if (product.stock <= 0) {
         toast.error(`${product.nom} est en rupture de stock`);
+        return;
+      }
+      if (qtyInCart >= product.stock) {
+        toast.error(`Stock insuffisant. Disponible : ${product.stock}, dans le panier : ${qtyInCart}`);
         return;
       }
       addToCart({ productId: product.id, nom: product.nom, prixVente: product.prixVente });
@@ -54,7 +58,7 @@ const CaissePage: React.FC = () => {
     } else {
       toast.error(`Produit non trouvé: ${barcode}`);
     }
-  }, [products, addToCart]);
+  }, [products, addToCart, cart]);
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -78,8 +82,14 @@ const CaissePage: React.FC = () => {
   }, [handleBarcodeScanned]);
 
   const handleAddProduct = (product: Product) => {
+    const inCart = cart.find(c => c.productId === product.id);
+    const qtyInCart = inCart ? inCart.quantity : 0;
     if (product.stock <= 0) {
       toast.error('Ce produit est en rupture de stock');
+      return;
+    }
+    if (qtyInCart >= product.stock) {
+      toast.error(`Stock insuffisant. Disponible : ${product.stock}, dans le panier : ${qtyInCart}`);
       return;
     }
     addToCart({ productId: product.id, nom: product.nom, prixVente: product.prixVente });
@@ -90,12 +100,11 @@ const CaissePage: React.FC = () => {
 
   const subtotal = getCartSubtotal();
   const total = getCartTotal();
-  const change = paymentMode === 'especes' && amountReceived ? parseInt(amountReceived) - total : 0;
+  const change = paymentMode === 'especes' && amountReceived ? (parseInt(amountReceived, 10) || 0) - total : 0;
 
   const canValidate = cart.length > 0 && !isProcessing && (
-    paymentMode === 'especes' ? (amountReceived && parseInt(amountReceived) >= total) :
+    paymentMode === 'especes' ? (amountReceived && (parseInt(amountReceived, 10) || 0) >= total) :
     paymentMode === 'mobile_money' ? !!mobileRef.trim() :
-    paymentMode === 'credit' ? !!creditName.trim() :
     false
   );
 
@@ -108,9 +117,7 @@ const CaissePage: React.FC = () => {
         paymentMode,
         mobileOperator: paymentMode === 'mobile_money' ? mobileOperator : undefined,
         mobileReference: paymentMode === 'mobile_money' ? mobileRef : undefined,
-        creditClientName: paymentMode === 'credit' ? creditName : undefined,
-        creditClientPhone: paymentMode === 'credit' ? creditPhone : undefined,
-        amountReceived: paymentMode === 'especes' ? parseInt(amountReceived) : undefined,
+        amountReceived: paymentMode === 'especes' ? (parseInt(amountReceived, 10) || 0) : undefined,
         changeGiven: paymentMode === 'especes' ? Math.max(0, change) : undefined,
         userId: currentUser.id,
         userName: `${currentUser.prenom} ${currentUser.nom}`,
@@ -143,8 +150,6 @@ const CaissePage: React.FC = () => {
         setShowReceipt(true);
         setAmountReceived('');
         setMobileRef('');
-        setCreditName('');
-        setCreditPhone('');
       }, 600);
 
       toast.success('Vente validée avec succès !');
@@ -280,7 +285,14 @@ const CaissePage: React.FC = () => {
                       <Minus className="w-3 h-3 text-foreground" />
                     </button>
                     <span className="w-8 text-center text-sm font-medium text-foreground tabular-nums">{item.quantity}</span>
-                    <button onClick={() => updateCartQuantity(item.productId, item.quantity + 1)}
+                    <button onClick={() => {
+                      const product = products.find(p => p.id === item.productId);
+                      if (product && item.quantity >= product.stock) {
+                        toast.error(`Stock max atteint (${product.stock})`);
+                        return;
+                      }
+                      updateCartQuantity(item.productId, item.quantity + 1);
+                    }}
                       className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-all active:scale-90">
                       <Plus className="w-3 h-3 text-foreground" />
                     </button>
@@ -310,7 +322,10 @@ const CaissePage: React.FC = () => {
                     min="0"
                     max="100"
                     value={discount || ''}
-                    onChange={e => setDiscount(Number(e.target.value))}
+                    onChange={e => {
+                      const val = Math.min(100, Math.max(0, Number(e.target.value) || 0));
+                      setDiscount(val);
+                    }}
                     className="nova-input w-20 text-right py-1 px-2 text-sm"
                     placeholder="0"
                   />
@@ -323,7 +338,7 @@ const CaissePage: React.FC = () => {
 
               {/* Payment mode tabs */}
               <div className="flex gap-2">
-                {(['especes', 'mobile_money', 'credit'] as PaymentMode[]).map(mode => (
+                {(['especes', 'mobile_money'] as PaymentMode[]).map(mode => (
                   <button
                     key={mode}
                     onClick={() => setPaymentMode(mode)}
@@ -334,7 +349,7 @@ const CaissePage: React.FC = () => {
                         : 'bg-muted border-border text-muted-foreground hover:text-foreground'
                     )}
                   >
-                    {mode === 'especes' ? '💵 Espèces' : mode === 'mobile_money' ? '📱 Mobile Money' : '📝 Crédit'}
+                    {mode === 'especes' ? '💵 Espèces' : '📱 Mobile Money'}
                   </button>
                 ))}
               </div>
@@ -349,9 +364,9 @@ const CaissePage: React.FC = () => {
                     className="nova-input w-full py-2"
                     placeholder="Montant reçu (FCFA)"
                   />
-                  {amountReceived && parseInt(amountReceived) >= total && (
+                  {amountReceived && (parseInt(amountReceived, 10) || 0) >= total && (
                     <div className="text-sm text-secondary font-medium">
-                      Monnaie à rendre: {formatFCFA(parseInt(amountReceived) - total)}
+                      Monnaie à rendre: {formatFCFA((parseInt(amountReceived, 10) || 0) - total)}
                     </div>
                   )}
                 </div>
@@ -369,12 +384,6 @@ const CaissePage: React.FC = () => {
                     </button>
                   </div>
                   <input type="text" value={mobileRef} onChange={e => setMobileRef(e.target.value)} className="nova-input w-full py-2" placeholder="Référence transaction" />
-                </div>
-              )}
-              {paymentMode === 'credit' && (
-                <div className="space-y-2">
-                  <input type="text" value={creditName} onChange={e => setCreditName(e.target.value)} className="nova-input w-full py-2" placeholder="Nom du client" />
-                  <input type="text" value={creditPhone} onChange={e => setCreditPhone(e.target.value)} className="nova-input w-full py-2" placeholder="Téléphone (optionnel)" />
                 </div>
               )}
 
