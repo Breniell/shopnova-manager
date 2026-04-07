@@ -1,22 +1,22 @@
-import React from 'react';
-import { cn } from '@/lib/utils';
-import { PaymentMode } from '@/stores/useSaleStore';
+﻿import { cn } from "@/lib/utils";
 
-const paymentConfig: Record<PaymentMode, { label: string; className: string }> = {
-  especes: { label: '💵 Espèces', className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-  mobile_money: { label: '📱 Mobile Money', className: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-};
+export type PaymentMode = "especes" | "mobile_money" | "card" | "credit";
 
 interface PaymentBadgeProps {
   mode: PaymentMode;
+  operator?: "mtn" | "orange" | "moov";
   className?: string;
 }
 
-export const PaymentBadge: React.FC<PaymentBadgeProps> = ({ mode, className }) => {
-  const config = paymentConfig[mode];
-  return (
-    <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border', config.className, className)}>
-      {config.label}
-    </span>
-  );
+export const PaymentBadge = ({ mode, operator, className }: PaymentBadgeProps) => {
+  if (mode === "especes") {
+    return <span className={cn("badge-cash", className)}>CASH</span>;
+  }
+
+  if (mode === "mobile_money") {
+    const operatorLabel = operator ? operator.toUpperCase() : "MOMO";
+    return <span className={cn("badge-momo", className)}>{operatorLabel}</span>;
+  }
+
+  return <span className={cn("badge-cash", className)}>{mode.toUpperCase()}</span>;
 };

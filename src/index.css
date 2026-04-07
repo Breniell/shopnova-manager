@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.cdnfonts.com/css/cal-sans');
 
 @tailwind base;
 @tailwind components;
@@ -6,50 +7,34 @@
 
 @layer base {
   :root {
-    /* ShopNova Design System */
-    --nova-bg: 230 33% 8%;
-    --nova-surface: 230 28% 12%;
-    --nova-surface-2: 230 24% 17%;
-    --nova-border: 0 0% 100% / 0.07;
-    --nova-accent: 244 95% 62%;
-    --nova-accent-glow: 244 95% 62% / 0.25;
-    --nova-accent-2: 166 100% 42%;
-    --nova-amber: 38 92% 50%;
-    --nova-red: 0 84% 60%;
-    --nova-text-primary: 233 100% 97%;
-    --nova-text-secondary: 230 12% 60%;
-    --nova-text-hint: 233 20% 35%;
-
-    /* Map to shadcn tokens */
-    --background: 230 33% 8%;
-    --foreground: 233 100% 97%;
-    --card: 230 28% 12%;
-    --card-foreground: 233 100% 97%;
-    --popover: 230 28% 12%;
-    --popover-foreground: 233 100% 97%;
-    --primary: 244 95% 62%;
+    --primary: 16 100% 33%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 166 100% 42%;
+    --secondary: 156 42% 29%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 230 24% 17%;
-    --muted-foreground: 230 12% 60%;
-    --accent: 230 24% 17%;
-    --accent-foreground: 233 100% 97%;
+    --background: 60 11% 97%;
+    --foreground: 180 6% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 180 6% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 180 6% 11%;
+    --muted: 120 5% 95%;
+    --muted-foreground: 200 4% 40%;
+    --accent: 120 5% 95%;
+    --accent-foreground: 180 6% 11%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 100% / 0.07;
-    --input: 230 24% 17%;
-    --ring: 244 95% 62%;
-    --radius: 0.75rem;
-
-    --sidebar-background: 230 28% 12%;
-    --sidebar-foreground: 230 12% 60%;
-    --sidebar-primary: 244 95% 62%;
+    --border: 16 24% 88%;
+    --input: 120 5% 95%;
+    --ring: 16 100% 33%;
+    --radius: 0.5rem;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 200 4% 40%;
+    --sidebar-primary: 16 100% 33%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 244 95% 62% / 0.25;
-    --sidebar-accent-foreground: 233 100% 97%;
-    --sidebar-border: 0 0% 100% / 0.07;
-    --sidebar-ring: 244 95% 62%;
+    --sidebar-accent: 120 5% 95%;
+    --sidebar-accent-foreground: 180 6% 11%;
+    --sidebar-border: 16 24% 88%;
+    --sidebar-ring: 16 100% 33%;
   }
 }
 
@@ -57,166 +42,62 @@
   * {
     @apply border-border;
   }
+  
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  }
+  
+  h1, h2, h3, .heading {
+    font-family: 'Cal Sans', 'Inter', system-ui, sans-serif;
+    font-weight: 700;
   }
 }
 
 @layer utilities {
-  .nova-card {
-    @apply bg-card rounded-xl border border-border;
+  .surface-container-lowest {
+    background-color: #ffffff;
   }
-  .nova-card-accent {
-    @apply nova-card relative overflow-hidden;
+  
+  .surface-container-low {
+    background-color: #f3f4f3;
   }
-  .nova-card-accent::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, hsl(244 95% 62%), hsl(270 80% 60%));
+  
+  .btn-primary {
+    @apply bg-primary-500 text-white font-semibold px-6 py-3 rounded-lg;
+    @apply hover:bg-primary-600 transition-all;
+    min-height: 44px;
   }
-  .nova-input {
-    @apply bg-muted border border-border rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all duration-150;
+  
+  .btn-primary-large {
+    @apply btn-primary;
+    min-height: 56px;
+    font-size: 1.125rem;
   }
-  .nova-btn-primary {
-    background: linear-gradient(135deg, #6C63FF, #8B5CF6);
-    @apply text-white font-medium rounded-lg px-4 py-2 transition-all duration-200;
+  
+  .badge-healthy {
+    @apply bg-secondary-50 text-secondary-700 font-medium px-3 py-1 rounded text-xs;
   }
-  .nova-btn-primary:hover {
-    box-shadow: 0 4px 24px rgba(108, 99, 255, 0.45);
-    transform: translateY(-1px);
+  
+  .badge-low-stock {
+    @apply bg-red-50 text-red-700 font-medium px-3 py-1 rounded text-xs;
   }
-  .nova-btn-primary:active {
-    transform: translateY(0) scale(0.98);
+  
+  .badge-stockout {
+    @apply bg-primary-50 text-primary-700 font-medium px-3 py-1 rounded text-xs;
   }
-  .nova-btn-primary:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
+  
+  .badge-cash {
+    @apply bg-secondary-100 text-secondary-800 font-semibold px-3 py-1 rounded text-xs;
   }
-  .nova-btn-secondary {
-    @apply bg-muted border border-border text-foreground font-medium rounded-lg px-4 py-2 transition-all duration-200;
+  
+  .badge-momo {
+    @apply bg-blue-100 text-blue-800 font-semibold px-3 py-1 rounded text-xs;
   }
-  .nova-btn-secondary:hover {
-    @apply bg-muted/80 border-primary/30;
-    transform: translateY(-1px);
-  }
-  .nova-table-header {
-    @apply bg-muted text-muted-foreground uppercase text-[11px] tracking-[0.08em] font-medium;
-  }
+  
   .tabular-nums {
     font-variant-numeric: tabular-nums;
+    font-family: 'JetBrains Mono', monospace;
     font-weight: 600;
-  }
-  .nova-heading {
-    @apply font-semibold tracking-tight;
-    letter-spacing: -0.02em;
-  }
-  .nova-card-hover {
-    @apply nova-card transition-all duration-200;
-  }
-  .nova-card-hover:hover {
-    @apply border-primary/20;
-    box-shadow: 0 8px 30px rgba(108, 99, 255, 0.08);
-    transform: translateY(-2px);
-  }
-}
-
-/* Scrollbar styling */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: hsl(244 95% 62% / 0.3) transparent;
-}
-*::-webkit-scrollbar {
-  width: 6px;
-}
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
-*::-webkit-scrollbar-thumb {
-  background: hsl(244 95% 62% / 0.3);
-  border-radius: 3px;
-}
-
-/* Login animated gradient mesh */
-@keyframes meshMove1 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(30px, -20px) scale(1.1); }
-}
-@keyframes meshMove2 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-20px, 30px) scale(1.05); }
-}
-@keyframes meshMove3 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(15px, 15px) scale(1.15); }
-}
-
-.login-mesh-bg {
-  position: fixed;
-  inset: 0;
-  overflow: hidden;
-  z-index: 0;
-}
-.login-mesh-bg::before,
-.login-mesh-bg::after,
-.login-mesh-bg .mesh-3 {
-  content: '';
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(120px);
-}
-.login-mesh-bg::before {
-  width: 600px; height: 600px;
-  background: radial-gradient(circle, rgba(108, 99, 255, 0.15), transparent 70%);
-  top: -10%; left: -10%;
-  animation: meshMove1 12s ease-in-out infinite;
-}
-.login-mesh-bg::after {
-  width: 500px; height: 500px;
-  background: radial-gradient(circle, rgba(0, 212, 170, 0.1), transparent 70%);
-  bottom: -10%; right: -10%;
-  animation: meshMove2 15s ease-in-out infinite;
-}
-.login-mesh-bg .mesh-3 {
-  width: 400px; height: 400px;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.1), transparent 70%);
-  top: 40%; left: 50%;
-  animation: meshMove3 10s ease-in-out infinite;
-}
-
-/* PIN shake animation */
-@keyframes pinShake {
-  0%, 100% { transform: translateX(0); }
-  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
-  20%, 40%, 60%, 80% { transform: translateX(4px); }
-}
-.pin-shake {
-  animation: pinShake 0.5s ease-in-out;
-}
-
-/* Barcode scan line */
-@keyframes scanLine {
-  0%, 100% { top: 10%; }
-  50% { top: 85%; }
-}
-.scan-line {
-  animation: scanLine 2s ease-in-out infinite;
-}
-
-/* Print styles */
-@media print {
-  body * { visibility: hidden; }
-  .receipt-print, .receipt-print * { visibility: visible; }
-  .receipt-print {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 80mm;
   }
 }

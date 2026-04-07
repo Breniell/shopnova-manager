@@ -1,25 +1,30 @@
-import React, { forwardRef } from 'react';
-import { cn } from '@/lib/utils';
+﻿import { cn } from "@/lib/utils";
 
-type StockStatusType = 'ok' | 'low' | 'out';
-
-const statusConfig: Record<StockStatusType, { label: string; className: string }> = {
-  ok: { label: 'En stock', className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-  low: { label: 'Stock faible', className: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
-  out: { label: 'Rupture', className: 'bg-red-500/10 text-red-400 border-red-500/20' },
-};
+export type StockStatus = "healthy" | "low" | "critical" | "stockout";
 
 interface StatusBadgeProps {
-  status: StockStatusType;
+  status: StockStatus;
   className?: string;
 }
 
-export const StatusBadge = forwardRef<HTMLSpanElement, StatusBadgeProps>(({ status, className }, ref) => {
-  const config = statusConfig[status];
+export const StatusBadge = ({ status, className }: StatusBadgeProps) => {
+  const variants = {
+    healthy: "badge-healthy",
+    low: "badge-low-stock",
+    critical: "badge-low-stock",
+    stockout: "badge-stockout",
+  };
+
+  const labels = {
+    healthy: "EN STOCK",
+    low: "STOCK FAIBLE",
+    critical: "CRITIQUE",
+    stockout: "RUPTURE",
+  };
+
   return (
-    <span ref={ref} role="status" aria-label={`Statut : ${config.label}`} className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border', config.className, className)}>
-      {config.label}
+    <span className={cn(variants[status], className)}>
+      {labels[status]}
     </span>
   );
-});
-StatusBadge.displayName = 'StatusBadge';
+};
