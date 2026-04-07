@@ -2,13 +2,15 @@ import React, { forwardRef, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { useSessionTimeout } from '@/hooks/useSessionTimeout';
+import { useUIStore } from '@/stores/useUIStore';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Menu } from 'lucide-react';
 
 export const AppLayout = forwardRef<HTMLDivElement>((_props, ref) => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
-
-  useSessionTimeout(15);
+  const { toggleSidebar } = useUIStore();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -18,9 +20,6 @@ export const AppLayout = forwardRef<HTMLDivElement>((_props, ref) => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        // Close modals handled by individual pages
-      }
       if (e.key === 'F2') {
         e.preventDefault();
         const searchInput = document.getElementById('pos-search');
@@ -40,7 +39,16 @@ export const AppLayout = forwardRef<HTMLDivElement>((_props, ref) => {
   return (
     <div ref={ref} className="min-h-screen bg-background">
       <Sidebar />
-      <main className="ml-60 min-h-screen">
+      {/* Mobile header */}
+      {isMobile && (
+        <div className="fixed top-0 left-0 right-0 z-10 bg-card border-b border-border px-4 py-3 flex items-center gap-3">
+          <button onClick={toggleSidebar} aria-label="Ouvrir le menu" className="p-2 rounded-lg hover:bg-muted transition-colors">
+            <Menu className="w-5 h-5 text-foreground" />
+          </button>
+          <h1 className="text-foreground font-semibold text-sm">ShopNova</h1>
+        </div>
+      )}
+      <main className={isMobile ? 'pt-14 min-h-screen' : 'ml-60 min-h-screen'}>
         <Outlet />
       </main>
     </div>

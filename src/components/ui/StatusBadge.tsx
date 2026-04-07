@@ -17,7 +17,7 @@ interface StatusBadgeProps {
 export const StatusBadge = forwardRef<HTMLSpanElement, StatusBadgeProps>(({ status, className }, ref) => {
   const config = statusConfig[status];
   return (
-    <span ref={ref} className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border', config.className, className)}>
+    <span ref={ref} role="status" aria-label={`Statut : ${config.label}`} className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border', config.className, className)}>
       {config.label}
     </span>
   );

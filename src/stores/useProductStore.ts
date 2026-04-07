@@ -13,6 +13,7 @@ export interface Product {
   stock: number;
   seuilAlerte: number;
   description?: string;
+  imageUrl?: string;
 }
 
 interface ProductState {

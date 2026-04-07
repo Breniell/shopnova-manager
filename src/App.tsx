@@ -12,6 +12,8 @@ import StockPage from "./pages/StockPage";
 import VentesPage from "./pages/VentesPage";
 import RapportsPage from "./pages/RapportsPage";
 import ParametresPage from "./pages/ParametresPage";
+import ClotureCaissePage from "./pages/ClotureCaissePage";
+import FournisseursPage from "./pages/FournisseursPage";
 
 const queryClient = new QueryClient();
 
@@ -27,7 +29,9 @@ const App = () => (
             <Route path="/caisse" element={<ProtectedRoute allowedRoles={['gérant', 'caissier']}><CaissePage /></ProtectedRoute>} />
             <Route path="/produits" element={<ProtectedRoute allowedRoles={['gérant']}><ProduitsPage /></ProtectedRoute>} />
             <Route path="/stock" element={<ProtectedRoute allowedRoles={['gérant']}><StockPage /></ProtectedRoute>} />
+            <Route path="/fournisseurs" element={<ProtectedRoute allowedRoles={['gérant']}><FournisseursPage /></ProtectedRoute>} />
             <Route path="/ventes" element={<ProtectedRoute allowedRoles={['gérant']}><VentesPage /></ProtectedRoute>} />
+            <Route path="/cloture" element={<ProtectedRoute allowedRoles={['gérant', 'caissier']}><ClotureCaissePage /></ProtectedRoute>} />
             <Route path="/rapports" element={<ProtectedRoute allowedRoles={['gérant']}><RapportsPage /></ProtectedRoute>} />
             <Route path="/parametres" element={<ProtectedRoute allowedRoles={['gérant']}><ParametresPage /></ProtectedRoute>} />
           </Route>

@@ -9,7 +9,7 @@ interface UIState {
 }
 
 export const useUIStore = create<UIState>((set) => ({
-  sidebarOpen: true,
+  sidebarOpen: false,
   activeModal: null,
   toggleSidebar: () => set(state => ({ sidebarOpen: !state.sidebarOpen })),
   openModal: (modal) => set({ activeModal: modal }),
