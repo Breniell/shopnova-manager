@@ -14,4 +14,16 @@ if (isPreviewHost || isInIframe) {
   navigator.serviceWorker?.getRegistrations().then((r) => r.forEach((sw) => sw.unregister()));
 }
 
+// Migrate: clear old plaintext PIN auth data
+const authData = localStorage.getItem('shopnova-auth');
+if (authData) {
+  try {
+    const parsed = JSON.parse(authData);
+    const users = parsed?.state?.users;
+    if (users?.[0]?.pin && users[0].pin.length <= 8) {
+      localStorage.removeItem('shopnova-auth');
+    }
+  } catch { /* ignore */ }
+}
+
 createRoot(document.getElementById("root")!).render(<App />);
