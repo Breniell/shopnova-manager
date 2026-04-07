@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useProductStore, Product, Category } from '@/stores/useProductStore';
 import { useSaleStore } from '@/stores/useSaleStore';
-import { NovaCard } from '@/components/ui/NovaCard';
+
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { formatFCFA, getStockStatus, generateEAN13, cn } from '@/lib/utils';
