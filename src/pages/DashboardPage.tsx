@@ -130,18 +130,18 @@ const DashboardPage: React.FC = () => {
                 <AreaChart data={last7Days}>
                   <defs>
                     <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#6C63FF" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="#6C63FF" stopOpacity={0} />
+                      <stop offset="0%" stopColor="#A93200" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="#A93200" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
                   <XAxis dataKey="name" stroke="#8B8FA8" fontSize={12} />
                   <YAxis stroke="#8B8FA8" fontSize={12} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#1E2236', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#F0F2FF' }}
+                    contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5ddd8', borderRadius: '8px', color: '#1a1c1c' }}
                     formatter={(value: number) => [formatFCFA(value), 'Total']}
                   />
-                  <Area type="monotone" dataKey="total" stroke="#6C63FF" strokeWidth={2} fill="url(#areaGrad)" />
+                  <Area type="monotone" dataKey="total" stroke="#A93200" strokeWidth={2} fill="url(#areaGrad)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -153,15 +153,15 @@ const DashboardPage: React.FC = () => {
                 <BarChart data={top5} layout="vertical">
                   <defs>
                     <linearGradient id="barGrad" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#6C63FF" />
-                      <stop offset="100%" stopColor="#8B5CF6" />
+                      <stop offset="0%" stopColor="#A93200" />
+                      <stop offset="100%" stopColor="#2B6954" />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
                   <XAxis type="number" stroke="#8B8FA8" fontSize={11} />
                   <YAxis type="category" dataKey="nom" stroke="#8B8FA8" fontSize={11} width={120} tick={{ fill: '#8B8FA8' }} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#1E2236', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#F0F2FF' }}
+                    contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5ddd8', borderRadius: '8px', color: '#1a1c1c' }}
                     formatter={(value: number) => [`${value} unités`, 'Vendus']}
                   />
                   <Bar dataKey="qty" fill="url(#barGrad)" radius={[0, 4, 4, 0]} />
@@ -189,7 +189,7 @@ const DashboardPage: React.FC = () => {
                         </div>
                       )}
                       <span className="text-sm font-medium text-foreground">{p.nom}</span>
-                      <StatusBadge status={getStockStatus(p.stock, p.seuilAlerte) as any} />
+                      <StatusBadge status={getStockStatus(p.stock, p.seuilAlerte)} />
                     </div>
                     <div className="flex items-center gap-4">
                       <span className="text-sm tabular-nums text-destructive">{p.stock} / {p.seuilAlerte}</span>

@@ -1,5 +1,3 @@
-import { formatFCFA } from './utils';
-
 // CSV Export
 export function exportCSV(filename: string, headers: string[], rows: string[][]) {
   const bom = '\uFEFF'; // UTF-8 BOM for Excel compatibility
@@ -32,7 +30,7 @@ export function exportPDF(title: string, headers: string[], rows: string[][], su
 ${summary ? `<div class="summary">${summary.map(s => `<div class="summary-item">${s}</div>`).join('')}</div>` : ''}
 <table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
 <tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>
-<div class="footer">ShopNova — La gestion, réinventée.</div>
+<div class="footer">Legwan — La gestion, réinventée.</div>
 </body></html>`;
 
   const win = window.open('', '_blank');

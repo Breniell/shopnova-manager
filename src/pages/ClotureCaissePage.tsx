@@ -170,7 +170,7 @@ const ClotureCaissePage: React.FC = () => {
                     <span className="text-muted-foreground">Montant attendu</span>
                     <span className="text-foreground font-medium tabular-nums">{formatFCFA(totalAttendu)}</span>
                   </div>
-                  <div className="border-t border- pt-3">
+                  <div className="border-t border-border pt-3">
                     <div className="flex justify-between items-center">
                       <span className="text-base font-semibold text-foreground">Écart</span>
                       <span className={cn(
@@ -187,7 +187,7 @@ const ClotureCaissePage: React.FC = () => {
                 </div>
 
                 {ecart < -500 && (
-                  <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border -destructive/20">
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                     <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
                     <p className="text-xs text-destructive">Écart important détecté. Vérifiez le comptage ou signalez l'anomalie.</p>
                   </div>
@@ -234,7 +234,7 @@ const ClotureCaissePage: React.FC = () => {
                 </thead>
                 <tbody>
                   {clotures.map(c => (
-                    <tr key={c.id} className="border-t border- hover:bg-muted/30 transition-colors">
+                    <tr key={c.id} className="border-t border-border hover:bg-muted/30 transition-colors">
                       <td className="p-3 text-sm text-muted-foreground">{formatDateShort(new Date(c.date))} {formatTime(new Date(c.date))}</td>
                       <td className="p-3 text-sm text-foreground">{c.userName}</td>
                       <td className="p-3 text-sm text-right text-foreground tabular-nums">{formatFCFA(c.totalVentesEspeces)}</td>

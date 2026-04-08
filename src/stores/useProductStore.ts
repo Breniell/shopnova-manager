@@ -80,6 +80,6 @@ export const useProductStore = create<ProductState>()(
         return get().products.find(p => p.codeBarre === barcode);
       },
     }),
-    { name: 'shopnova-products' }
+    { name: 'legwan-products' }
   )
 );

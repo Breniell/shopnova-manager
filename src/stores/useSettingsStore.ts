@@ -21,17 +21,17 @@ export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
       shop: {
-        nom: 'ShopNova Store',
+        nom: 'Legwan Store',
         adresse: 'Rue de la Joie, Douala, Cameroun',
         telephone: '+237 699 123 456',
-        email: 'contact@shopnova.cm',
+        email: 'contact@legwan.cm',
         nui: '',
-        enteteRecu: 'Bienvenue chez ShopNova !',
+        enteteRecu: 'Bienvenue chez Legwan !',
         piedPageRecu: 'Merci pour votre achat ! À bientôt.',
         devise: 'FCFA',
       },
       updateShop: (data) => set(state => ({ shop: { ...state.shop, ...data } })),
     }),
-    { name: 'shopnova-settings' }
+    { name: 'legwan-settings' }
   )
 );

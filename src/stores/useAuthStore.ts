@@ -106,8 +106,13 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: 'shopnova-auth',
-      partialize: (state) => ({ users: state.users, loginAttempts: state.loginAttempts }),
+      name: 'legwan-auth',
+      partialize: (state) => ({
+        users: state.users,
+        loginAttempts: state.loginAttempts,
+        currentUser: state.currentUser,
+        isAuthenticated: state.isAuthenticated,
+      }),
     }
   )
 );

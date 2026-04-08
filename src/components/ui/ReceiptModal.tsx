@@ -68,7 +68,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ sale, open, onClose 
             <div className="px-6 py-3 border-t border-dashed -gray-300 space-y-1">
               <div className="flex justify-between text-xs">
                 <span>Sous-total</span>
-                <span className="tabular-nums">{formatPrice($2)}</span>
+                <span className="tabular-nums">{formatPrice(sale.subtotal)}</span>
               </div>
               {sale.discount > 0 && (
                 <div className="flex justify-between text-xs text-red-500">
@@ -78,7 +78,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ sale, open, onClose 
               )}
               <div className="flex justify-between font-bold text-sm pt-1 border-t -gray-200">
                 <span>TOTAL</span>
-                <span className="tabular-nums">{formatPrice($2)}</span>
+                <span className="tabular-nums">{formatPrice(sale.total)}</span>
               </div>
               <div className="flex justify-between text-xs text-gray-500 pt-1">
                 <span>Paiement</span>
@@ -88,11 +88,11 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ sale, open, onClose 
                 <>
                   <div className="flex justify-between text-xs text-gray-500">
                     <span>Reçu</span>
-                    <span className="tabular-nums">{formatPrice($2)}</span>
+                    <span className="tabular-nums">{formatPrice(sale.amountReceived)}</span>
                   </div>
                   <div className="flex justify-between text-xs text-gray-500">
                     <span>Monnaie</span>
-                    <span className="tabular-nums">{formatPrice($2)}</span>
+                    <span className="tabular-nums">{formatPrice(sale.changeGiven || 0)}</span>
                   </div>
                 </>
               )}

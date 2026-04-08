@@ -107,12 +107,12 @@ const StockPage: React.FC = () => {
               </thead>
               <tbody>
                 {products.map(p => (
-                  <tr key={p.id} className="border-t border- hover:bg-muted/30 transition-colors">
+                  <tr key={p.id} className="border-t border-border hover:bg-muted/30 transition-colors">
                     <td className="p-3 text-sm font-medium text-foreground">{p.nom}</td>
                     <td className="p-3 text-sm text-muted-foreground">{p.categorie}</td>
                     <td className="p-3 text-sm text-right font-medium text-foreground tabular-nums">{p.stock}</td>
                     <td className="p-3 text-sm text-right text-muted-foreground tabular-nums">{p.seuilAlerte}</td>
-                    <td className="p-3 text-center"><StatusBadge status={getStockStatus(p.stock, p.seuilAlerte) as any} /></td>
+                    <td className="p-3 text-center"><StatusBadge status={getStockStatus(p.stock, p.seuilAlerte)} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -141,7 +141,7 @@ const StockPage: React.FC = () => {
               </thead>
               <tbody>
                 {movements.map(m => (
-                  <tr key={m.id} className="border-t border- hover:bg-muted/30 transition-colors">
+                  <tr key={m.id} className="border-t border-border hover:bg-muted/30 transition-colors">
                     <td className="p-3 text-sm text-muted-foreground">{formatDateShort(new Date(m.date))} {formatTime(new Date(m.date))}</td>
                     <td className="p-3 text-sm font-medium text-foreground">{m.productName}</td>
                     <td className="p-3">

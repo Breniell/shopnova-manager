@@ -1,5 +1,5 @@
 /**
- * Utilitaires de formatage pour ShopNova Manager
+ * Utilitaires de formatage pour Legwan Manager
  * @module utils/formatters
  */
 

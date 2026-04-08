@@ -33,6 +33,6 @@ export const useCaisseStore = create<CaisseState>()(
       },
       setFondDeCaisse: (amount) => set({ fondDeCaisse: amount }),
     }),
-    { name: 'shopnova-clotures' }
+    { name: 'legwan-clotures' }
   )
 );

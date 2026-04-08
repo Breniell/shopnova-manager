@@ -22,12 +22,12 @@ export const generateEAN13 = (): string => {
 
 export const generateSaleId = (count: number): string => {
   const year = new Date().getFullYear();
-  return `SHP-${year}-${String(count).padStart(5, '0')}`;
+  return `LGW-${year}-${String(count).padStart(5, '0')}`;
 }
 
-export const getStockStatus = (current: number, threshold: number): 'ok' | 'low' | 'out' => {
-  if (current <= 0) return 'out';
+export const getStockStatus = (current: number, threshold: number): 'healthy' | 'low' | 'stockout' => {
+  if (current <= 0) return 'stockout';
   if (current <= threshold) return 'low';
-  return 'ok';
+  return 'healthy';
 }
 

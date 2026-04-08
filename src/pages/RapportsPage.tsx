@@ -58,8 +58,8 @@ const RapportsPage: React.FC = () => {
 
   // Payment distribution (no credit)
   const paymentDist = [
-    { name: 'Espèces', value: periodSales.filter(s => s.paymentMode === 'especes').reduce((sum, s) => sum + s.total, 0), color: '#00D4AA' },
-    { name: 'Mobile Money', value: periodSales.filter(s => s.paymentMode === 'mobile_money').reduce((sum, s) => sum + s.total, 0), color: '#6C63FF' },
+    { name: 'Espèces', value: periodSales.filter(s => s.paymentMode === 'especes').reduce((sum, s) => sum + s.total, 0), color: '#2B6954' },
+    { name: 'Mobile Money', value: periodSales.filter(s => s.paymentMode === 'mobile_money').reduce((sum, s) => sum + s.total, 0), color: '#A93200' },
   ].filter(d => d.value > 0);
 
   // Critical stock
@@ -84,7 +84,7 @@ const RapportsPage: React.FC = () => {
               const headers = ['#', 'Produit', 'Quantité', 'Revenu', '% du total'];
               const rows = top10.map((p, i) => [String(i + 1), p.nom, String(p.qty), formatPrice(p.revenue), totalRevenue > 0 ? (p.revenue / totalRevenue * 100).toFixed(1) + '%' : '0%']);
               const summary = [`<strong>${formatPrice(totalRevenue)}</strong>Revenu total`, `<strong>${periodSales.length}</strong>Ventes`, `<strong>${formatPrice(avgCart)}</strong>Panier moyen`, `<strong>${margin.toFixed(1)}%</strong>Marge`];
-              exportPDF('Rapport des ventes — ShopNova', headers, rows, summary);
+              exportPDF('Rapport des ventes — Legwan', headers, rows, summary);
             }} className="nova-btn-secondary flex items-center gap-2 px-3 py-2 text-sm">
               <Download className="w-4 h-4" /> PDF
             </button>
@@ -114,15 +114,15 @@ const RapportsPage: React.FC = () => {
             <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="rapportGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#6C63FF" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="#6C63FF" stopOpacity={0} />
+                  <stop offset="0%" stopColor="#A93200" stopOpacity={0.25} />
+                  <stop offset="100%" stopColor="#A93200" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
               <XAxis dataKey="name" stroke="#8B8FA8" fontSize={11} />
               <YAxis stroke="#8B8FA8" fontSize={11} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-              <Tooltip contentStyle={{ backgroundColor: '#1E2236', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#F0F2FF' }} formatter={(value: number) => [formatPrice(value), 'Total']} />
-              <Area type="monotone" dataKey="total" stroke="#6C63FF" strokeWidth={2} fill="url(#rapportGrad)" />
+              <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5ddd8', borderRadius: '8px', color: '#1a1c1c' }} formatter={(value: number) => [formatPrice(value), 'Total']} />
+              <Area type="monotone" dataKey="total" stroke="#A93200" strokeWidth={2} fill="url(#rapportGrad)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -143,7 +143,7 @@ const RapportsPage: React.FC = () => {
             </thead>
             <tbody>
               {top10.map((p, i) => (
-                <tr key={i} className="border-t border-">
+                <tr key={i} className="border-t border-border">
                   <td className="p-2 text-sm text-muted-foreground">{i + 1}</td>
                   <td className="p-2 text-sm text-foreground">{p.nom}</td>
                   <td className="p-2 text-sm text-right text-foreground tabular-nums">{p.qty}</td>
@@ -162,7 +162,7 @@ const RapportsPage: React.FC = () => {
                 <Pie data={paymentDist} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="value">
                   {paymentDist.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                 </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#1E2236', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#F0F2FF' }} formatter={(value: number) => [formatPrice(value)]} />
+                <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5ddd8', borderRadius: '8px', color: '#1a1c1c' }} formatter={(value: number) => [formatPrice(value)]} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -194,7 +194,7 @@ const RapportsPage: React.FC = () => {
             </thead>
             <tbody>
               {criticalProducts.map(p => (
-                <tr key={p.id} className="border-t border-">
+                <tr key={p.id} className="border-t border-border">
                   <td className="p-2 text-sm text-foreground">{p.nom}</td>
                   <td className={cn('p-2 text-sm text-right tabular-nums', p.stock <= 0 ? 'text-destructive' : 'text-amber-400')}>{p.stock}</td>
                   <td className="p-2 text-sm text-right text-muted-foreground tabular-nums">{p.seuilAlerte}</td>

@@ -35,9 +35,17 @@ const CaissePage: React.FC = () => {
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // Barcode scanner via keyboard (USB scanner)
+  // ── Physical barcode scanner (USB HID / Bluetooth pistol-type) ─────────────
+  // Scanners behave like keyboards but type very fast (< 50 ms per char) and
+  // always terminate with Enter. We detect them by timing: if keystrokes arrive
+  // faster than SCAN_SPEED_MS apart we consider them scanner input, accumulate
+  // the buffer, and on Enter we trigger the product lookup instead of letting
+  // the characters fall into whichever input is focused.
+  const SCAN_SPEED_MS = 50;
   const barcodeBuffer = useRef('');
   const barcodeTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const lastKeyTime = useRef(0);
+  const isScanningRef = useRef(false);
 
   const handleBarcodeScanned = useCallback((barcode: string) => {
     const product = products.find(p => p.codeBarre === barcode);
@@ -57,29 +65,59 @@ const CaissePage: React.FC = () => {
       setTimeout(() => setAddedProductId(null), 500);
       toast.success(`${product.nom} ajouté au panier`);
     } else {
-      toast.error(`Produit non trouvé: ${barcode}`);
+      toast.error(`Produit non trouvé : ${barcode}`);
     }
   }, [products, addToCart, cart]);
 
   useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
-        if (document.activeElement.id !== 'pos-search') return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const now = Date.now();
+      const timeSinceLast = now - lastKeyTime.current;
+
+      // Detect rapid input → scanner mode
+      if (timeSinceLast < SCAN_SPEED_MS && e.key.length === 1) {
+        isScanningRef.current = true;
       }
-      if (e.key === 'Enter' && barcodeBuffer.current.length > 5) {
-        const barcode = barcodeBuffer.current;
-        barcodeBuffer.current = '';
-        handleBarcodeScanned(barcode);
+
+      if (e.key === 'Enter') {
+        if (isScanningRef.current && barcodeBuffer.current.length > 3) {
+          e.preventDefault(); // don't submit forms
+          const barcode = barcodeBuffer.current;
+          barcodeBuffer.current = '';
+          isScanningRef.current = false;
+          lastKeyTime.current = 0;
+          handleBarcodeScanned(barcode);
+        } else {
+          // Normal Enter — reset buffer
+          barcodeBuffer.current = '';
+          isScanningRef.current = false;
+        }
         return;
       }
-      if (/^\d$/.test(e.key)) {
+
+      // Accumulate printable characters (barcodes can contain letters & digits)
+      if (e.key.length === 1) {
+        // If in scanner mode, prevent the char from reaching the focused input
+        if (isScanningRef.current) {
+          e.preventDefault();
+        }
         barcodeBuffer.current += e.key;
+        // Reset buffer if no new char arrives within the scan window
         clearTimeout(barcodeTimeout.current);
-        barcodeTimeout.current = setTimeout(() => { barcodeBuffer.current = ''; }, 100);
+        barcodeTimeout.current = setTimeout(() => {
+          barcodeBuffer.current = '';
+          isScanningRef.current = false;
+        }, 200);
       }
+
+      lastKeyTime.current = now;
     };
-    window.addEventListener('keypress', handleKeyPress);
-    return () => window.removeEventListener('keypress', handleKeyPress);
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      clearTimeout(barcodeTimeout.current);
+    };
   }, [handleBarcodeScanned]);
 
   const handleAddProduct = (product: Product) => {
@@ -169,8 +207,8 @@ const CaissePage: React.FC = () => {
   return (
     <div className="h-screen flex animate-fade-in">
       {/* Left: Products */}
-      <div className="flex-[58] flex flex-col border-r border-">
-        <div className="p-5 border-b border-">
+      <div className="flex-[58] flex flex-col border-r border-border">
+        <div className="p-5 border-b border-border">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <input
@@ -225,7 +263,7 @@ const CaissePage: React.FC = () => {
                       </div>
                     )}
                     <div className="absolute top-1.5 right-1.5">
-                      <StatusBadge status={status as any} className="text-[9px] px-1.5 py-0" />
+                      <StatusBadge status={status} className="text-[9px] px-1.5 py-0" />
                     </div>
                   </div>
                   <div className="p-3">
@@ -241,7 +279,7 @@ const CaissePage: React.FC = () => {
 
       {/* Right: Cart */}
       <div className="flex-[42] flex flex-col bg-card">
-        <div className="p-5 border-b border- flex items-center justify-between">
+        <div className="p-5 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-grid">
             <ShoppingCart className="w-5 h-5 text-primary" />
             <h2 className="nova-heading text-foreground">Panier en cours</h2>
@@ -282,7 +320,7 @@ const CaissePage: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => updateCartQuantity(item.productId, item.quantity - 1)}
-                      className="w-8 h-8 rounded-lg bg-muted border border- flex items-center justify-center hover:bg-muted/80 transition-all active:scale-90">
+                      className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-all active:scale-90">
                       <Minus className="w-3 h-3 text-foreground" />
                     </button>
                     <span className="w-8 text-center text-sm font-medium text-foreground tabular-nums">{item.quantity}</span>
@@ -294,7 +332,7 @@ const CaissePage: React.FC = () => {
                       }
                       updateCartQuantity(item.productId, item.quantity + 1);
                     }}
-                      className="w-8 h-8 rounded-lg bg-muted border border- flex items-center justify-center hover:bg-muted/80 transition-all active:scale-90">
+                      className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-all active:scale-90">
                       <Plus className="w-3 h-3 text-foreground" />
                     </button>
                   </div>
@@ -308,7 +346,7 @@ const CaissePage: React.FC = () => {
             </div>
 
             {/* Totals & Payment */}
-            <div className="border-t border- p-5 space-y-4">
+            <div className="border-t border-border p-5 space-y-4">
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Sous-total</span>
@@ -329,7 +367,7 @@ const CaissePage: React.FC = () => {
                     placeholder="0"
                   />
                 </div>
-                <div className="flex justify-between items-center pt-2 border-t border-">
+                <div className="flex justify-between items-center pt-2 border-t border-border">
                   <span className="text-lg font-semibold text-foreground">TOTAL</span>
                   <span className="text-[32px] font-bold text-primary tabular-nums">{formatPrice(total)}</span>
                 </div>

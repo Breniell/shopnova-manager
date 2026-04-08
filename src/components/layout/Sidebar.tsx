@@ -53,25 +53,25 @@ export const Sidebar: React.FC = () => {
       <aside className={cn(
         'fixed left-0 top-0 h-full w-60 z-30 flex flex-col border-r border-border transition-transform duration-300',
         isMobile && !sidebarOpen && '-translate-x-full'
-      )} style={{ background: 'linear-gradient(180deg, #151829 0%, #0F1120 100%)' }}>
+      )} style={{ background: 'linear-gradient(180deg, #1a1f35 0%, #141823 100%)' }}>
 
         {/* Logo */}
         <div className="p-5 flex items-center justify-between">
           <div className="flex items-center gap-grid">
             <div className="w-9 h-9 flex items-center justify-center">
               <svg viewBox="0 0 40 40" className="w-9 h-9">
-                <polygon points="20,2 36,11 36,29 20,38 4,29 4,11" fill="none" stroke="#6C63FF" strokeWidth="2" />
-                <path d="M20,12 L20,28 M16,20 L20,12 L24,20" stroke="#6C63FF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                <polygon points="20,2 36,11 36,29 20,38 4,29 4,11" fill="none" stroke="#A93200" strokeWidth="2" />
+                <path d="M20,12 L20,28 M16,20 L20,12 L24,20" stroke="#A93200" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
               </svg>
             </div>
             <div>
-              <h1 className="text-foreground font-semibold text-base tracking-tight">ShopNova</h1>
-              <p className="text-[10px] text-muted-foreground tracking-wider uppercase">La gestion, réinventée</p>
+              <h1 className="text-white font-semibold text-base tracking-tight">Legwan</h1>
+              <p className="text-[10px] text-slate-400 tracking-wider uppercase">La gestion, réinventée</p>
             </div>
           </div>
           {isMobile && (
-            <button onClick={toggleSidebar} className="p-2 rounded-lg hover:bg-muted transition-colors" aria-label="Fermer le menu">
-              <X className="w-5 h-5 text-muted-foreground" />
+            <button onClick={toggleSidebar} className="p-2 rounded-lg hover:bg-white/10 transition-colors" aria-label="Fermer le menu">
+              <X className="w-5 h-5 text-slate-400" />
             </button>
           )}
         </div>
@@ -88,8 +88,8 @@ export const Sidebar: React.FC = () => {
                 className={cn(
                   'flex items-center gap-grid px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative',
                   isActive
-                    ? 'text-foreground bg-primary/15'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    ? 'text-white bg-primary/25'
+                    : 'text-slate-300 hover:text-white hover:bg-white/10'
                 )}
               >
                 {isActive && (
@@ -104,7 +104,7 @@ export const Sidebar: React.FC = () => {
 
         {/* User section */}
         {currentUser && (
-          <div className="p-4 border-t border-">
+          <div className="p-4 border-t border-border">
             <div className="flex items-center gap-grid">
               <div
                 className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-semibold text-white"
@@ -113,7 +113,7 @@ export const Sidebar: React.FC = () => {
                 {currentUser.prenom[0]}{currentUser.nom[0]}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">
+                <p className="text-sm font-medium text-white truncate">
                   {currentUser.prenom} {currentUser.nom}
                 </p>
                 <span className={cn(
@@ -125,7 +125,7 @@ export const Sidebar: React.FC = () => {
                   {currentUser.role === 'gérant' ? 'Gérant' : 'Caissier'}
                 </span>
               </div>
-              <button onClick={handleLogout} aria-label="Se déconnecter" className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-destructive">
+              <button onClick={handleLogout} aria-label="Se déconnecter" className="p-2 rounded-lg hover:bg-white/10 transition-colors text-slate-400 hover:text-red-400">
                 <LogOut className="w-4 h-4" />
               </button>
             </div>

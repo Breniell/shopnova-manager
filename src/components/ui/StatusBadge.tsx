@@ -1,6 +1,6 @@
-﻿import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
-export type StockStatus = "healthy" | "low" | "critical" | "stockout";
+export type StockStatus = "healthy" | "low" | "stockout";
 
 interface StatusBadgeProps {
   status: StockStatus;
@@ -8,17 +8,15 @@ interface StatusBadgeProps {
 }
 
 export const StatusBadge = ({ status, className }: StatusBadgeProps) => {
-  const variants = {
-    healthy: "badge-healthy",
-    low: "badge-low-stock",
-    critical: "badge-low-stock",
+  const variants: Record<StockStatus, string> = {
+    healthy:  "badge-healthy",
+    low:      "badge-low-stock",
     stockout: "badge-stockout",
   };
 
-  const labels = {
-    healthy: "EN STOCK",
-    low: "STOCK FAIBLE",
-    critical: "CRITIQUE",
+  const labels: Record<StockStatus, string> = {
+    healthy:  "EN STOCK",
+    low:      "STOCK FAIBLE",
     stockout: "RUPTURE",
   };
 

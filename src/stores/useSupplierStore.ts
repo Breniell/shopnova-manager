@@ -40,6 +40,6 @@ export const useSupplierStore = create<SupplierState>()(
         set(state => ({ suppliers: state.suppliers.filter(s => s.id !== id) }));
       },
     }),
-    { name: 'shopnova-suppliers' }
+    { name: 'legwan-suppliers' }
   )
 );

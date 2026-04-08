@@ -41,11 +41,11 @@ export const AppLayout = forwardRef<HTMLDivElement>((_props, ref) => {
       <Sidebar />
       {/* Mobile header */}
       {isMobile && (
-        <div className="fixed top-0 left-0 right-0 z-10 bg-card border-b border- px-4 py-3 flex items-center gap-grid">
+        <div className="fixed top-0 left-0 right-0 z-10 bg-card border-b border-border px-4 py-3 flex items-center gap-grid">
           <button onClick={toggleSidebar} aria-label="Ouvrir le menu" className="p-2 rounded-lg hover:bg-muted transition-colors">
             <Menu className="w-5 h-5 text-foreground" />
           </button>
-          <h1 className="text-foreground font-semibold text-sm">ShopNova</h1>
+          <h1 className="text-foreground font-semibold text-sm">Legwan</h1>
         </div>
       )}
       <main className={isMobile ? 'pt-14 min-h-screen' : 'ml-60 min-h-screen'}>

@@ -16,13 +16,13 @@ if (isPreviewHost || isInIframe) {
 }
 
 // Migrate: clear old plaintext PIN auth data
-const authData = localStorage.getItem('shopnova-auth');
+const authData = localStorage.getItem('legwan-auth');
 if (authData) {
   try {
     const parsed = JSON.parse(authData);
     const users = parsed?.state?.users;
     if (users?.[0]?.pin && users[0].pin.length <= 8) {
-      localStorage.removeItem('shopnova-auth');
+      localStorage.removeItem('legwan-auth');
     }
   } catch { /* ignore */ }
 }

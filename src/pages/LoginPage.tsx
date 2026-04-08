@@ -84,6 +84,22 @@ const LoginPage: React.FC = () => {
     setError(false);
   };
 
+  // Keyboard support for PIN entry — placed after handlePinDigit/handleBackspace to avoid TDZ
+  useEffect(() => {
+    if (!selectedUser) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Backspace') {
+        handleBackspace();
+      } else if (/^[0-9]$/.test(e.key)) {
+        handlePinDigit(e.key);
+      } else if (e.key === 'Escape') {
+        handleBack();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedUser, handlePinDigit]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const formatLockTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
@@ -106,11 +122,11 @@ const LoginPage: React.FC = () => {
         <div className="max-w-sm">
           <div className="flex items-center gap-grid mb-8">
             <svg viewBox="0 0 40 40" className="w-12 h-12">
-              <polygon points="20,2 36,11 36,29 20,38 4,29 4,11" fill="none" stroke="#6C63FF" strokeWidth="2" />
-              <path d="M20,12 L20,28 M16,20 L20,12 L24,20" stroke="#6C63FF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              <polygon points="20,2 36,11 36,29 20,38 4,29 4,11" fill="none" stroke="#A93200" strokeWidth="2" />
+              <path d="M20,12 L20,28 M16,20 L20,12 L24,20" stroke="#A93200" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
             </svg>
             <div>
-              <h1 className="text-display-md font-bold text-foreground tracking-tight">ShopNova</h1>
+              <h1 className="text-display-md font-bold text-foreground tracking-tight">Legwan</h1>
               <p className="text-sm text-muted-foreground">La gestion, réinventée.</p>
             </div>
           </div>
@@ -140,7 +156,7 @@ const LoginPage: React.FC = () => {
                   <button
                     key={user.id}
                     onClick={() => handleUserSelect(user)}
-                    className="flex items-center gap-4 p-4 rounded-xl border border- bg-muted/30 hover:bg-muted/60 transition-all duration-150 text-left group"
+                    className="flex items-center gap-4 p-4 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 transition-all duration-150 text-left group"
                   >
                     <div
                       className="w-12 h-12 rounded-lg flex items-center justify-center text-base font-semibold text-white shrink-0 transition-transform duration-150 group-hover:scale-105"
@@ -183,7 +199,7 @@ const LoginPage: React.FC = () => {
               </div>
 
               {locked && (
-                <div className="text-center mb-6 p-4 rounded-xl bg-destructive/10 border -destructive/20 animate-fade-in">
+                <div className="text-center mb-6 p-4 rounded-xl bg-destructive/10 border border-destructive/20 animate-fade-in">
                   <Lock className="w-6 h-6 text-destructive mx-auto mb-2" />
                   <p className="text-sm text-destructive font-medium">Compte bloqué</p>
                   <p className="text-sm text-destructive/80 mt-1">Réessayez dans {formatLockTime(remainingSeconds)}</p>
@@ -218,7 +234,7 @@ const LoginPage: React.FC = () => {
                           key={i}
                           onClick={() => key === '←' ? handleBackspace() : handlePinDigit(key)}
                           disabled={isLoggingIn}
-                          className="w-16 h-16 rounded-xl bg-muted border border- text-foreground text-title-lg font-medium hover:bg-muted/80 active:scale-95 transition-all duration-100 mx-auto flex items-center justify-center disabled:opacity-50"
+                          className="w-16 h-16 rounded-xl bg-muted border border-border text-foreground text-title-lg font-medium hover:bg-muted/80 active:scale-95 transition-all duration-100 mx-auto flex items-center justify-center disabled:opacity-50"
                         >
                           {key}
                         </button>

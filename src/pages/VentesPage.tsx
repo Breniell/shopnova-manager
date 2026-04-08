@@ -64,7 +64,7 @@ const VentesPage: React.FC = () => {
             const headers = ['ID', 'Date', 'Heure', 'Caissier', 'Articles', 'Total', 'Paiement'];
             const rows = filtered.map(s => [s.saleNumber, formatDateShort(new Date(s.date)), formatTime(new Date(s.date)), s.userName, String(s.items.reduce((sum, i) => sum + i.quantity, 0)), formatFCFA(s.total), s.paymentMode]);
             const summary = [`<strong>${filtered.length}</strong>Ventes`, `<strong>${formatFCFA(totalRevenue)}</strong>Total`, `<strong>${formatFCFA(avgSale)}</strong>Moyenne`];
-            exportPDF('Historique des ventes — ShopNova', headers, rows, summary);
+            exportPDF('Historique des ventes — Legwan', headers, rows, summary);
           }} className="nova-btn-secondary flex items-center gap-2 px-3 py-2 text-sm">
             <Download className="w-4 h-4" /> PDF
           </button>
@@ -134,7 +134,7 @@ const VentesPage: React.FC = () => {
               </thead>
               <tbody>
                 {filtered.map(s => (
-                  <tr key={s.id} className="border-t border- hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setSelectedSale(s)}>
+                  <tr key={s.id} className="border-t border-border hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setSelectedSale(s)}>
                     <td className="p-3 text-sm font-mono text-primary">{s.saleNumber}</td>
                     <td className="p-3 text-sm text-muted-foreground">{formatDateShort(new Date(s.date))} {formatTime(new Date(s.date))}</td>
                     <td className="p-3 text-sm text-foreground">{s.userName}</td>
@@ -187,8 +187,8 @@ const VentesPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="border-t border- pt-4 space-y-2">
-              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Sous-total</span><span className="text-foreground tabular-nums">{formatPrice(selectedSale.total)}</span></div>
+            <div className="border-t border-border pt-4 space-y-2">
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Sous-total</span><span className="text-foreground tabular-nums">{formatPrice(selectedSale.subtotal)}</span></div>
               {selectedSale.discount > 0 && <div className="flex justify-between text-sm"><span className="text-muted-foreground">Remise</span><span className="text-destructive">{selectedSale.discount}%</span></div>}
               <div className="flex justify-between text-base font-semibold"><span className="text-foreground">Total</span><span className="text-primary tabular-nums">{formatPrice(selectedSale.total)}</span></div>
             </div>

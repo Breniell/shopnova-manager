@@ -11,7 +11,7 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ShopNova Error:', error, errorInfo);
+    console.error('Legwan Error:', error, errorInfo);
   }
 
   render() {

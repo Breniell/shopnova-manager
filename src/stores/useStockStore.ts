@@ -46,6 +46,6 @@ export const useStockStore = create<StockState>()(
         set(state => ({ movements: [{ ...movement, id }, ...state.movements] }));
       },
     }),
-    { name: 'shopnova-stock' }
+    { name: 'legwan-stock' }
   )
 );
