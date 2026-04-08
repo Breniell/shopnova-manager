@@ -125,7 +125,7 @@ const DashboardPage: React.FC = () => {
         {/* Charts row */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           <NovaCard accent title="Ventes des 7 derniers jours" className="col-span-1 lg:col-span-3">
-            <div className="h-[240px]">
+            <div className="h-[180px] sm:h-[220px] lg:h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={last7Days}>
                   <defs>
@@ -148,7 +148,7 @@ const DashboardPage: React.FC = () => {
           </NovaCard>
 
           <NovaCard accent title="Top 5 produits vendus" className="col-span-1 lg:col-span-2">
-            <div className="h-[240px]">
+            <div className="h-[180px] sm:h-[220px] lg:h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={top5} layout="vertical">
                   <defs>
@@ -179,8 +179,8 @@ const DashboardPage: React.FC = () => {
             ) : (
               <div className="space-y-2">
                 {alertProducts.map(p => (
-                  <div key={p.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center gap-grid">
+                  <div key={p.id} className="flex items-center gap-2 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div className="shrink-0">
                       {productImages[p.id] ? (
                         <img src={productImages[p.id]} alt={p.nom} className="w-9 h-9 rounded-lg object-cover" />
                       ) : (
@@ -188,12 +188,14 @@ const DashboardPage: React.FC = () => {
                           <Package className="w-4 h-4 text-muted-foreground" />
                         </div>
                       )}
-                      <span className="text-sm font-medium text-foreground">{p.nom}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{p.nom}</p>
                       <StatusBadge status={getStockStatus(p.stock, p.seuilAlerte)} />
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm tabular-nums text-destructive">{p.stock} / {p.seuilAlerte}</span>
-                      <button className="text-xs nova-btn-primary px-3 py-1.5" onClick={() => navigate('/stock')}>Commander</button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs tabular-nums text-destructive whitespace-nowrap">{p.stock}/{p.seuilAlerte}</span>
+                      <button className="text-xs nova-btn-primary px-2.5 py-1.5 hidden sm:block" onClick={() => navigate('/stock')}>Commander</button>
                     </div>
                   </div>
                 ))}
@@ -212,7 +214,7 @@ const DashboardPage: React.FC = () => {
                       <span className="text-xs text-muted-foreground">{formatTime(new Date(s.date))}</span>
                       <span className="text-sm text-foreground ml-3">{s.items.length} article{s.items.length > 1 ? 's' : ''}</span>
                     </div>
-                    <div className="flex items-center gap-grid">
+                    <div className="flex items-center gap-2 shrink-0">
                       <span className="text-sm font-semibold text-foreground tabular-nums">{formatPrice(s.total)}</span>
                       <PaymentBadge mode={s.paymentMode} />
                     </div>
@@ -224,14 +226,15 @@ const DashboardPage: React.FC = () => {
         </div>
 
         {/* Quick action bar */}
-        <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 sm:ml-[120px] flex flex-wrap justify-center gap-2 z-20 px-4">
-          <button onClick={() => navigate('/caisse')} className="nova-btn-primary flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium">
+        <div className="fixed left-1/2 -translate-x-1/2 lg:ml-[120px] flex flex-wrap justify-center gap-2 z-20 px-4"
+          style={{ bottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
+          <button onClick={() => navigate('/caisse')} className="nova-btn-primary flex items-center gap-2 px-5 lg:px-6 py-3 rounded-full text-sm font-medium shadow-lg">
             <Plus className="w-4 h-4" /> Nouvelle vente
           </button>
-          <button onClick={() => navigate('/produits')} className="nova-btn-primary flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium">
+          <button onClick={() => navigate('/produits')} className="hidden lg:flex nova-btn-primary items-center gap-2 px-6 py-3 rounded-full text-sm font-medium shadow-lg">
             <Package className="w-4 h-4" /> Ajouter produit
           </button>
-          <button onClick={() => navigate('/stock')} className="nova-btn-primary flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium">
+          <button onClick={() => navigate('/stock')} className="hidden lg:flex nova-btn-primary items-center gap-2 px-6 py-3 rounded-full text-sm font-medium shadow-lg">
             <ArrowRight className="w-4 h-4" /> Entrée stock
           </button>
         </div>

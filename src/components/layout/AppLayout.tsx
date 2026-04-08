@@ -39,16 +39,18 @@ export const AppLayout = forwardRef<HTMLDivElement>((_props, ref) => {
   return (
     <div ref={ref} className="min-h-screen bg-background">
       <Sidebar />
-      {/* Mobile header */}
+      {/* Mobile header — pt-safe accounts for iOS notch */}
       {isMobile && (
-        <div className="fixed top-0 left-0 right-0 z-10 bg-card border-b border-border px-4 py-3 flex items-center gap-grid">
+        <div className="fixed top-0 left-0 right-0 z-10 bg-card border-b border-border px-4 flex items-center gap-3"
+          style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))', paddingBottom: '0.75rem' }}>
           <button onClick={toggleSidebar} aria-label="Ouvrir le menu" className="p-2 rounded-lg hover:bg-muted transition-colors">
             <Menu className="w-5 h-5 text-foreground" />
           </button>
           <h1 className="text-foreground font-semibold text-sm">Legwan</h1>
         </div>
       )}
-      <main className={isMobile ? 'pt-14 min-h-screen' : 'ml-60 min-h-screen'}>
+      <main className={isMobile ? 'min-h-screen' : 'ml-60 min-h-screen'}
+        style={isMobile ? { paddingTop: 'calc(3.5rem + env(safe-area-inset-top))' } : undefined}>
         <Outlet />
       </main>
     </div>

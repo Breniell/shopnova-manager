@@ -458,7 +458,7 @@ const CaissePage: React.FC = () => {
       </div>
 
       {/* ── Mobile bottom tab bar ── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-card border-t border-border flex">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-card border-t border-border flex pb-safe">
         <button
           onClick={() => setMobileView('products')}
           className={cn(
@@ -486,8 +486,8 @@ const CaissePage: React.FC = () => {
         </button>
       </div>
 
-      {/* Spacer for mobile tab bar */}
-      <div className="lg:hidden h-16" />
+      {/* Spacer for mobile tab bar (accounts for safe area bottom on iOS) */}
+      <div className="lg:hidden" style={{ height: 'calc(4rem + env(safe-area-inset-bottom))' }} />
 
       <BarcodeScanner
         open={showScanner}

@@ -52,6 +52,12 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    /* iOS: prevent content from going behind notch/home indicator */
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    /* Prevent text size adjustment on iOS rotation */
+    -webkit-text-size-adjust: 100%;
   }
 
   h1, h2, h3, .heading {
@@ -307,6 +313,22 @@
       hsl(var(--secondary) / 0.06) 50%,
       transparent 70%
     );
+  }
+}
+
+/* ─────────────────────────────────────────────
+   iOS SAFE AREAS & MOBILE SCROLLING
+───────────────────────────────────────────── */
+@layer utilities {
+  /* Apply to fixed bottom bars so they clear the iOS home indicator */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Scrollable containers with iOS momentum */
+  .scroll-touch {
+    -webkit-overflow-scrolling: touch;
+    overflow-y: auto;
   }
 }
 
