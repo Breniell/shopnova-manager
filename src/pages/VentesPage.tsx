@@ -48,10 +48,10 @@ const VentesPage: React.FC = () => {
   const avgSale = filtered.length > 0 ? Math.round(totalRevenue / filtered.length) : 0;
 
   return (
-    <div className="p-8 animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
         <h1 className="text-headline-lg nova-heading text-foreground">Historique des ventes</h1>
-        <div className="flex gap-1">
+        <div className="flex gap-1 shrink-0">
           <button onClick={() => {
             const headers = ['ID', 'Date', 'Heure', 'Caissier', 'Articles', 'Total', 'Paiement'];
             const rows = filtered.map(s => [s.saleNumber, formatDateShort(new Date(s.date)), formatTime(new Date(s.date)), s.userName, String(s.items.reduce((sum, i) => sum + i.quantity, 0)), formatFCFA(s.total), s.paymentMode]);
@@ -72,7 +72,7 @@ const VentesPage: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-grid mb-6">
+      <div className="flex flex-wrap gap-2 mb-6">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="nova-input w-full pl-10" placeholder="Rechercher par ID ou caissier..." />
@@ -80,9 +80,9 @@ const VentesPage: React.FC = () => {
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className={cn("min-w-[150px] justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
+            <Button variant="outline" className={cn("min-w-[140px] justify-start text-left font-normal text-sm", !dateFrom && "text-muted-foreground")}>
               <CalendarIcon className="mr-2 h-4 w-4" />
-              {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Date début"}
+              {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Début"}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
@@ -92,9 +92,9 @@ const VentesPage: React.FC = () => {
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className={cn("min-w-[150px] justify-start text-left font-normal", !dateTo && "text-muted-foreground")}>
+            <Button variant="outline" className={cn("min-w-[140px] justify-start text-left font-normal text-sm", !dateTo && "text-muted-foreground")}>
               <CalendarIcon className="mr-2 h-4 w-4" />
-              {dateTo ? format(dateTo, "dd/MM/yyyy") : "Date fin"}
+              {dateTo ? format(dateTo, "dd/MM/yyyy") : "Fin"}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
@@ -103,13 +103,13 @@ const VentesPage: React.FC = () => {
         </Popover>
 
         {(dateFrom || dateTo) && (
-          <Button variant="ghost" onClick={() => { setDateFrom(undefined); setDateTo(undefined); }} className="text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" onClick={() => { setDateFrom(undefined); setDateTo(undefined); }} className="text-muted-foreground hover:text-foreground text-sm">
             Réinitialiser
           </Button>
         )}
 
-        <select value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)} className="nova-input min-w-[160px]">
-          <option value="">Tous les paiements</option>
+        <select value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)} className="nova-input min-w-[140px]">
+          <option value="">Tous paiements</option>
           <option value="especes">Espèces</option>
           <option value="mobile_money">Mobile Money</option>
         </select>
@@ -120,42 +120,44 @@ const VentesPage: React.FC = () => {
       ) : (
         <>
           <div className="nova-card overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="nova-table-header">
-                  <th className="text-left p-3">ID</th>
-                  <th className="text-left p-3">Date / Heure</th>
-                  <th className="text-left p-3">Caissier</th>
-                  <th className="text-right p-3">Articles</th>
-                  <th className="text-right p-3">Total</th>
-                  <th className="text-center p-3">Paiement</th>
-                  <th className="text-right p-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(s => (
-                  <tr key={s.id} className="border-t border-border hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setSelectedSale(s)}>
-                    <td className="p-3 text-sm font-mono text-primary">{s.saleNumber}</td>
-                    <td className="p-3 text-sm text-muted-foreground">{formatDateShort(new Date(s.date))} {formatTime(new Date(s.date))}</td>
-                    <td className="p-3 text-sm text-foreground">{s.userName}</td>
-                    <td className="p-3 text-sm text-right text-foreground tabular-nums">{s.items.reduce((sum, i) => sum + i.quantity, 0)}</td>
-                    <td className="p-3 text-sm text-right font-medium text-foreground tabular-nums">{formatFCFA(s.total)}</td>
-                    <td className="p-3 text-center"><PaymentBadge mode={s.paymentMode} /></td>
-                    <td className="p-3 text-right">
-                      <button onClick={(e) => { e.stopPropagation(); setSelectedSale(s); }} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-                        <Eye className="w-4 h-4" />
-                      </button>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[600px]">
+                <thead>
+                  <tr className="nova-table-header">
+                    <th className="text-left p-3">ID</th>
+                    <th className="text-left p-3">Date / Heure</th>
+                    <th className="text-left p-3 hidden sm:table-cell">Caissier</th>
+                    <th className="text-right p-3 hidden sm:table-cell">Articles</th>
+                    <th className="text-right p-3">Total</th>
+                    <th className="text-center p-3 hidden md:table-cell">Paiement</th>
+                    <th className="text-right p-3">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filtered.map(s => (
+                    <tr key={s.id} className="border-t border-border hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setSelectedSale(s)}>
+                      <td className="p-3 text-xs sm:text-sm font-mono text-primary">{s.saleNumber}</td>
+                      <td className="p-3 text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{formatDateShort(new Date(s.date))} {formatTime(new Date(s.date))}</td>
+                      <td className="p-3 text-sm text-foreground hidden sm:table-cell">{s.userName}</td>
+                      <td className="p-3 text-sm text-right text-foreground tabular-nums hidden sm:table-cell">{s.items.reduce((sum, i) => sum + i.quantity, 0)}</td>
+                      <td className="p-3 text-sm text-right font-medium text-foreground tabular-nums">{formatFCFA(s.total)}</td>
+                      <td className="p-3 text-center hidden md:table-cell"><PaymentBadge mode={s.paymentMode} /></td>
+                      <td className="p-3 text-right">
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedSale(s); }} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Summary bar */}
-          <div className="mt-4 nova-card px-5 py-3 flex items-center justify-between">
+          <div className="mt-4 nova-card px-4 lg:px-5 py-3 flex flex-wrap items-center justify-between gap-2">
             <span className="text-sm text-muted-foreground">{filtered.length} vente{filtered.length > 1 ? 's' : ''}</span>
-            <div className="flex gap-grid-3">
+            <div className="flex flex-wrap gap-3 lg:gap-6">
               <span className="text-sm text-muted-foreground">Total: <strong className="text-foreground tabular-nums">{formatFCFA(totalRevenue)}</strong></span>
               <span className="text-sm text-muted-foreground">Moyenne: <strong className="text-foreground tabular-nums">{formatFCFA(avgSale)}</strong>/vente</span>
             </div>

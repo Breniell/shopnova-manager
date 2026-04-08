@@ -67,10 +67,10 @@ const RapportsPage: React.FC = () => {
     .map(p => ({ ...p, recommended: Math.max(0, p.seuilAlerte * 3 - p.stock) }));
 
   return (
-    <div className="p-8 animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
         <h1 className="text-headline-lg nova-heading text-foreground">Rapports</h1>
-        <div className="flex items-center gap-grid">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex gap-1">
             <button onClick={() => {
               const headers = ['#', 'Produit', 'Quantité', 'Revenu', '% du total'];
@@ -100,7 +100,7 @@ const RapportsPage: React.FC = () => {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
         <StatCard icon={<DollarSign className="w-4 h-4 text-primary" />} iconBg="bg-primary/20" value={formatPrice(totalRevenue)} label="Revenu total" />
         <StatCard icon={<ShoppingCart className="w-4 h-4 text-secondary" />} iconBg="bg-secondary/20" value={String(periodSales.length)} label="Nombre de ventes" />
         <StatCard icon={<TrendingUp className="w-4 h-4 text-amber-400" />} iconBg="bg-amber-500/20" value={formatPrice(avgCart)} label="Panier moyen" />
@@ -129,9 +129,9 @@ const RapportsPage: React.FC = () => {
       </NovaCard>
 
       {/* Top products + Payment pie */}
-      <div className="grid grid-cols-5 gap-4 mb-6">
-        <NovaCard accent title="Top 10 produits" className="col-span-3">
-          <table className="w-full">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-6">
+        <NovaCard accent title="Top 10 produits" className="col-span-1 lg:col-span-3">
+          <div className="overflow-x-auto"><table className="w-full">
             <thead>
               <tr className="nova-table-header">
                 <th className="text-left p-2">#</th>
@@ -152,10 +152,10 @@ const RapportsPage: React.FC = () => {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </NovaCard>
 
-        <NovaCard accent title="Répartition par paiement" className="col-span-2">
+        <NovaCard accent title="Répartition par paiement" className="col-span-1 lg:col-span-2">
           <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -183,7 +183,7 @@ const RapportsPage: React.FC = () => {
         {criticalProducts.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">Aucun produit en stock critique</p>
         ) : (
-          <table className="w-full">
+          <div className="overflow-x-auto"><table className="w-full">
             <thead>
               <tr className="nova-table-header">
                 <th className="text-left p-2">Produit</th>
@@ -202,7 +202,7 @@ const RapportsPage: React.FC = () => {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </NovaCard>
     </div>

@@ -85,9 +85,9 @@ const DashboardPage: React.FC = () => {
     <div className="animate-fade-in">
       <TopBar />
 
-      <div className="px-8 pb-8 space-y-6">
+      <div className="px-4 sm:px-6 lg:px-8 pb-8 space-y-6">
         {/* KPI Row */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
           <StatCard
             icon={<DollarSign className="w-4 h-4 text-primary" />}
             iconBg="bg-primary/20"
@@ -123,8 +123,8 @@ const DashboardPage: React.FC = () => {
         </div>
 
         {/* Charts row */}
-        <div className="grid grid-cols-5 gap-4">
-          <NovaCard accent title="Ventes des 7 derniers jours" className="col-span-3">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <NovaCard accent title="Ventes des 7 derniers jours" className="col-span-1 lg:col-span-3">
             <div className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={last7Days}>
@@ -147,7 +147,7 @@ const DashboardPage: React.FC = () => {
             </div>
           </NovaCard>
 
-          <NovaCard accent title="Top 5 produits vendus" className="col-span-2">
+          <NovaCard accent title="Top 5 produits vendus" className="col-span-1 lg:col-span-2">
             <div className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={top5} layout="vertical">
@@ -172,8 +172,8 @@ const DashboardPage: React.FC = () => {
         </div>
 
         {/* Bottom row */}
-        <div className="grid grid-cols-5 gap-4">
-          <NovaCard accent title="Alertes stock" className="col-span-3">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <NovaCard accent title="Alertes stock" className="col-span-1 lg:col-span-3">
             {alertProducts.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">Aucune alerte</p>
             ) : (
@@ -201,7 +201,7 @@ const DashboardPage: React.FC = () => {
             )}
           </NovaCard>
 
-          <NovaCard accent title="Dernières ventes" className="col-span-2">
+          <NovaCard accent title="Dernières ventes" className="col-span-1 lg:col-span-2">
             {lastSales.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">Aucune vente</p>
             ) : (
@@ -224,7 +224,7 @@ const DashboardPage: React.FC = () => {
         </div>
 
         {/* Quick action bar */}
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 ml-[120px] flex gap-grid z-20">
+        <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 sm:ml-[120px] flex flex-wrap justify-center gap-2 z-20 px-4">
           <button onClick={() => navigate('/caisse')} className="nova-btn-primary flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium">
             <Plus className="w-4 h-4" /> Nouvelle vente
           </button>

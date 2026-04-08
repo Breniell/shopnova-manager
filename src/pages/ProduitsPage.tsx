@@ -86,25 +86,25 @@ const ProduitsPage: React.FC = () => {
   if (stockFilter === 'out') filtered = filtered.filter(p => p.stock <= 0);
 
   return (
-    <div className="p-8 animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
         <h1 className="text-headline-lg nova-heading text-foreground">Produits</h1>
-        <button onClick={openAdd} className="nova-btn-primary flex items-center gap-2 px-5 py-2.5">
+        <button onClick={openAdd} className="nova-btn-primary flex items-center gap-2 px-5 py-2.5 shrink-0">
           <Plus className="w-4 h-4" /> Ajouter un produit
         </button>
       </div>
 
       {/* Filters */}
-      <div className="flex gap-grid mb-6">
-        <div className="relative flex-1">
+      <div className="flex flex-wrap gap-2 mb-6">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="nova-input w-full pl-10" placeholder="Rechercher..." />
         </div>
-        <select value={catFilter} onChange={e => setCatFilter(e.target.value)} className="nova-input min-w-[160px]">
+        <select value={catFilter} onChange={e => setCatFilter(e.target.value)} className="nova-input min-w-[140px]">
           <option value="">Toutes catégories</option>
           {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
-        <select value={stockFilter} onChange={e => setStockFilter(e.target.value)} className="nova-input min-w-[140px]">
+        <select value={stockFilter} onChange={e => setStockFilter(e.target.value)} className="nova-input min-w-[130px]">
           <option value="">Tous les stocks</option>
           <option value="ok">En stock</option>
           <option value="low">Stock faible</option>
@@ -117,77 +117,81 @@ const ProduitsPage: React.FC = () => {
         <EmptyState icon={<Package className="w-12 h-12" />} title="Aucun produit trouvé" description="Modifiez vos filtres ou ajoutez un nouveau produit" />
       ) : (
         <div className="nova-card overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="nova-table-header">
-                <th className="text-left p-3">#</th>
-                <th className="text-left p-3">Produit</th>
-                <th className="text-left p-3">Code-barres</th>
-                <th className="text-right p-3">P. Achat</th>
-                <th className="text-right p-3">P. Vente</th>
-                <th className="text-right p-3">Marge</th>
-                <th className="text-right p-3">Stock</th>
-                <th className="text-right p-3">Seuil</th>
-                <th className="text-right p-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((p, i) => {
-                const status = getStockStatus(p.stock, p.seuilAlerte);
-                const margin = ((p.prixVente - p.prixAchat) / p.prixAchat * 100);
-                return (
-                  <tr key={p.id} className="border-t border-border hover:bg-muted/30 transition-colors group">
-                    <td className="p-3 text-sm text-muted-foreground">{i + 1}</td>
-                    <td className="p-3">
-                      <div className="flex items-center gap-grid">
-                        {productImages[p.id] ? (
-                          <img src={productImages[p.id]} alt={p.nom} className="w-10 h-10 rounded-lg object-cover" />
-                        ) : (
-                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                            <Package className="w-4 h-4 text-muted-foreground" />
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px]">
+              <thead>
+                <tr className="nova-table-header">
+                  <th className="text-left p-3">#</th>
+                  <th className="text-left p-3">Produit</th>
+                  <th className="text-left p-3 hidden md:table-cell">Code-barres</th>
+                  <th className="text-right p-3 hidden sm:table-cell">P. Achat</th>
+                  <th className="text-right p-3">P. Vente</th>
+                  <th className="text-right p-3 hidden sm:table-cell">Marge</th>
+                  <th className="text-right p-3">Stock</th>
+                  <th className="text-right p-3 hidden md:table-cell">Seuil</th>
+                  <th className="text-right p-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((p, i) => {
+                  const status = getStockStatus(p.stock, p.seuilAlerte);
+                  const margin = ((p.prixVente - p.prixAchat) / p.prixAchat * 100);
+                  return (
+                    <tr key={p.id} className="border-t border-border hover:bg-muted/30 transition-colors group">
+                      <td className="p-3 text-sm text-muted-foreground">{i + 1}</td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-2 lg:gap-3">
+                          {productImages[p.id] ? (
+                            <img src={productImages[p.id]} alt={p.nom} className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg object-cover shrink-0" />
+                          ) : (
+                            <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                              <Package className="w-4 h-4 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{p.nom}</p>
+                            <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{p.categorie}</span>
                           </div>
-                        )}
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{p.nom}</p>
-                          <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{p.categorie}</span>
                         </div>
-                      </div>
-                    </td>
-                    <td className="p-3 text-sm font-mono text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => { navigator.clipboard.writeText(p.codeBarre); toast.success('Copié !'); }}>
-                      {p.codeBarre}
-                    </td>
-                    <td className="p-3 text-sm text-right text-muted-foreground tabular-nums">{formatFCFA(p.prixAchat)}</td>
-                    <td className="p-3 text-sm text-right text-foreground font-medium tabular-nums">{formatFCFA(p.prixVente)}</td>
-                    <td className={cn('p-3 text-sm text-right font-medium tabular-nums', margin >= 20 ? 'text-emerald-400' : margin >= 10 ? 'text-amber-400' : 'text-red-400')}>
-                      {margin.toFixed(1)}%
-                    </td>
-                    <td className="p-3 text-right">
-                      <StatusBadge status={status} />
-                      <span className="ml-2 text-sm tabular-nums text-foreground">{p.stock}</span>
-                    </td>
-                    <td className="p-3 text-sm text-right text-muted-foreground tabular-nums">{p.seuilAlerte}</td>
-                    <td className="p-3 text-right">
-                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => setDeleteTarget(p)} className="p-1.5 rounded-lg hover:bg-destructive/20 transition-colors text-muted-foreground hover:text-destructive">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td className="p-3 text-sm font-mono text-muted-foreground cursor-pointer hover:text-foreground hidden md:table-cell" onClick={() => { navigator.clipboard.writeText(p.codeBarre); toast.success('Copié !'); }}>
+                        {p.codeBarre}
+                      </td>
+                      <td className="p-3 text-sm text-right text-muted-foreground tabular-nums hidden sm:table-cell">{formatFCFA(p.prixAchat)}</td>
+                      <td className="p-3 text-sm text-right text-foreground font-medium tabular-nums">{formatFCFA(p.prixVente)}</td>
+                      <td className={cn('p-3 text-sm text-right font-medium tabular-nums hidden sm:table-cell', margin >= 20 ? 'text-emerald-400' : margin >= 10 ? 'text-amber-400' : 'text-red-400')}>
+                        {margin.toFixed(1)}%
+                      </td>
+                      <td className="p-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <StatusBadge status={status} />
+                          <span className="text-sm tabular-nums text-foreground">{p.stock}</span>
+                        </div>
+                      </td>
+                      <td className="p-3 text-sm text-right text-muted-foreground tabular-nums hidden md:table-cell">{p.seuilAlerte}</td>
+                      <td className="p-3 text-right">
+                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => setDeleteTarget(p)} className="p-1.5 rounded-lg hover:bg-destructive/20 transition-colors text-muted-foreground hover:text-destructive">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
       {/* Add/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => setShowModal(false)}>
-          <div className="nova-card w-[520px] max-h-[90vh] overflow-y-auto p-6 animate-scale-in" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
+          <div className="nova-card w-full max-w-[520px] max-h-[90vh] overflow-y-auto p-5 lg:p-6 animate-scale-in" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="nova-heading text-lg text-foreground">{editingProduct ? 'Modifier le produit' : 'Ajouter un produit'}</h2>
               <button onClick={() => setShowModal(false)} className="p-2 rounded-lg hover:bg-muted transition-colors">
@@ -210,7 +214,7 @@ const ProduitsPage: React.FC = () => {
                 <label className="text-xs text-muted-foreground mb-1 block">Code-barres</label>
                 <div className="flex gap-2">
                   <input type="text" value={form.codeBarre} onChange={e => setForm({ ...form, codeBarre: e.target.value })} className="nova-input flex-1" placeholder="EAN-13" />
-                  <button onClick={() => setForm({ ...form, codeBarre: generateEAN13() })} className="nova-btn-primary px-3 text-sm">Générer</button>
+                  <button onClick={() => setForm({ ...form, codeBarre: generateEAN13() })} className="nova-btn-primary px-3 text-sm shrink-0">Générer</button>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -244,7 +248,7 @@ const ProduitsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex gap-grid mt-6">
+            <div className="flex gap-3 mt-6">
               <button onClick={() => setShowModal(false)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors">Annuler</button>
               <button onClick={handleSubmit} className="flex-1 nova-btn-primary py-2.5">{editingProduct ? 'Enregistrer' : 'Ajouter'}</button>
             </div>
@@ -254,13 +258,13 @@ const ProduitsPage: React.FC = () => {
 
       {/* Delete confirmation */}
       {deleteTarget && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => setDeleteTarget(null)}>
-          <div className="nova-card p-6 w-[400px] animate-scale-in" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setDeleteTarget(null)}>
+          <div className="nova-card p-5 lg:p-6 w-full max-w-[400px] animate-scale-in" onClick={e => e.stopPropagation()}>
             <h3 className="nova-heading text-lg text-foreground mb-2">Supprimer le produit ?</h3>
             <p className="text-sm text-muted-foreground mb-6">
               Êtes-vous sûr de vouloir supprimer <strong className="text-foreground">{deleteTarget.nom}</strong> ? Cette action est irréversible.
             </p>
-            <div className="flex gap-grid">
+            <div className="flex gap-3">
               <button onClick={() => setDeleteTarget(null)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors">Annuler</button>
               <button onClick={handleDelete} className="flex-1 py-2.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors">Supprimer</button>
             </div>

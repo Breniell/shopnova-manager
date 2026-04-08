@@ -67,27 +67,27 @@ const StockPage: React.FC = () => {
   };
 
   return (
-    <div className="p-8 animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
         <h1 className="text-headline-lg nova-heading text-foreground">Gestion du stock</h1>
-        <button onClick={() => setShowModal(true)} className="nova-btn-primary flex items-center gap-2 px-5 py-2.5">
+        <button onClick={() => setShowModal(true)} className="nova-btn-primary flex items-center gap-2 px-5 py-2.5 shrink-0">
           <Plus className="w-4 h-4" /> Entrée de stock
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-muted rounded-lg p-1 w-fit">
-        <button onClick={() => setActiveTab('etat')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all', activeTab === 'etat' ? 'bg-card text-foreground ' : 'text-muted-foreground hover:text-foreground')}>
+      <div className="flex gap-1 mb-6 bg-muted rounded-lg p-1 w-fit overflow-x-auto">
+        <button onClick={() => setActiveTab('etat')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap', activeTab === 'etat' ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground')}>
           État du stock
         </button>
-        <button onClick={() => setActiveTab('historique')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all', activeTab === 'historique' ? 'bg-card text-foreground ' : 'text-muted-foreground hover:text-foreground')}>
+        <button onClick={() => setActiveTab('historique')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap', activeTab === 'historique' ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground')}>
           Historique des mouvements
         </button>
       </div>
 
       {activeTab === 'etat' && (
         <>
-          <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
             <StatCard icon={<Package className="w-4 h-4 text-primary" />} iconBg="bg-primary/20" value={String(products.length)} label="Total produits" />
             <StatCard icon={<AlertTriangle className="w-4 h-4 text-destructive" />} iconBg="bg-destructive/20" value={String(outOfStock.length)} label="En rupture" />
             <StatCard icon={<TrendingDown className="w-4 h-4 text-amber-400" />} iconBg="bg-amber-500/20" value={String(lowStock.length)} label="Stock faible" />
@@ -95,28 +95,30 @@ const StockPage: React.FC = () => {
           </div>
 
           <div className="nova-card overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="nova-table-header">
-                  <th className="text-left p-3">Produit</th>
-                  <th className="text-left p-3">Catégorie</th>
-                  <th className="text-right p-3">Stock</th>
-                  <th className="text-right p-3">Seuil</th>
-                  <th className="text-center p-3">Statut</th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.map(p => (
-                  <tr key={p.id} className="border-t border-border hover:bg-muted/30 transition-colors">
-                    <td className="p-3 text-sm font-medium text-foreground">{p.nom}</td>
-                    <td className="p-3 text-sm text-muted-foreground">{p.categorie}</td>
-                    <td className="p-3 text-sm text-right font-medium text-foreground tabular-nums">{p.stock}</td>
-                    <td className="p-3 text-sm text-right text-muted-foreground tabular-nums">{p.seuilAlerte}</td>
-                    <td className="p-3 text-center"><StatusBadge status={getStockStatus(p.stock, p.seuilAlerte)} /></td>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[500px]">
+                <thead>
+                  <tr className="nova-table-header">
+                    <th className="text-left p-3">Produit</th>
+                    <th className="text-left p-3 hidden sm:table-cell">Catégorie</th>
+                    <th className="text-right p-3">Stock</th>
+                    <th className="text-right p-3 hidden sm:table-cell">Seuil</th>
+                    <th className="text-center p-3">Statut</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {products.map(p => (
+                    <tr key={p.id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                      <td className="p-3 text-sm font-medium text-foreground">{p.nom}</td>
+                      <td className="p-3 text-sm text-muted-foreground hidden sm:table-cell">{p.categorie}</td>
+                      <td className="p-3 text-sm text-right font-medium text-foreground tabular-nums">{p.stock}</td>
+                      <td className="p-3 text-sm text-right text-muted-foreground tabular-nums hidden sm:table-cell">{p.seuilAlerte}</td>
+                      <td className="p-3 text-center"><StatusBadge status={getStockStatus(p.stock, p.seuilAlerte)} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </>
       )}
@@ -126,48 +128,50 @@ const StockPage: React.FC = () => {
           {movements.length === 0 ? (
             <EmptyState icon={<Warehouse className="w-12 h-12" />} title="Aucun mouvement" description="Les mouvements de stock apparaîtront ici" />
           ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="nova-table-header">
-                  <th className="text-left p-3">Date</th>
-                  <th className="text-left p-3">Produit</th>
-                  <th className="text-left p-3">Type</th>
-                  <th className="text-right p-3">Qté</th>
-                  <th className="text-right p-3">Avant</th>
-                  <th className="text-right p-3">Après</th>
-                  <th className="text-left p-3">Utilisateur</th>
-                  <th className="text-left p-3">Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {movements.map(m => (
-                  <tr key={m.id} className="border-t border-border hover:bg-muted/30 transition-colors">
-                    <td className="p-3 text-sm text-muted-foreground">{formatDateShort(new Date(m.date))} {formatTime(new Date(m.date))}</td>
-                    <td className="p-3 text-sm font-medium text-foreground">{m.productName}</td>
-                    <td className="p-3">
-                      <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', m.type === 'entrée' ? 'bg-emerald-500/10 text-emerald-400' : m.type === 'vente' ? 'bg-blue-500/10 text-blue-400' : 'bg-amber-500/10 text-amber-400')}>
-                        {m.type.charAt(0).toUpperCase() + m.type.slice(1)}
-                      </span>
-                    </td>
-                    <td className={cn('p-3 text-sm text-right font-medium tabular-nums', m.quantity > 0 ? 'text-emerald-400' : 'text-red-400')}>
-                      {m.quantity > 0 ? '+' : ''}{m.quantity}
-                    </td>
-                    <td className="p-3 text-sm text-right text-muted-foreground tabular-nums">{m.stockBefore}</td>
-                    <td className="p-3 text-sm text-right text-foreground tabular-nums">{m.stockAfter}</td>
-                    <td className="p-3 text-sm text-muted-foreground">{m.userName}</td>
-                    <td className="p-3 text-sm text-muted-foreground">{m.supplier || m.notes || '—'}</td>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[700px]">
+                <thead>
+                  <tr className="nova-table-header">
+                    <th className="text-left p-3">Date</th>
+                    <th className="text-left p-3">Produit</th>
+                    <th className="text-left p-3">Type</th>
+                    <th className="text-right p-3">Qté</th>
+                    <th className="text-right p-3 hidden md:table-cell">Avant</th>
+                    <th className="text-right p-3 hidden md:table-cell">Après</th>
+                    <th className="text-left p-3 hidden sm:table-cell">Utilisateur</th>
+                    <th className="text-left p-3 hidden lg:table-cell">Notes</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {movements.map(m => (
+                    <tr key={m.id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                      <td className="p-3 text-sm text-muted-foreground whitespace-nowrap">{formatDateShort(new Date(m.date))} {formatTime(new Date(m.date))}</td>
+                      <td className="p-3 text-sm font-medium text-foreground">{m.productName}</td>
+                      <td className="p-3">
+                        <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap', m.type === 'entrée' ? 'bg-emerald-500/10 text-emerald-400' : m.type === 'vente' ? 'bg-blue-500/10 text-blue-400' : 'bg-amber-500/10 text-amber-400')}>
+                          {m.type.charAt(0).toUpperCase() + m.type.slice(1)}
+                        </span>
+                      </td>
+                      <td className={cn('p-3 text-sm text-right font-medium tabular-nums', m.quantity > 0 ? 'text-emerald-400' : 'text-red-400')}>
+                        {m.quantity > 0 ? '+' : ''}{m.quantity}
+                      </td>
+                      <td className="p-3 text-sm text-right text-muted-foreground tabular-nums hidden md:table-cell">{m.stockBefore}</td>
+                      <td className="p-3 text-sm text-right text-foreground tabular-nums hidden md:table-cell">{m.stockAfter}</td>
+                      <td className="p-3 text-sm text-muted-foreground hidden sm:table-cell">{m.userName}</td>
+                      <td className="p-3 text-sm text-muted-foreground hidden lg:table-cell">{m.supplier || m.notes || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
 
       {/* Stock entry modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => setShowModal(false)}>
-          <div className="nova-card w-[480px] p-6 animate-scale-in" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
+          <div className="nova-card w-full max-w-[480px] p-5 lg:p-6 animate-scale-in" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="nova-heading text-lg text-foreground">Entrée de stock</h2>
               <button onClick={() => setShowModal(false)} className="p-2 rounded-lg hover:bg-muted"><X className="w-5 h-5 text-muted-foreground" /></button>
@@ -197,7 +201,7 @@ const StockPage: React.FC = () => {
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} className="nova-input w-full h-20 resize-none" />
               </div>
             </div>
-            <div className="flex gap-grid mt-6">
+            <div className="flex gap-3 mt-6">
               <button onClick={() => setShowModal(false)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors">Annuler</button>
               <button onClick={handleSubmit} className="flex-1 nova-btn-primary py-2.5">Valider l'entrée</button>
             </div>
