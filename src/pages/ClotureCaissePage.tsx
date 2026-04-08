@@ -5,9 +5,10 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { NovaCard } from '@/components/ui/NovaCard';
 import { StatCard } from '@/components/ui/StatCard';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { formatFCFA, formatDateShort, formatTime, cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { Calculator, Check, DollarSign, Smartphone, History, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatPrice, formatFCFA, formatDate, formatTime, formatDateShort } from '@/utils/formatters';
 
 const denominations = [
   { label: '10 000', value: 10000, type: 'billet' },
@@ -37,7 +38,7 @@ const ClotureCaissePage: React.FC = () => {
   const todaySales = useMemo(() =>
     sales.filter(s => {
       const sd = new Date(s.date);
-      return sd >= today && (!('status' in s) || (s as any).status !== 'refunded');
+      return sd >= today && s.status !== 'refunded';
     }),
     [sales, today]
   );
@@ -163,11 +164,11 @@ const ClotureCaissePage: React.FC = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Montant compté</span>
-                    <span className="text-foreground font-medium tabular-nums" className="tabular-nums">{formatPrice($2)}</span>
+                    <span className="text-foreground font-medium tabular-nums">{formatFCFA(totalCompte)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Montant attendu</span>
-                    <span className="text-foreground font-medium tabular-nums" className="tabular-nums">{formatPrice($2)}</span>
+                    <span className="text-foreground font-medium tabular-nums">{formatFCFA(totalAttendu)}</span>
                   </div>
                   <div className="border-t border- pt-3">
                     <div className="flex justify-between items-center">

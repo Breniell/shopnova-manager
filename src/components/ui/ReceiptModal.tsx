@@ -1,9 +1,9 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { formatFCFA, formatTime, formatDateShort } from '@/lib/utils';
 import { Sale } from '@/stores/useSaleStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { X, Printer } from 'lucide-react';
+import { formatPrice, formatFCFA, formatDate, formatTime, formatDateShort } from '@/utils/formatters';
 
 interface ReceiptModalProps {
   sale: Sale | null;

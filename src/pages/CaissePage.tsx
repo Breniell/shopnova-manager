@@ -3,7 +3,7 @@ import { useProductStore, Product } from '@/stores/useProductStore';
 import { useSaleStore, PaymentMode, MobileOperator } from '@/stores/useSaleStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useStockStore } from '@/stores/useStockStore';
-import { formatPrice, formatFCFA } from '@/utils/formatters';
+import { formatPrice, formatFCFA, formatDate, formatTime } from '@/utils/formatters';
 
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ReceiptModal } from '@/components/ui/ReceiptModal';
@@ -225,7 +225,7 @@ const CaissePage: React.FC = () => {
                       </div>
                     )}
                     <div className="absolute top-1.5 right-1.5">
-                      <StatusBadge status={status} className="text-[9px] px-1.5 py-0" />
+                      <StatusBadge status={status as any} className="text-[9px] px-1.5 py-0" />
                     </div>
                   </div>
                   <div className="p-3">
@@ -298,7 +298,7 @@ const CaissePage: React.FC = () => {
                       <Plus className="w-3 h-3 text-foreground" />
                     </button>
                   </div>
-                  <span className="text-sm font-semibold text-foreground tabular-nums w-24 text-right" className="tabular-nums">{formatPrice($2)}</span>
+                  <span className="text-sm font-semibold text-foreground tabular-nums w-24 text-right">{formatPrice(item.quantity * item.prixVente)}</span>
                   <button onClick={() => removeFromCart(item.productId)}
                     className="p-1.5 rounded-lg hover:bg-destructive/20 transition-all active:scale-90 text-muted-foreground hover:text-destructive">
                     <Trash2 className="w-4 h-4" />
@@ -312,7 +312,7 @@ const CaissePage: React.FC = () => {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Sous-total</span>
-                  <span className="text-foreground tabular-nums" className="tabular-nums">{formatPrice($2)}</span>
+                  <span className="text-foreground tabular-nums">{formatPrice(subtotal)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Remise (%)</span>
@@ -331,7 +331,7 @@ const CaissePage: React.FC = () => {
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t border-">
                   <span className="text-lg font-semibold text-foreground">TOTAL</span>
-                  <span className="text-[32px] font-bold text-primary tabular-nums" className="tabular-nums">{formatPrice($2)}</span>
+                  <span className="text-[32px] font-bold text-primary tabular-nums">{formatPrice(total)}</span>
                 </div>
               </div>
 

@@ -28,6 +28,10 @@ export interface Sale {
   changeGiven?: number;
   userId: string;
   userName: string;
+  status?: SaleStatus;
+  refundedAt?: string;
+  refundReason?: string;
+  refundedBy?: string;
 }
 
 interface SaleState {

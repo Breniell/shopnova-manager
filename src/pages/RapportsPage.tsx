@@ -3,11 +3,12 @@ import { useSaleStore } from '@/stores/useSaleStore';
 import { useProductStore } from '@/stores/useProductStore';
 import { StatCard } from '@/components/ui/StatCard';
 import { NovaCard } from '@/components/ui/NovaCard';
-import { formatFCFA, getStockStatus, cn } from '@/lib/utils';
+import { getStockStatus, cn } from '@/lib/utils';
 import { DollarSign, ShoppingCart, TrendingUp, Percent, Download } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid } from 'recharts';
 import { exportCSV, exportPDF } from '@/lib/export';
 import { toast } from 'sonner';
+import { formatPrice, formatDate, formatTime } from '@/utils/formatters';
 
 type Period = 'today' | 'week' | 'month';
 
@@ -73,7 +74,7 @@ const RapportsPage: React.FC = () => {
           <div className="flex gap-1">
             <button onClick={() => {
               const headers = ['#', 'Produit', 'Quantité', 'Revenu', '% du total'];
-              const rows = top10.map((p, i) => [String(i + 1), p.nom, String(p.qty), formatFCFA(p.revenue), totalRevenue > 0 ? (p.revenue / totalRevenue * 100).toFixed(1) + '%' : '0%']);
+              const rows = top10.map((p, i) => [String(i + 1), p.nom, String(p.qty), formatPrice(p.revenue), totalRevenue > 0 ? (p.revenue / totalRevenue * 100).toFixed(1) + '%' : '0%']);
               exportCSV('rapport-ventes', headers, rows);
               toast.success('Export CSV téléchargé');
             }} className="nova-btn-secondary flex items-center gap-2 px-3 py-2 text-sm">
@@ -81,8 +82,8 @@ const RapportsPage: React.FC = () => {
             </button>
             <button onClick={() => {
               const headers = ['#', 'Produit', 'Quantité', 'Revenu', '% du total'];
-              const rows = top10.map((p, i) => [String(i + 1), p.nom, String(p.qty), formatFCFA(p.revenue), totalRevenue > 0 ? (p.revenue / totalRevenue * 100).toFixed(1) + '%' : '0%']);
-              const summary = [`<strong>${formatFCFA(totalRevenue)}</strong>Revenu total`, `<strong>${periodSales.length}</strong>Ventes`, `<strong>${formatFCFA(avgCart)}</strong>Panier moyen`, `<strong>${margin.toFixed(1)}%</strong>Marge`];
+              const rows = top10.map((p, i) => [String(i + 1), p.nom, String(p.qty), formatPrice(p.revenue), totalRevenue > 0 ? (p.revenue / totalRevenue * 100).toFixed(1) + '%' : '0%']);
+              const summary = [`<strong>${formatPrice(totalRevenue)}</strong>Revenu total`, `<strong>${periodSales.length}</strong>Ventes`, `<strong>${formatPrice(avgCart)}</strong>Panier moyen`, `<strong>${margin.toFixed(1)}%</strong>Marge`];
               exportPDF('Rapport des ventes — ShopNova', headers, rows, summary);
             }} className="nova-btn-secondary flex items-center gap-2 px-3 py-2 text-sm">
               <Download className="w-4 h-4" /> PDF
@@ -100,9 +101,9 @@ const RapportsPage: React.FC = () => {
 
       {/* KPIs */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <StatCard icon={<DollarSign className="w-4 h-4 text-primary" />} iconBg="bg-primary/20" value={formatFCFA(totalRevenue)} label="Revenu total" />
+        <StatCard icon={<DollarSign className="w-4 h-4 text-primary" />} iconBg="bg-primary/20" value={formatPrice(totalRevenue)} label="Revenu total" />
         <StatCard icon={<ShoppingCart className="w-4 h-4 text-secondary" />} iconBg="bg-secondary/20" value={String(periodSales.length)} label="Nombre de ventes" />
-        <StatCard icon={<TrendingUp className="w-4 h-4 text-amber-400" />} iconBg="bg-amber-500/20" value={formatFCFA(avgCart)} label="Panier moyen" />
+        <StatCard icon={<TrendingUp className="w-4 h-4 text-amber-400" />} iconBg="bg-amber-500/20" value={formatPrice(avgCart)} label="Panier moyen" />
         <StatCard icon={<Percent className="w-4 h-4 text-emerald-400" />} iconBg="bg-emerald-500/20" value={`${margin.toFixed(1)}%`} label="Marge bénéficiaire" />
       </div>
 
@@ -120,7 +121,7 @@ const RapportsPage: React.FC = () => {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="name" stroke="#8B8FA8" fontSize={11} />
               <YAxis stroke="#8B8FA8" fontSize={11} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-              <Tooltip contentStyle={{ backgroundColor: '#1E2236', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#F0F2FF' }} formatter={(value: number) => [formatFCFA(value), 'Total']} />
+              <Tooltip contentStyle={{ backgroundColor: '#1E2236', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#F0F2FF' }} formatter={(value: number) => [formatPrice(value), 'Total']} />
               <Area type="monotone" dataKey="total" stroke="#6C63FF" strokeWidth={2} fill="url(#rapportGrad)" />
             </AreaChart>
           </ResponsiveContainer>
@@ -146,7 +147,7 @@ const RapportsPage: React.FC = () => {
                   <td className="p-2 text-sm text-muted-foreground">{i + 1}</td>
                   <td className="p-2 text-sm text-foreground">{p.nom}</td>
                   <td className="p-2 text-sm text-right text-foreground tabular-nums">{p.qty}</td>
-                  <td className="p-2 text-sm text-right font-medium text-foreground tabular-nums">{formatFCFA(p.revenue)}</td>
+                  <td className="p-2 text-sm text-right font-medium text-foreground tabular-nums">{formatPrice(p.revenue)}</td>
                   <td className="p-2 text-sm text-right text-muted-foreground tabular-nums">{totalRevenue > 0 ? (p.revenue / totalRevenue * 100).toFixed(1) : '0'}%</td>
                 </tr>
               ))}
@@ -161,7 +162,7 @@ const RapportsPage: React.FC = () => {
                 <Pie data={paymentDist} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="value">
                   {paymentDist.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                 </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#1E2236', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#F0F2FF' }} formatter={(value: number) => [formatFCFA(value)]} />
+                <Tooltip contentStyle={{ backgroundColor: '#1E2236', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#F0F2FF' }} formatter={(value: number) => [formatPrice(value)]} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -170,7 +171,7 @@ const RapportsPage: React.FC = () => {
               <div key={i} className="flex items-center gap-2 text-sm">
                 <div className="w-3 h-3 rounded-lg" style={{ backgroundColor: d.color }} />
                 <span className="text-muted-foreground flex-1">{d.name}</span>
-                <span className="text-foreground tabular-nums" className="tabular-nums">{formatPrice($2)}</span>
+                <span className="text-foreground tabular-nums">{formatPrice(d.value)}</span>
               </div>
             ))}
           </div>

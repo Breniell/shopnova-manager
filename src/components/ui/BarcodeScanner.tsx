@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Camera } from 'lucide-react';
+import { BrowserMultiFormatReader } from '@zxing/browser';
 
 interface BarcodeScannerProps {
   open: boolean;
@@ -10,7 +11,7 @@ interface BarcodeScannerProps {
 
 export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ open, onClose, onScan }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const readerRef = useRef<any>(null);
+  const readerRef = useRef<BrowserMultiFormatReader | null>(null);
   const [manualCode, setManualCode] = useState('');
   const [detectedCode, setDetectedCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

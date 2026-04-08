@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useProductStore, Product, Category } from '@/stores/useProductStore';
 import { useSaleStore } from '@/stores/useSaleStore';
-import { formatPrice, formatFCFA } from '@/utils/formatters';
+import { formatPrice, formatFCFA, formatDate, formatTime } from '@/utils/formatters';
 
-import { StatusBadge } from '@/components/ui/StatusBadge';
+import { StatusBadge, StockStatus } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import {  getStockStatus, generateEAN13, cn } from '@/lib/utils';
 import { productImages } from '@/assets/productImages';
@@ -133,7 +133,7 @@ const ProduitsPage: React.FC = () => {
             </thead>
             <tbody>
               {filtered.map((p, i) => {
-                const status = getStockStatus(p.stock, p.seuilAlerte);
+                const status = getStockStatus(p.stock, p.seuilAlerte) as StockStatus;
                 const margin = ((p.prixVente - p.prixAchat) / p.prixAchat * 100);
                 return (
                   <tr key={p.id} className="border-t border- hover:bg-muted/30 transition-colors group">

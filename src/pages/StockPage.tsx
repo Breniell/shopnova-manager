@@ -6,9 +6,10 @@ import { NovaCard } from '@/components/ui/NovaCard';
 import { StatCard } from '@/components/ui/StatCard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { formatFCFA, formatDateShort, formatTime, getStockStatus, cn } from '@/lib/utils';
+import { getStockStatus, cn } from '@/lib/utils';
 import { Package, AlertTriangle, TrendingDown, Warehouse, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatPrice, formatFCFA, formatDate, formatTime, formatDateShort } from '@/utils/formatters';
 
 const StockPage: React.FC = () => {
   const { products, updateStock } = useProductStore();
@@ -111,7 +112,7 @@ const StockPage: React.FC = () => {
                     <td className="p-3 text-sm text-muted-foreground">{p.categorie}</td>
                     <td className="p-3 text-sm text-right font-medium text-foreground tabular-nums">{p.stock}</td>
                     <td className="p-3 text-sm text-right text-muted-foreground tabular-nums">{p.seuilAlerte}</td>
-                    <td className="p-3 text-center"><StatusBadge status={getStockStatus(p.stock, p.seuilAlerte)} /></td>
+                    <td className="p-3 text-center"><StatusBadge status={getStockStatus(p.stock, p.seuilAlerte) as any} /></td>
                   </tr>
                 ))}
               </tbody>

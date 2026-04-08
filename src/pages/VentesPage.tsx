@@ -8,10 +8,11 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { formatFCFA, formatDateShort, formatTime, cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { Receipt, Search, Eye, Printer, CalendarIcon, Download } from 'lucide-react';
 import { exportCSV, exportPDF } from '@/lib/export';
 import { toast } from 'sonner';
+import { formatPrice, formatFCFA, formatDate, formatTime, formatDateShort } from '@/utils/formatters';
 
 const VentesPage: React.FC = () => {
   const { sales } = useSaleStore();
@@ -180,16 +181,16 @@ const VentesPage: React.FC = () => {
                       <span className="text-foreground">{item.nom}</span>
                       <span className="text-muted-foreground ml-2">{item.quantity} × {formatFCFA(item.prixVente)}</span>
                     </div>
-                    <span className="font-medium text-foreground tabular-nums" className="tabular-nums">{formatPrice($2)}</span>
+                    <span className="font-medium text-foreground tabular-nums">{formatPrice(item.quantity * item.prixVente)}</span>
                   </div>
                 ))}
               </div>
             </div>
 
             <div className="border-t border- pt-4 space-y-2">
-              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Sous-total</span><span className="text-foreground tabular-nums" className="tabular-nums">{formatPrice($2)}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Sous-total</span><span className="text-foreground tabular-nums">{formatPrice(selectedSale.total)}</span></div>
               {selectedSale.discount > 0 && <div className="flex justify-between text-sm"><span className="text-muted-foreground">Remise</span><span className="text-destructive">{selectedSale.discount}%</span></div>}
-              <div className="flex justify-between text-base font-semibold"><span className="text-foreground">Total</span><span className="text-primary tabular-nums" className="tabular-nums">{formatPrice($2)}</span></div>
+              <div className="flex justify-between text-base font-semibold"><span className="text-foreground">Total</span><span className="text-primary tabular-nums">{formatPrice(selectedSale.total)}</span></div>
             </div>
 
             <button onClick={() => { setReceiptSale(selectedSale); setSelectedSale(null); }} className="nova-btn-primary w-full flex items-center justify-center gap-2 py-3">

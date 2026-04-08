@@ -7,10 +7,11 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { PaymentBadge } from '@/components/ui/PaymentBadge';
 import { useProductStore } from '@/stores/useProductStore';
 import { useSaleStore } from '@/stores/useSaleStore';
-import { formatFCFA, formatTime, getStockStatus } from '@/lib/utils';
+import { getStockStatus } from '@/lib/utils';
 import { productImages } from '@/assets/productImages';
 import { DollarSign, ShoppingCart, AlertTriangle, Package, Plus, ArrowRight } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, CartesianGrid } from 'recharts';
+import { formatPrice, formatFCFA, formatDate, formatTime } from '@/utils/formatters';
 
 const DashboardPage: React.FC = () => {
   const { products } = useProductStore();
@@ -188,11 +189,11 @@ const DashboardPage: React.FC = () => {
                         </div>
                       )}
                       <span className="text-sm font-medium text-foreground">{p.nom}</span>
-                      <StatusBadge status={getStockStatus(p.stock, p.seuilAlerte)} />
+                      <StatusBadge status={getStockStatus(p.stock, p.seuilAlerte) as any} />
                     </div>
                     <div className="flex items-center gap-4">
                       <span className="text-sm tabular-nums text-destructive">{p.stock} / {p.seuilAlerte}</span>
-                      <button className="text-xs nova-btn-primary px-3 py-1.5">Commander</button>
+                      <button className="text-xs nova-btn-primary px-3 py-1.5" onClick={() => navigate('/stock')}>Commander</button>
                     </div>
                   </div>
                 ))}
@@ -212,7 +213,7 @@ const DashboardPage: React.FC = () => {
                       <span className="text-sm text-foreground ml-3">{s.items.length} article{s.items.length > 1 ? 's' : ''}</span>
                     </div>
                     <div className="flex items-center gap-grid">
-                      <span className="text-sm font-semibold text-foreground tabular-nums" className="tabular-nums">{formatPrice($2)}</span>
+                      <span className="text-sm font-semibold text-foreground tabular-nums">{formatPrice(s.total)}</span>
                       <PaymentBadge mode={s.paymentMode} />
                     </div>
                   </div>

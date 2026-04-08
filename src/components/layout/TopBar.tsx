@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { formatDateLong } from '@/lib/utils';
+import { formatDateLong } from '@/utils/formatters';
 import { Bell } from 'lucide-react';
 
 export const TopBar: React.FC = () => {

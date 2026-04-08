@@ -5,21 +5,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export const formatFCFA = (amount: number): string => {
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' FCFA';
-}
 
-export const formatDateLong = (date: Date): string => {
-  return date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-}
-
-export const formatTime = (date: Date): string => {
-  return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-}
-
-export const formatDateShort = (date: Date): string => {
-  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
 
 export const generateEAN13 = (): string => {
   let code = '690';
