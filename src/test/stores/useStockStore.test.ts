@@ -1,15 +1,24 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useStockStore } from '@/stores/useStockStore';
+import type { StockMovement } from '@/stores/useStockStore';
 
-const INITIAL_STATE = useStockStore.getState();
+const seedMovements: Omit<StockMovement, 'id'>[] = [
+  { date: new Date(), productId: 'p1', productName: 'Bière Castel', type: 'entrée',     quantity: 48, stockBefore: 72,  stockAfter: 120, userId: '1', userName: 'Marie Nguema', supplier: 'Brasseries du Cameroun', unitPrice: 450 },
+  { date: new Date(), productId: 'p3', productName: 'Riz Thaï 5kg', type: 'entrée',     quantity: 20, stockBefore: 10,  stockAfter: 30,  userId: '1', userName: 'Marie Nguema', supplier: 'SOCOPRAL',              unitPrice: 3500 },
+  { date: new Date(), productId: 'p9', productName: 'Lait Nido',    type: 'entrée',     quantity: 15, stockBefore: 5,   stockAfter: 20,  userId: '1', userName: 'Marie Nguema', supplier: 'Nestlé Cameroun',       unitPrice: 3200 },
+  { date: new Date(), productId: 'p1', productName: 'Bière Castel', type: 'vente',      quantity: -6, stockBefore: 126, stockAfter: 120, userId: '2', userName: 'Paul Mbarga' },
+  { date: new Date(), productId: 'p16', productName: 'Samsung A05', type: 'vente',      quantity: -1, stockBefore: 5,   stockAfter: 4,   userId: '1', userName: 'Marie Nguema' },
+];
 
 beforeEach(() => {
   localStorage.clear();
-  useStockStore.setState({ ...INITIAL_STATE });
+  useStockStore.setState({
+    movements: seedMovements.map((m, i) => ({ ...m, id: `m${i + 1}` })),
+  });
 });
 
 describe('useStockStore — initial state', () => {
-  it('loads 5 default movements', () => {
+  it('starts with 5 seed movements', () => {
     expect(useStockStore.getState().movements).toHaveLength(5);
   });
 
@@ -68,15 +77,9 @@ describe('useStockStore — addMovement', () => {
 
   it('handles a sale movement (negative quantity)', () => {
     useStockStore.getState().addMovement({
-      date: new Date(),
-      productId: 'p1',
-      productName: 'Bière Castel',
-      type: 'vente',
-      quantity: -6,
-      stockBefore: 120,
-      stockAfter: 114,
-      userId: '2',
-      userName: 'Paul Mbarga',
+      date: new Date(), productId: 'p1', productName: 'Bière Castel',
+      type: 'vente', quantity: -6, stockBefore: 120, stockAfter: 114,
+      userId: '2', userName: 'Paul Mbarga',
     });
     const m = useStockStore.getState().movements[0];
     expect(m.quantity).toBe(-6);
@@ -85,16 +88,9 @@ describe('useStockStore — addMovement', () => {
 
   it('handles an adjustment movement', () => {
     useStockStore.getState().addMovement({
-      date: new Date(),
-      productId: 'p2',
-      productName: 'Eau Supermont',
-      type: 'ajustement',
-      quantity: -2,
-      stockBefore: 82,
-      stockAfter: 80,
-      userId: '1',
-      userName: 'Marie Nguema',
-      notes: 'Inventaire',
+      date: new Date(), productId: 'p2', productName: 'Eau Supermont',
+      type: 'ajustement', quantity: -2, stockBefore: 82, stockAfter: 80,
+      userId: '1', userName: 'Marie Nguema', notes: 'Inventaire',
     });
     const m = useStockStore.getState().movements[0];
     expect(m.type).toBe('ajustement');
@@ -102,10 +98,9 @@ describe('useStockStore — addMovement', () => {
   });
 
   it('can add multiple movements', () => {
+    const before = useStockStore.getState().movements.length;
     useStockStore.getState().addMovement({ ...newMovement });
     useStockStore.getState().addMovement({ ...newMovement, productId: 'p2' });
-    const movements = useStockStore.getState().movements;
-    // 2 new + 5 initial
-    expect(movements).toHaveLength(7);
+    expect(useStockStore.getState().movements).toHaveLength(before + 2);
   });
 });

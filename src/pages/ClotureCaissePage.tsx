@@ -6,7 +6,7 @@ import { NovaCard } from '@/components/ui/NovaCard';
 import { StatCard } from '@/components/ui/StatCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/lib/utils';
-import { Calculator, Check, DollarSign, Smartphone, History, AlertTriangle } from 'lucide-react';
+import { Calculator, Check, DollarSign, Smartphone, History, AlertTriangle, Wallet, Edit2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPrice, formatFCFA, formatDate, formatTime, formatDateShort } from '@/utils/formatters';
 
@@ -25,12 +25,16 @@ const denominations = [
 
 const ClotureCaissePage: React.FC = () => {
   const { sales } = useSaleStore();
-  const { clotures, fondDeCaisse, addCloture } = useCaisseStore();
+  const { clotures, fondDeCaisse, addCloture, setFondDeCaisse } = useCaisseStore();
   const { currentUser } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'cloture' | 'historique'>('cloture');
   const [counts, setCounts] = useState<Record<number, string>>({});
   const [notes, setNotes] = useState('');
   const [isDone, setIsDone] = useState(false);
+  const [editingFond, setEditingFond] = useState(false);
+  const [fondInput, setFondInput] = useState(String(fondDeCaisse));
+
+  const isGerant = currentUser?.role === 'gerant';
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -51,7 +55,14 @@ const ClotureCaissePage: React.FC = () => {
     .filter(s => s.paymentMode === 'mobile_money')
     .reduce((sum, s) => sum + s.total, 0);
 
-  const totalAttendu = totalEspeces + fondDeCaisse;
+  // CA encaissé = espèces + mobile money (revenus du jour)
+  const caEncaisse = totalEspeces + totalMobile;
+
+  // Solde journalier = CA encaissé + fond de caisse (valeur totale gérée)
+  const soldeJournalier = caEncaisse + fondDeCaisse;
+
+  // Montant attendu physiquement dans le tiroir = espèces + fond de caisse
+  const totalAttenduPhysique = totalEspeces + fondDeCaisse;
 
   const totalCompte = useMemo(() => {
     return denominations.reduce((sum, d) => {
@@ -60,10 +71,21 @@ const ClotureCaissePage: React.FC = () => {
     }, 0);
   }, [counts]);
 
-  const ecart = totalCompte - totalAttendu;
+  const ecart = totalCompte - totalAttenduPhysique;
 
   const handleCountChange = (denomination: number, value: string) => {
     setCounts(prev => ({ ...prev, [denomination]: value }));
+  };
+
+  const handleSaveFond = () => {
+    const val = parseInt(fondInput);
+    if (isNaN(val) || val < 0) {
+      toast.error('Montant invalide');
+      return;
+    }
+    setFondDeCaisse(val);
+    setEditingFond(false);
+    toast.success('Fond de caisse mis à jour');
   };
 
   const handleValidate = () => {
@@ -85,7 +107,7 @@ const ClotureCaissePage: React.FC = () => {
       userName: `${currentUser.prenom} ${currentUser.nom}`,
       totalVentesEspeces: totalEspeces,
       totalVentesMobile: totalMobile,
-      totalAttendu,
+      totalAttendu: totalAttenduPhysique,
       totalCompte,
       ecart,
       details,
@@ -116,12 +138,61 @@ const ClotureCaissePage: React.FC = () => {
 
       {activeTab === 'cloture' && (
         <>
-          {/* KPIs */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {/* KPIs — row 1 */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <StatCard icon={<DollarSign className="w-4 h-4 text-primary" />} iconBg="bg-primary/20" value={formatFCFA(totalEspeces)} label="Ventes espèces" />
             <StatCard icon={<Smartphone className="w-4 h-4 text-secondary" />} iconBg="bg-secondary/20" value={formatFCFA(totalMobile)} label="Ventes Mobile Money" />
-            <StatCard icon={<Calculator className="w-4 h-4 text-amber-400" />} iconBg="bg-amber-500/20" value={formatFCFA(fondDeCaisse)} label="Fond de caisse" />
-            <StatCard icon={<DollarSign className="w-4 h-4 text-emerald-400" />} iconBg="bg-emerald-500/20" value={formatFCFA(totalAttendu)} label="Total attendu en caisse" />
+            <StatCard
+              icon={<DollarSign className="w-4 h-4 text-emerald-400" />}
+              iconBg="bg-emerald-500/20"
+              value={formatFCFA(caEncaisse)}
+              label="Chiffre d'affaires encaissé"
+            />
+            {/* Fond de caisse — éditable par le gérant */}
+            <div className="nova-card p-4 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
+                    <Wallet className="w-4 h-4 text-amber-400" />
+                  </span>
+                  <span className="text-xs text-muted-foreground leading-tight">Fond de caisse</span>
+                </div>
+                {isGerant && !editingFond && (
+                  <button
+                    onClick={() => { setFondInput(String(fondDeCaisse)); setEditingFond(true); }}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    title="Modifier le fond de caisse"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              {editingFond ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    type="number"
+                    min="0"
+                    value={fondInput}
+                    onChange={e => setFondInput(e.target.value)}
+                    className="nova-input py-1 px-2 text-sm w-full"
+                    autoFocus
+                    onKeyDown={e => { if (e.key === 'Enter') handleSaveFond(); if (e.key === 'Escape') setEditingFond(false); }}
+                  />
+                  <button onClick={handleSaveFond} className="nova-btn-primary px-2 py-1 text-xs rounded-lg shrink-0">OK</button>
+                </div>
+              ) : (
+                <span className="text-xl font-bold text-foreground tabular-nums">{formatFCFA(fondDeCaisse)}</span>
+              )}
+            </div>
+          </div>
+
+          {/* KPI — Solde journalier (full width highlight) */}
+          <div className="mb-6 p-4 rounded-xl border border-primary/30 bg-primary/5 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Solde journalier</p>
+              <p className="text-xs text-muted-foreground/70 mt-0.5">CA encaissé + fond de caisse</p>
+            </div>
+            <span className="text-2xl font-bold text-primary tabular-nums">{formatFCFA(soldeJournalier)}</span>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
@@ -167,8 +238,8 @@ const ClotureCaissePage: React.FC = () => {
                     <span className="text-foreground font-medium tabular-nums">{formatFCFA(totalCompte)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Montant attendu</span>
-                    <span className="text-foreground font-medium tabular-nums">{formatFCFA(totalAttendu)}</span>
+                    <span className="text-muted-foreground">Espèces + fond attendus</span>
+                    <span className="text-foreground font-medium tabular-nums">{formatFCFA(totalAttenduPhysique)}</span>
                   </div>
                   <div className="border-t border-border pt-3">
                     <div className="flex justify-between items-center">
@@ -227,7 +298,7 @@ const ClotureCaissePage: React.FC = () => {
                     <th className="text-left p-3">Caissier</th>
                     <th className="text-right p-3">Espèces</th>
                     <th className="text-right p-3">Mobile</th>
-                    <th className="text-right p-3">Attendu</th>
+                    <th className="text-right p-3">CA encaissé</th>
                     <th className="text-right p-3">Compté</th>
                     <th className="text-right p-3">Écart</th>
                   </tr>
@@ -239,7 +310,7 @@ const ClotureCaissePage: React.FC = () => {
                       <td className="p-3 text-sm text-foreground">{c.userName}</td>
                       <td className="p-3 text-sm text-right text-foreground tabular-nums">{formatFCFA(c.totalVentesEspeces)}</td>
                       <td className="p-3 text-sm text-right text-foreground tabular-nums">{formatFCFA(c.totalVentesMobile)}</td>
-                      <td className="p-3 text-sm text-right text-foreground tabular-nums">{formatFCFA(c.totalAttendu)}</td>
+                      <td className="p-3 text-sm text-right font-medium text-foreground tabular-nums">{formatFCFA(c.totalVentesEspeces + c.totalVentesMobile)}</td>
                       <td className="p-3 text-sm text-right font-medium text-foreground tabular-nums">{formatFCFA(c.totalCompte)}</td>
                       <td className={cn('p-3 text-sm text-right font-medium tabular-nums', c.ecart === 0 ? 'text-emerald-400' : c.ecart > 0 ? 'text-amber-400' : 'text-destructive')}>
                         {c.ecart >= 0 ? '+' : ''}{formatFCFA(c.ecart)}

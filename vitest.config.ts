@@ -11,6 +11,11 @@ export default defineConfig({
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
   },
   resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+      "firebase/app":       path.resolve(__dirname, "./src/test/__mocks__/firebase.ts"),
+      "firebase/auth":      path.resolve(__dirname, "./src/test/__mocks__/firebase.ts"),
+      "firebase/firestore": path.resolve(__dirname, "./src/test/__mocks__/firebase.ts"),
+    },
   },
 });

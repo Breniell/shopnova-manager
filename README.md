@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# Legwan — Logiciel de caisse
 
-TODO: Document your project here
+Système de point de vente (POS) pour boutiques au Cameroun.

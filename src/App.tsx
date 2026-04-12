@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { FirebaseProvider } from "@/components/FirebaseProvider";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -18,9 +19,10 @@ import FournisseursPage from "./pages/FournisseursPage";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Sonner position="top-right" theme="dark" />
+  <FirebaseProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Sonner position="top-right" theme="dark" />
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -38,8 +40,9 @@ const App = () => (
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </FirebaseProvider>
 );
 
 export default App;

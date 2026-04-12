@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { getBoutiqueId } from '@/services/boutiqueService';
+import { fsSaveSettings } from '@/services/firestoreService';
 
-interface ShopSettings {
+export interface ShopSettings {
   nom: string;
   adresse: string;
   telephone: string;
@@ -12,26 +13,32 @@ interface ShopSettings {
   devise: string;
 }
 
+export const defaultShopSettings: ShopSettings = {
+  nom: 'Ma Boutique',
+  adresse: '',
+  telephone: '',
+  email: '',
+  nui: '',
+  enteteRecu: 'Bienvenue !',
+  piedPageRecu: 'Merci pour votre achat. À bientôt !',
+  devise: 'FCFA',
+};
+
 interface SettingsState {
   shop: ShopSettings;
+  /** Internal: called by FirebaseProvider on startup */
+  _setSettings: (settings: ShopSettings) => void;
   updateShop: (data: Partial<ShopSettings>) => void;
 }
 
-export const useSettingsStore = create<SettingsState>()(
-  persist(
-    (set) => ({
-      shop: {
-        nom: 'Legwan Store',
-        adresse: 'Rue de la Joie, Douala, Cameroun',
-        telephone: '+237 699 123 456',
-        email: 'contact@legwan.cm',
-        nui: '',
-        enteteRecu: 'Bienvenue chez Legwan !',
-        piedPageRecu: 'Merci pour votre achat ! À bientôt.',
-        devise: 'FCFA',
-      },
-      updateShop: (data) => set(state => ({ shop: { ...state.shop, ...data } })),
-    }),
-    { name: 'legwan-settings' }
-  )
-);
+export const useSettingsStore = create<SettingsState>()((set, get) => ({
+  shop: defaultShopSettings,
+
+  _setSettings: (settings) => set({ shop: settings }),
+
+  updateShop: (data) => {
+    const updated = { ...get().shop, ...data };
+    set({ shop: updated });
+    fsSaveSettings(getBoutiqueId(), updated).catch(console.error);
+  },
+}));

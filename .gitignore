@@ -12,6 +12,17 @@ dist
 dist-ssr
 *.local
 
+# Firebase credentials — NEVER commit these
+.env
+.env.local
+.env.production
+
+# Playwright demo output (videos, screenshots, reports)
+demo-results/
+demo-report/
+playwright-report/
+test-results/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

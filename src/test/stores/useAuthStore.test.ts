@@ -1,12 +1,18 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useAuthStore } from '@/stores/useAuthStore';
+import type { User } from '@/stores/useAuthStore';
 
-const INITIAL_STATE = useAuthStore.getState();
+// Seed users used across all tests (real hashes set via updateUserPin in beforeEach)
+const seedUsers: User[] = [
+  { id: '1', prenom: 'Marie',  nom: 'Nguema', role: 'gérant',   pin: 'placeholder', color: '#6C63FF' },
+  { id: '2', prenom: 'Paul',   nom: 'Mbarga', role: 'caissier', pin: 'placeholder', color: '#00D4AA' },
+  { id: '3', prenom: 'Fatou',  nom: 'Diallo', role: 'caissier', pin: 'placeholder', color: '#F59E0B' },
+];
 
 beforeEach(() => {
   localStorage.clear();
   useAuthStore.setState({
-    ...INITIAL_STATE,
+    users: seedUsers.map(u => ({ ...u })),
     currentUser: null,
     isAuthenticated: false,
     loginAttempts: {},
@@ -15,7 +21,7 @@ beforeEach(() => {
 
 // ─── Initial state ────────────────────────────────────────────────────────────
 describe('useAuthStore — initial state', () => {
-  it('loads 3 default users', () => {
+  it('starts with 3 seed users', () => {
     expect(useAuthStore.getState().users).toHaveLength(3);
   });
 
@@ -24,7 +30,7 @@ describe('useAuthStore — initial state', () => {
     expect(useAuthStore.getState().currentUser).toBeNull();
   });
 
-  it('default users have correct roles', () => {
+  it('seed users have correct roles', () => {
     const { users } = useAuthStore.getState();
     const manager = users.find(u => u.role === 'gérant');
     expect(manager).toBeDefined();
@@ -35,8 +41,6 @@ describe('useAuthStore — initial state', () => {
 
 // ─── login ────────────────────────────────────────────────────────────────────
 describe('useAuthStore — login', () => {
-  // Use updateUserPin to set known PINs before testing login,
-  // since the default user hashes are generated with unknown source values.
   beforeEach(async () => {
     await useAuthStore.getState().updateUserPin('1', '1234');
     await useAuthStore.getState().updateUserPin('2', '5678');
@@ -91,9 +95,9 @@ describe('useAuthStore — login', () => {
     for (let i = 0; i < 5; i++) {
       await useAuthStore.getState().login('1', 'wrong');
     }
-    const result = await useAuthStore.getState().login('1', '1234'); // correct PIN but locked
+    const result = await useAuthStore.getState().login('1', '1234');
     expect(result.locked).toBe(true);
-    expect(result.remainingSeconds).toBeGreaterThan(200); // ~300 seconds
+    expect(result.remainingSeconds).toBeGreaterThan(200);
   });
 });
 
@@ -113,36 +117,24 @@ describe('useAuthStore — addUser', () => {
   it('adds a new user to the list', async () => {
     const before = useAuthStore.getState().users.length;
     await useAuthStore.getState().addUser({
-      prenom: 'Nouveau',
-      nom: 'Caissier',
-      role: 'caissier',
-      pin: '9876',
-      color: '#FF0000',
+      prenom: 'Nouveau', nom: 'Caissier', role: 'caissier', pin: '9876', color: '#FF0000',
     });
     expect(useAuthStore.getState().users).toHaveLength(before + 1);
   });
 
   it('hashes the PIN (stored value != raw PIN)', async () => {
     await useAuthStore.getState().addUser({
-      prenom: 'Test',
-      nom: 'User',
-      role: 'caissier',
-      pin: '0000',
-      color: '#000000',
+      prenom: 'Test', nom: 'User', role: 'caissier', pin: '0000', color: '#000000',
     });
     const users = useAuthStore.getState().users;
     const newUser = users[users.length - 1];
     expect(newUser.pin).not.toBe('0000');
-    expect(newUser.pin).toHaveLength(64); // SHA-256 hex
+    expect(newUser.pin).toHaveLength(64);
   });
 
   it('new user can log in with their PIN', async () => {
     await useAuthStore.getState().addUser({
-      prenom: 'Test',
-      nom: 'Login',
-      role: 'caissier',
-      pin: '7777',
-      color: '#AAAAAA',
+      prenom: 'Test', nom: 'Login', role: 'caissier', pin: '7777', color: '#AAAAAA',
     });
     const newUser = useAuthStore.getState().users.find(u => u.prenom === 'Test')!;
     const result = await useAuthStore.getState().login(newUser.id, '7777');
@@ -168,10 +160,9 @@ describe('useAuthStore — updateUserPin', () => {
   });
 
   it('rejects the old PIN after update', async () => {
-    // First set a known PIN, then change it, then verify the old one is rejected
     await useAuthStore.getState().updateUserPin('1', '1234');
     await useAuthStore.getState().updateUserPin('1', '9999');
-    const result = await useAuthStore.getState().login('1', '1234'); // old PIN
+    const result = await useAuthStore.getState().login('1', '1234');
     expect(result.success).toBe(false);
   });
 });

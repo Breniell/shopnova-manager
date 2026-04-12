@@ -216,7 +216,28 @@ describe('useSaleStore — completeSale', () => {
 });
 
 // ─── refundSale ───────────────────────────────────────────────────────────────
+const SEED_SALES = [
+  {
+    id: 'refund-s1', saleNumber: 'LGW-2026-00001', date: new Date('2026-01-01'),
+    items: [{ productId: 'p1', nom: 'Bière Castel', prixVente: 600, quantity: 2 }],
+    subtotal: 1200, discount: 0, total: 1200,
+    paymentMode: 'especes' as const, amountReceived: 1200, changeGiven: 0,
+    userId: 'u1', userName: 'Manager', status: 'completed' as const,
+  },
+  {
+    id: 'refund-s2', saleNumber: 'LGW-2026-00002', date: new Date('2026-01-02'),
+    items: [{ productId: 'p2', nom: 'Eau Supermont', prixVente: 300, quantity: 1 }],
+    subtotal: 300, discount: 0, total: 300,
+    paymentMode: 'especes' as const, amountReceived: 300, changeGiven: 0,
+    userId: 'u1', userName: 'Manager', status: 'completed' as const,
+  },
+];
+
 describe('useSaleStore — refundSale', () => {
+  beforeEach(() => {
+    useSaleStore.getState()._setSales([...SEED_SALES]);
+  });
+
   it('marks a sale as refunded', () => {
     const { sales, refundSale } = useSaleStore.getState();
     const target = sales[0];

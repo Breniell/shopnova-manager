@@ -1,17 +1,25 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useProductStore } from '@/stores/useProductStore';
+import type { Product } from '@/stores/useProductStore';
 
-// Reset store to its default initial state before each test
-const INITIAL_STATE = useProductStore.getState();
+// Seed products used across tests
+const seedProducts: Product[] = [
+  { id: 'p1', nom: 'Bière Castel 33cl',   categorie: 'Boissons',      codeBarre: '6901234567890', prixAchat: 450,  prixVente: 600,  stock: 120, seuilAlerte: 24 },
+  { id: 'p2', nom: 'Eau Supermont 1.5L',  categorie: 'Boissons',      codeBarre: '6901234567906', prixAchat: 200,  prixVente: 300,  stock: 80,  seuilAlerte: 20 },
+  { id: 'p3', nom: 'Riz Thaï 5kg',        categorie: 'Alimentation',  codeBarre: '6901234567913', prixAchat: 3500, prixVente: 4500, stock: 30,  seuilAlerte: 10 },
+];
 
 beforeEach(() => {
   localStorage.clear();
-  useProductStore.setState({ ...INITIAL_STATE });
+  useProductStore.setState({
+    products: seedProducts.map(p => ({ ...p })),
+    categories: ['Alimentation', 'Boissons', 'Hygiène', 'Électronique', 'Vêtements', 'Électroménager', 'Autre'],
+  });
 });
 
 describe('useProductStore — initial state', () => {
-  it('loads 25 default products', () => {
-    expect(useProductStore.getState().products).toHaveLength(25);
+  it('starts with seed products', () => {
+    expect(useProductStore.getState().products).toHaveLength(3);
   });
 
   it('exposes 7 categories', () => {
@@ -30,26 +38,16 @@ describe('useProductStore — addProduct', () => {
   it('adds a new product', () => {
     const before = useProductStore.getState().products.length;
     useProductStore.getState().addProduct({
-      nom: 'Produit Test',
-      categorie: 'Autre',
-      codeBarre: '1234567890123',
-      prixAchat: 100,
-      prixVente: 150,
-      stock: 10,
-      seuilAlerte: 3,
+      nom: 'Produit Test', categorie: 'Autre', codeBarre: '1234567890123',
+      prixAchat: 100, prixVente: 150, stock: 10, seuilAlerte: 3,
     });
     expect(useProductStore.getState().products).toHaveLength(before + 1);
   });
 
   it('assigns a unique id starting with "p"', () => {
     useProductStore.getState().addProduct({
-      nom: 'Produit Test',
-      categorie: 'Autre',
-      codeBarre: '1234567890123',
-      prixAchat: 100,
-      prixVente: 150,
-      stock: 10,
-      seuilAlerte: 3,
+      nom: 'Produit Test', categorie: 'Autre', codeBarre: '1234567890123',
+      prixAchat: 100, prixVente: 150, stock: 10, seuilAlerte: 3,
     });
     const products = useProductStore.getState().products;
     const newProduct = products[products.length - 1];
@@ -58,17 +56,10 @@ describe('useProductStore — addProduct', () => {
 
   it('stores the correct product data', () => {
     useProductStore.getState().addProduct({
-      nom: 'Jus Mangue',
-      categorie: 'Boissons',
-      codeBarre: '6901111111111',
-      prixAchat: 400,
-      prixVente: 600,
-      stock: 50,
-      seuilAlerte: 10,
-      description: 'Délicieux jus',
+      nom: 'Jus Mangue', categorie: 'Boissons', codeBarre: '6901111111111',
+      prixAchat: 400, prixVente: 600, stock: 50, seuilAlerte: 10, description: 'Délicieux jus',
     });
-    const products = useProductStore.getState().products;
-    const p = products.find(pr => pr.nom === 'Jus Mangue')!;
+    const p = useProductStore.getState().products.find(pr => pr.nom === 'Jus Mangue')!;
     expect(p.prixAchat).toBe(400);
     expect(p.prixVente).toBe(600);
     expect(p.description).toBe('Délicieux jus');
@@ -83,15 +74,13 @@ describe('useProductStore — updateProduct', () => {
     const updated = useProductStore.getState().products.find(p => p.id === target.id)!;
     expect(updated.prixVente).toBe(9999);
     expect(updated.stock).toBe(77);
-    // Untouched fields remain
     expect(updated.nom).toBe(target.nom);
   });
 
   it('does not affect other products', () => {
     const { updateProduct, products } = useProductStore.getState();
-    const target = products[0];
     const other = products[1];
-    updateProduct(target.id, { prixVente: 9999 });
+    updateProduct(products[0].id, { prixVente: 9999 });
     const updatedOther = useProductStore.getState().products.find(p => p.id === other.id)!;
     expect(updatedOther.prixVente).toBe(other.prixVente);
   });
@@ -122,19 +111,17 @@ describe('useProductStore — updateStock', () => {
   it('increases stock when quantity is positive', () => {
     const { updateStock, products } = useProductStore.getState();
     const target = products[0];
-    const initialStock = target.stock;
     updateStock(target.id, 10);
     const updated = useProductStore.getState().products.find(p => p.id === target.id)!;
-    expect(updated.stock).toBe(initialStock + 10);
+    expect(updated.stock).toBe(target.stock + 10);
   });
 
   it('decreases stock when quantity is negative', () => {
     const { updateStock, products } = useProductStore.getState();
     const target = products.find(p => p.stock >= 5)!;
-    const initialStock = target.stock;
     updateStock(target.id, -5);
     const updated = useProductStore.getState().products.find(p => p.id === target.id)!;
-    expect(updated.stock).toBe(initialStock - 5);
+    expect(updated.stock).toBe(target.stock - 5);
   });
 });
 
