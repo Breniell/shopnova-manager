@@ -65,9 +65,18 @@ function createWindow() {
   win.webContents.on('will-navigate', (event, url) => {
     const fileUrl = 'file://';
     const devUrl  = 'http://localhost:8080';
+    // Allow internal file:// navigation and dev server; open everything else externally
     if (!url.startsWith(fileUrl) && !url.startsWith(devUrl)) {
       event.preventDefault();
       shell.openExternal(url);
+    }
+  });
+
+  // Block any renderer-initiated navigation that would leave the app shell.
+  // With HashRouter this should never fire, but kept as safety net.
+  win.webContents.on('did-navigate', (_event, url) => {
+    if (!url.startsWith('file://') && !url.startsWith('http://localhost')) {
+      win.loadFile(path.join(__dirname, '../dist/index.html'));
     }
   });
 
