@@ -2,6 +2,8 @@
   "name": "legwan-manager",
   "private": true,
   "version": "1.0.0",
+  "description": "Logiciel de gestion commerciale pour boutiques (POS, stocks, rapports)",
+  "author": "Legwan <support@legwan.cm>",
   "main": "electron/main.js",
   "type": "module",
   "scripts": {
@@ -16,7 +18,8 @@
     "demo:merge": "node scripts/merge-demo-videos.js",
     "electron:dev": "concurrently \"vite --port 8080\" \"wait-on http://localhost:8080 && electron electron/main.js\"",
     "electron:build": "vite build --mode electron",
-    "electron:dist": "npm run electron:build && electron-builder"
+    "electron:dist": "npm run electron:build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false WIN_CSC_LINK= electron-builder",
+    "electron:dist:x64": "npm run electron:build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false WIN_CSC_LINK= electron-builder --win nsis --x64"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -85,6 +88,7 @@
     "@vitejs/plugin-react-swc": "^3.11.0",
     "autoprefixer": "^10.4.21",
     "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
     "electron": "^41.2.0",
     "electron-builder": "^26.8.1",
     "eslint": "^9.32.0",

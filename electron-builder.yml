@@ -1,9 +1,13 @@
 # Legwan — electron-builder configuration
-# Produces a Windows NSIS installer (.exe) with a proper installation wizard.
+# Produces a Windows NSIS installer (.exe) and a portable ZIP.
 
 appId: cm.legwan.manager
 productName: Legwan
 copyright: "© 2026 Legwan. Tous droits réservés."
+
+# ── Code signing — disabled (no certificate yet) ───────────────────────────────
+# Also set CSC_IDENTITY_AUTO_DISCOVERY=false in the build script.
+forceCodeSigning: false
 
 # ── Files to include in the app package ────────────────────────────────────────
 directories:
@@ -24,22 +28,28 @@ win:
   target:
     - target: nsis
       arch:
-        - x64   # 64-bit (Windows 10/11)
-        - ia32  # 32-bit (older Windows 7/8)
+        - x64
+        - ia32
+    - target: zip
+      arch:
+        - x64
   icon: build/icon.ico
   requestedExecutionLevel: asInvoker
+  # Disable rcedit resource editing — avoids downloading winCodeSign which
+  # fails on Windows without Developer Mode (macOS symlinks in the archive).
+  # The icon is still embedded in the NSIS installer itself.
+  signAndEditExecutable: false
 
 # ── NSIS installer wizard ──────────────────────────────────────────────────────
 nsis:
-  # Show the full installation wizard (not one-click)
   oneClick: false
   allowElevation: true
   allowToChangeInstallationDirectory: true
   perMachine: false
 
-  # French interface
+  # French interface (fr-FR = BCP 47, language code 1036 = fr)
   installerLanguages:
-    - French
+    - fr-FR
   language: "1036"
 
   # Shortcuts
@@ -54,8 +64,6 @@ nsis:
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
   installerHeaderIcon: build/icon.ico
-
-  # Installer finish page
   runAfterFinish: true
 
 # ── Auto-update (GitHub Releases) ─────────────────────────────────────────────
