@@ -4,6 +4,8 @@ import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(({ mode }) => ({
+  // electron build requires relative paths (file:// protocol)
+  base: mode === 'electron' ? './' : '/',
   server: {
     host: "::",
     port: 8080,
@@ -13,7 +15,8 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    VitePWA({
+    // PWA is not compatible with Electron (no service workers in file:// context)
+    mode !== 'electron' && VitePWA({
       registerType: "autoUpdate",
       devOptions: { enabled: false },
       workbox: {
@@ -29,7 +32,7 @@ export default defineConfig(({ mode }) => ({
       },
       manifest: false,
     }),
-  ].filter(Boolean),
+  ].filter(Boolean) as import('vite').PluginOption[],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

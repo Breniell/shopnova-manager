@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { FirebaseProvider } from "@/components/FirebaseProvider";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
+import { PolicyGate } from "@/components/PolicyGate";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import CaissePage from "./pages/CaissePage";
@@ -19,6 +20,7 @@ import FournisseursPage from "./pages/FournisseursPage";
 const queryClient = new QueryClient();
 
 const App = () => (
+  <PolicyGate>
   <FirebaseProvider>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -43,6 +45,7 @@ const App = () => (
       </TooltipProvider>
     </QueryClientProvider>
   </FirebaseProvider>
+  </PolicyGate>
 );
 
 export default App;

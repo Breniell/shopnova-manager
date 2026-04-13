@@ -1,0 +1,67 @@
+# Legwan — electron-builder configuration
+# Produces a Windows NSIS installer (.exe) with a proper installation wizard.
+
+appId: cm.legwan.manager
+productName: Legwan
+copyright: "© 2026 Legwan. Tous droits réservés."
+
+# ── Files to include in the app package ────────────────────────────────────────
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**/*
+  - electron/**/*
+  - package.json
+  - "!node_modules/**/*"
+  - "!src/**/*"
+  - "!tests/**/*"
+  - "!*.test.*"
+
+# ── Windows configuration ──────────────────────────────────────────────────────
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64   # 64-bit (Windows 10/11)
+        - ia32  # 32-bit (older Windows 7/8)
+  icon: build/icon.ico
+  requestedExecutionLevel: asInvoker
+
+# ── NSIS installer wizard ──────────────────────────────────────────────────────
+nsis:
+  # Show the full installation wizard (not one-click)
+  oneClick: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+
+  # French interface
+  installerLanguages:
+    - French
+  language: "1036"
+
+  # Shortcuts
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Legwan
+
+  # License shown INSIDE the NSIS wizard before installation
+  license: build/LICENSE.rtf
+
+  # Installer branding
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
+
+  # Installer finish page
+  runAfterFinish: true
+
+# ── Auto-update (GitHub Releases) ─────────────────────────────────────────────
+# Uncomment once the first release is published on GitHub
+# publish:
+#   provider: github
+#   owner: Breniell
+#   repo: shopnova-manager
+#   releaseType: release
