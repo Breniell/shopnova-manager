@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { getBoutiqueId } from '@/services/boutiqueService';
+import { fsSaveCloture } from '@/services/firestoreService';
 
 export interface ClotureCaisse {
   id: string;
@@ -18,21 +19,26 @@ export interface ClotureCaisse {
 interface CaisseState {
   clotures: ClotureCaisse[];
   fondDeCaisse: number;
+
+  /** Internal: called by FirebaseProvider on startup */
+  _setClotures: (clotures: ClotureCaisse[]) => void;
+
   addCloture: (cloture: Omit<ClotureCaisse, 'id'>) => void;
   setFondDeCaisse: (amount: number) => void;
 }
 
-export const useCaisseStore = create<CaisseState>()(
-  persist(
-    (set) => ({
-      clotures: [],
-      fondDeCaisse: 10000,
-      addCloture: (cloture) => {
-        const id = 'cl' + Date.now();
-        set(state => ({ clotures: [{ ...cloture, id }, ...state.clotures] }));
-      },
-      setFondDeCaisse: (amount) => set({ fondDeCaisse: amount }),
-    }),
-    { name: 'legwan-clotures' }
-  )
-);
+export const useCaisseStore = create<CaisseState>()((set) => ({
+  clotures: [],
+  fondDeCaisse: 10000,
+
+  _setClotures: (clotures) => set({ clotures }),
+
+  addCloture: (cloture) => {
+    const id = 'cl' + Date.now();
+    const newCloture: ClotureCaisse = { ...cloture, id };
+    set(state => ({ clotures: [newCloture, ...state.clotures] }));
+    fsSaveCloture(getBoutiqueId(), newCloture).catch(console.error);
+  },
+
+  setFondDeCaisse: (amount) => set({ fondDeCaisse: amount }),
+}));

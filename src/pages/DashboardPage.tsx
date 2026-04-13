@@ -11,7 +11,7 @@ import { getStockStatus } from '@/lib/utils';
 import { productImages } from '@/assets/productImages';
 import { DollarSign, ShoppingCart, AlertTriangle, Package, Plus, ArrowRight } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, CartesianGrid } from 'recharts';
-import { formatPrice, formatFCFA, formatDate, formatTime } from '@/utils/formatters';
+import { formatPrice, formatFCFA, formatTime } from '@/utils/formatters';
 
 const DashboardPage: React.FC = () => {
   const { products } = useProductStore();
@@ -21,7 +21,10 @@ const DashboardPage: React.FC = () => {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  const todaySales = sales.filter(s => new Date(s.date) >= today);
+  // Exclude refunded sales from all calculations
+  const activeSales = sales.filter(s => s.status !== 'refunded');
+
+  const todaySales = activeSales.filter(s => new Date(s.date) >= today);
   const todayRevenue = todaySales.reduce((sum, s) => sum + s.total, 0);
   const outOfStock = products.filter(p => p.stock <= 0);
   const lowStock = products.filter(p => p.stock > 0 && p.stock <= p.seuilAlerte);
@@ -31,7 +34,7 @@ const DashboardPage: React.FC = () => {
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayEnd = new Date(today);
-  const yesterdaySales = sales.filter(s => {
+  const yesterdaySales = activeSales.filter(s => {
     const sd = new Date(s.date);
     return sd >= yesterday && sd < yesterdayEnd;
   });
@@ -52,7 +55,7 @@ const DashboardPage: React.FC = () => {
     const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const dayEnd = new Date(dayStart);
     dayEnd.setDate(dayEnd.getDate() + 1);
-    const daySales = sales.filter(s => {
+    const daySales = activeSales.filter(s => {
       const sd = new Date(s.date);
       return sd >= dayStart && sd < dayEnd;
     });
@@ -62,9 +65,9 @@ const DashboardPage: React.FC = () => {
     };
   });
 
-  // Top 5 products
+  // Top 5 products (exclude refunded)
   const productSalesMap = new Map<string, { nom: string; qty: number }>();
-  sales.forEach(s => {
+  activeSales.forEach(s => {
     s.items.forEach(item => {
       const existing = productSalesMap.get(item.productId);
       if (existing) {
@@ -78,7 +81,7 @@ const DashboardPage: React.FC = () => {
     .sort((a, b) => b.qty - a.qty)
     .slice(0, 5);
 
-  const lastSales = sales.slice(0, 5);
+  const lastSales = activeSales.slice(0, 5);
   const alertProducts = [...outOfStock, ...lowStock].slice(0, 5);
 
   return (

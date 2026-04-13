@@ -30,6 +30,15 @@ export function getBoutiqueId(): string {
  * Initializes Firebase Anonymous Auth and returns the permanent boutique ID.
  * Safe to call multiple times — subsequent calls are no-ops.
  */
+/**
+ * Returns a short human-readable code derived from the boutiqueId.
+ * Used for boutique recovery and identification.
+ * Format: first 8 characters uppercased (e.g. "A1B2C3D4").
+ */
+export function getBoutiqueCode(boutiqueId: string): string {
+  return boutiqueId.replace(/-/g, '').slice(0, 8).toUpperCase();
+}
+
 export async function initBoutique(): Promise<string> {
   if (_boutiqueId) return _boutiqueId;
 

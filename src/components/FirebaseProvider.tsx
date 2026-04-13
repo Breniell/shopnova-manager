@@ -10,8 +10,8 @@
  *   6. Renders children (the app)
  *
  * Shows a branded splash screen while initializing.
- * If Firebase is not configured (missing env vars), skips cloud sync
- * and runs in pure-local mode with localStorage via Zustand persist.
+ * If Firebase is not configured (missing env vars), runs in pure-local mode:
+ *   - Seeds a default gérant user (PIN 1234) so the app is usable without Firebase.
  */
 import React, { useState, useEffect } from 'react';
 import { initBoutique } from '@/services/boutiqueService';
@@ -24,11 +24,16 @@ import {
   fsLoadProducts,
   fsLoadSales,
   fsLoadMovements,
+  fsLoadSuppliers,
+  fsLoadClotures,
+  fsLoadSaleCounter,
 } from '@/services/firestoreService';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useProductStore } from '@/stores/useProductStore';
 import { useSaleStore } from '@/stores/useSaleStore';
 import { useStockStore } from '@/stores/useStockStore';
+import { useSupplierStore } from '@/stores/useSupplierStore';
+import { useCaisseStore } from '@/stores/useCaisseStore';
 import { useSettingsStore, defaultShopSettings, type ShopSettings } from '@/stores/useSettingsStore';
 import { hashPin } from '@/lib/crypto';
 import type { User } from '@/stores/useAuthStore';
@@ -47,6 +52,16 @@ async function buildDefaultUsers(): Promise<User[]> {
       color: '#A93200',
     },
   ];
+}
+
+// ─── Seed local demo data (no Firebase) ──────────────────────────────────────
+
+async function seedLocalMode(): Promise<void> {
+  // Only seed if no users are loaded yet
+  if (useAuthStore.getState().users.length > 0) return;
+  const defaultUsers = await buildDefaultUsers();
+  useAuthStore.getState()._setUsers(defaultUsers);
+  useSettingsStore.getState()._setSettings(defaultShopSettings);
 }
 
 // ─── Splash screen ─────────────────────────────────────────────────────────────
@@ -129,33 +144,43 @@ async function bootstrapFirebase(): Promise<void> {
     // Populate stores with the seeded defaults
     useAuthStore.getState()._setUsers(defaultUsers);
     useSettingsStore.getState()._setSettings(defaultShopSettings);
-    // Products and sales start empty for a new boutique
+    // Products, sales, suppliers, clotures start empty for a new boutique
     return;
   }
 
   // 4. Load all data from Firestore (uses IndexedDB cache offline — instant)
-  const [settings, users, products, sales, movements] = await Promise.all([
+  const [settings, users, products, sales, movements, suppliers, clotures, saleCounter] = await Promise.all([
     fsLoadSettings(boutiqueId),
     fsLoadUsers(boutiqueId),
     fsLoadProducts(boutiqueId),
     fsLoadSales(boutiqueId),
     fsLoadMovements(boutiqueId),
+    fsLoadSuppliers(boutiqueId),
+    fsLoadClotures(boutiqueId),
+    fsLoadSaleCounter(boutiqueId),
   ]);
 
   // 5. Populate Zustand stores
-  if (settings) useSettingsStore.getState()._setSettings(settings as ShopSettings);
-  if (users.length)     useAuthStore.getState()._setUsers(users);
-  if (products.length)  useProductStore.getState()._setProducts(products);
-  if (sales.length)     useSaleStore.getState()._setSales(sales);
-  if (movements.length) useStockStore.getState()._setMovements(movements);
+  if (settings)          useSettingsStore.getState()._setSettings(settings as ShopSettings);
+  if (users.length)      useAuthStore.getState()._setUsers(users);
+  if (products.length)   useProductStore.getState()._setProducts(products);
+  if (sales.length)      useSaleStore.getState()._setSales(sales);
+  if (movements.length)  useStockStore.getState()._setMovements(movements);
+  if (suppliers.length)  useSupplierStore.getState()._setSuppliers(suppliers);
+  if (clotures.length)   useCaisseStore.getState()._setClotures(clotures);
+  if (saleCounter > 0)   useSaleStore.getState()._setSaleCounter(saleCounter);
 }
 
 export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [ready, setReady] = useState(!isFirebaseConfigured); // if no Firebase, show immediately
+  const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isFirebaseConfigured) return; // pure-local mode, nothing to do
+    if (!isFirebaseConfigured) {
+      // Pure-local mode: seed a default gérant user so the app is usable
+      seedLocalMode().then(() => setReady(true));
+      return;
+    }
 
     bootstrapFirebase()
       .then(() => setReady(true))

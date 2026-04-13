@@ -1,19 +1,28 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useSupplierStore } from '@/stores/useSupplierStore';
 
-const INITIAL_STATE = useSupplierStore.getState();
+const SEED_SUPPLIERS = [
+  { id: 'sup1', nom: 'Brasseries du Cameroun', telephone: '+237 699 111 222', adresse: 'Douala, Zone Industrielle' },
+  { id: 'sup2', nom: 'SOCOPRAL', telephone: '+237 699 333 444', adresse: 'Douala, Bassa' },
+  { id: 'sup3', nom: 'Nestlé Cameroun', telephone: '+237 699 555 666', adresse: 'Douala, Bonabéri' },
+];
 
 beforeEach(() => {
-  localStorage.clear();
-  useSupplierStore.setState({ ...INITIAL_STATE });
+  useSupplierStore.setState({ suppliers: [] });
 });
 
 describe('useSupplierStore — initial state', () => {
-  it('loads 3 default suppliers', () => {
+  it('starts with an empty suppliers list', () => {
+    expect(useSupplierStore.getState().suppliers).toHaveLength(0);
+  });
+
+  it('can be seeded via _setSuppliers', () => {
+    useSupplierStore.getState()._setSuppliers(SEED_SUPPLIERS);
     expect(useSupplierStore.getState().suppliers).toHaveLength(3);
   });
 
-  it('includes Brasseries du Cameroun', () => {
+  it('includes Brasseries du Cameroun after seeding', () => {
+    useSupplierStore.getState()._setSuppliers(SEED_SUPPLIERS);
     const found = useSupplierStore.getState().suppliers.find(s => s.nom.includes('Brasseries'));
     expect(found).toBeDefined();
   });
@@ -53,6 +62,10 @@ describe('useSupplierStore — addSupplier', () => {
 });
 
 describe('useSupplierStore — updateSupplier', () => {
+  beforeEach(() => {
+    useSupplierStore.getState()._setSuppliers([...SEED_SUPPLIERS]);
+  });
+
   it('updates specified fields', () => {
     const { suppliers, updateSupplier } = useSupplierStore.getState();
     const target = suppliers[0];
@@ -78,6 +91,10 @@ describe('useSupplierStore — updateSupplier', () => {
 });
 
 describe('useSupplierStore — deleteSupplier', () => {
+  beforeEach(() => {
+    useSupplierStore.getState()._setSuppliers([...SEED_SUPPLIERS]);
+  });
+
   it('removes the supplier from the list', () => {
     const { suppliers, deleteSupplier } = useSupplierStore.getState();
     const target = suppliers[0];

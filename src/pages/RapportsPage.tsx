@@ -8,7 +8,7 @@ import { DollarSign, ShoppingCart, TrendingUp, Percent, Download } from 'lucide-
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid } from 'recharts';
 import { exportCSV, exportPDF } from '@/lib/export';
 import { toast } from 'sonner';
-import { formatPrice, formatDate, formatTime } from '@/utils/formatters';
+import { formatPrice } from '@/utils/formatters';
 
 type Period = 'today' | 'week' | 'month';
 
@@ -26,7 +26,8 @@ const RapportsPage: React.FC = () => {
     return d;
   }, [period]);
 
-  const periodSales = sales.filter(s => new Date(s.date) >= periodStart);
+  const activeSales = sales.filter(s => s.status !== 'refunded');
+  const periodSales = activeSales.filter(s => new Date(s.date) >= periodStart);
   const totalRevenue = periodSales.reduce((sum, s) => sum + s.total, 0);
   const avgCart = periodSales.length > 0 ? Math.round(totalRevenue / periodSales.length) : 0;
   const totalCost = periodSales.reduce((sum, s) => sum + s.items.reduce((isum, item) => {
@@ -42,7 +43,7 @@ const RapportsPage: React.FC = () => {
     d.setDate(d.getDate() - (days - 1 - i));
     const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const dayEnd = new Date(dayStart); dayEnd.setDate(dayEnd.getDate() + 1);
-    const daySales = sales.filter(s => { const sd = new Date(s.date); return sd >= dayStart && sd < dayEnd; });
+    const daySales = activeSales.filter(s => { const sd = new Date(s.date); return sd >= dayStart && sd < dayEnd; });
     return { name: d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }), total: daySales.reduce((sum, s) => sum + s.total, 0) };
   });
 
@@ -63,7 +64,7 @@ const RapportsPage: React.FC = () => {
   ].filter(d => d.value > 0);
 
   // Critical stock
-  const criticalProducts = products.filter(p => getStockStatus(p.stock, p.seuilAlerte) !== 'ok')
+  const criticalProducts = products.filter(p => getStockStatus(p.stock, p.seuilAlerte) !== 'healthy')
     .map(p => ({ ...p, recommended: Math.max(0, p.seuilAlerte * 3 - p.stock) }));
 
   return (

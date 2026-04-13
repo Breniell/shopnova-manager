@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { getBoutiqueId } from '@/services/boutiqueService';
-import { fsSaveSale, fsUpdateSale } from '@/services/firestoreService';
+import { fsSaveSale, fsUpdateSale, fsSaveSaleCounter } from '@/services/firestoreService';
 
 export type SaleStatus = 'completed' | 'refunded';
 export type PaymentMode = 'especes' | 'mobile_money';
@@ -38,9 +38,11 @@ interface SaleState {
   sales: Sale[];
   cart: CartItem[];
   discount: number;
+  saleCounter: number;
 
   /** Internal: called by FirebaseProvider on startup */
   _setSales: (sales: Sale[]) => void;
+  _setSaleCounter: (counter: number) => void;
 
   addToCart: (item: Omit<CartItem, 'quantity'>) => void;
   removeFromCart: (productId: string) => void;
@@ -59,8 +61,10 @@ export const useSaleStore = create<SaleState>()((set, get) => ({
   sales: [],
   cart: [],
   discount: 0,
+  saleCounter: 0,
 
   _setSales: (sales) => set({ sales }),
+  _setSaleCounter: (counter) => set({ saleCounter: counter }),
 
   addToCart: (item) => {
     const existing = get().cart.find(c => c.productId === item.productId);
@@ -96,24 +100,56 @@ export const useSaleStore = create<SaleState>()((set, get) => ({
     return Math.round(subtotal * (1 - get().discount / 100));
   },
 
-  refundSale: (saleId, reason, _userId, userName) => {
+  refundSale: (saleId, reason, userId, userName) => {
+    const sale = get().sales.find(s => s.id === saleId);
+    if (!sale || sale.status === 'refunded') return;
+
+    const now = new Date().toISOString();
     const update = {
       status: 'refunded' as const,
-      refundedAt: new Date().toISOString(),
+      refundedAt: now,
       refundReason: reason,
       refundedBy: userName,
     };
+
     set(state => ({
       sales: state.sales.map(s => s.id === saleId ? { ...s, ...update } : s),
     }));
-    fsUpdateSale(getBoutiqueId(), saleId, update).catch(console.error);
+
+    // Reverse stock for each item in the cancelled sale
+    const bid = getBoutiqueId();
+    sale.items.forEach(item => {
+      // Dynamically import stores to avoid circular imports at module load time
+      import('@/stores/useProductStore').then(({ useProductStore }) => {
+        const product = useProductStore.getState().products.find(p => p.id === item.productId);
+        const stockBefore = product?.stock ?? 0;
+        useProductStore.getState().updateStock(item.productId, item.quantity);
+
+        import('@/stores/useStockStore').then(({ useStockStore }) => {
+          useStockStore.getState().addMovement({
+            date: new Date(),
+            productId: item.productId,
+            productName: item.nom,
+            type: 'entrée',
+            quantity: item.quantity,
+            stockBefore,
+            stockAfter: stockBefore + item.quantity,
+            userId,
+            userName,
+          });
+        });
+      });
+    });
+
+    fsUpdateSale(bid, saleId, update).catch(console.error);
   },
 
   completeSale: (saleData) => {
     const state = get();
+    const newCounter = state.saleCounter + 1;
     const sale: Sale = {
       id: 's' + Date.now(),
-      saleNumber: `LGW-${new Date().getFullYear()}-${String(state.sales.length + 1).padStart(5, '0')}`,
+      saleNumber: `LGW-${new Date().getFullYear()}-${String(newCounter).padStart(5, '0')}`,
       date: new Date(),
       items: [...state.cart],
       subtotal: state.getCartSubtotal(),
@@ -121,8 +157,10 @@ export const useSaleStore = create<SaleState>()((set, get) => ({
       total: state.getCartTotal(),
       ...saleData,
     };
-    set(state => ({ sales: [sale, ...state.sales], cart: [], discount: 0 }));
-    fsSaveSale(getBoutiqueId(), sale).catch(console.error);
+    set(state => ({ sales: [sale, ...state.sales], cart: [], discount: 0, saleCounter: newCounter }));
+    const bid = getBoutiqueId();
+    fsSaveSale(bid, sale).catch(console.error);
+    fsSaveSaleCounter(bid, newCounter).catch(console.error);
     return sale;
   },
 }));

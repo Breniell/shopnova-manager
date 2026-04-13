@@ -31,6 +31,8 @@ import type { Product } from '@/stores/useProductStore';
 import type { Sale } from '@/stores/useSaleStore';
 import type { StockMovement } from '@/stores/useStockStore';
 import type { User } from '@/stores/useAuthStore';
+import type { Supplier } from '@/stores/useSupplierStore';
+import type { ClotureCaisse } from '@/stores/useCaisseStore';
 
 // ─── Guard ──────────────────────────────────────────────────────────────────
 // All public functions are no-ops when Firebase is not configured.
@@ -38,16 +40,21 @@ import type { User } from '@/stores/useAuthStore';
 
 // ─── Collection paths ────────────────────────────────────────────────────────
 const p = {
-  boutique:   (bid: string) => `boutiques/${bid}`,
-  settings:   (bid: string) => `boutiques/${bid}/settings/main`,
-  users:      (bid: string) => `boutiques/${bid}/users`,
-  user:       (bid: string, uid: string) => `boutiques/${bid}/users/${uid}`,
-  products:   (bid: string) => `boutiques/${bid}/products`,
-  product:    (bid: string, pid: string) => `boutiques/${bid}/products/${pid}`,
-  sales:      (bid: string) => `boutiques/${bid}/sales`,
-  sale:       (bid: string, sid: string) => `boutiques/${bid}/sales/${sid}`,
-  movements:  (bid: string) => `boutiques/${bid}/stock_movements`,
-  movement:   (bid: string, mid: string) => `boutiques/${bid}/stock_movements/${mid}`,
+  boutique:      (bid: string) => `boutiques/${bid}`,
+  settings:      (bid: string) => `boutiques/${bid}/settings/main`,
+  users:         (bid: string) => `boutiques/${bid}/users`,
+  user:          (bid: string, uid: string) => `boutiques/${bid}/users/${uid}`,
+  products:      (bid: string) => `boutiques/${bid}/products`,
+  product:       (bid: string, pid: string) => `boutiques/${bid}/products/${pid}`,
+  sales:         (bid: string) => `boutiques/${bid}/sales`,
+  sale:          (bid: string, sid: string) => `boutiques/${bid}/sales/${sid}`,
+  movements:     (bid: string) => `boutiques/${bid}/stock_movements`,
+  movement:      (bid: string, mid: string) => `boutiques/${bid}/stock_movements/${mid}`,
+  suppliers:     (bid: string) => `boutiques/${bid}/suppliers`,
+  supplier:      (bid: string, sid: string) => `boutiques/${bid}/suppliers/${sid}`,
+  clotures:      (bid: string) => `boutiques/${bid}/clotures`,
+  cloture:       (bid: string, cid: string) => `boutiques/${bid}/clotures/${cid}`,
+  saleCounter:   (bid: string) => `boutiques/${bid}/meta/saleCounter`,
 };
 
 // ─── Timestamp helpers ───────────────────────────────────────────────────────
@@ -157,6 +164,52 @@ export async function fsSaveMovement(bid: string, movement: StockMovement): Prom
     ...data,
     date: toTimestamp(movement.date),
   });
+}
+
+// ─── Suppliers ───────────────────────────────────────────────────────────────
+export async function fsLoadSuppliers(bid: string): Promise<Supplier[]> {
+  if (!isFirebaseConfigured) return [];
+  const snap = await getDocs(collection(db, p.suppliers(bid)));
+  return snap.docs.map(d => ({ ...(d.data() as Supplier), id: d.id }));
+}
+
+export async function fsSaveSupplier(bid: string, supplier: Supplier): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  const { id, ...data } = supplier;
+  await setDoc(doc(db, p.supplier(bid, id)), data);
+}
+
+export async function fsDeleteSupplier(bid: string, supplierId: string): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  await deleteDoc(doc(db, p.supplier(bid, supplierId)));
+}
+
+// ─── Clotures ────────────────────────────────────────────────────────────────
+export async function fsLoadClotures(bid: string): Promise<ClotureCaisse[]> {
+  if (!isFirebaseConfigured) return [];
+  const snap = await getDocs(
+    query(collection(db, p.clotures(bid)), orderBy('date', 'desc'))
+  );
+  return snap.docs.map(d => ({ ...(d.data() as ClotureCaisse), id: d.id }));
+}
+
+export async function fsSaveCloture(bid: string, cloture: ClotureCaisse): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  const { id, ...data } = cloture;
+  await setDoc(doc(db, p.cloture(bid, id)), data);
+}
+
+// ─── Sale counter ─────────────────────────────────────────────────────────────
+export async function fsLoadSaleCounter(bid: string): Promise<number> {
+  if (!isFirebaseConfigured) return 0;
+  const snap = await getDoc(doc(db, p.saleCounter(bid)));
+  if (!snap.exists()) return 0;
+  return (snap.data().value as number) ?? 0;
+}
+
+export async function fsSaveSaleCounter(bid: string, value: number): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  await setDoc(doc(db, p.saleCounter(bid)), { value });
 }
 
 // ─── Boutique initialization ─────────────────────────────────────────────────

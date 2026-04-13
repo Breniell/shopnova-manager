@@ -3,8 +3,9 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useAuthStore, User } from '@/stores/useAuthStore';
 import { NovaCard } from '@/components/ui/NovaCard';
 import { cn } from '@/lib/utils';
-import { Store, Users, KeyRound, Trash2, Plus, X } from 'lucide-react';
+import { Store, Users, KeyRound, Trash2, Plus, X, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { getBoutiqueId, getBoutiqueCode } from '@/services/boutiqueService';
 
 const ParametresPage: React.FC = () => {
   const { shop, updateShop } = useSettingsStore();
@@ -15,8 +16,22 @@ const ParametresPage: React.FC = () => {
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [newUser, setNewUser] = useState({ prenom: '', nom: '', role: 'caissier' as 'gérant' | 'caissier', pin: '', confirmPin: '' });
+  const [codeCopied, setCodeCopied] = useState(false);
 
   const [localShop, setLocalShop] = useState(shop);
+
+  const boutiqueId = getBoutiqueId();
+  const boutiqueCode = getBoutiqueCode(boutiqueId);
+  const isBoutiqueTab = activeTab === 'boutique';
+  const isUsersTab = activeTab === 'users';
+
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(boutiqueCode).then(() => {
+      setCodeCopied(true);
+      toast.success('Code boutique copié');
+      setTimeout(() => setCodeCopied(false), 2000);
+    });
+  };
 
   const handleSaveShop = () => {
     updateShop(localShop);
@@ -59,7 +74,8 @@ const ParametresPage: React.FC = () => {
         </button>
       </div>
 
-      {activeTab === 'boutique' && (
+      {isBoutiqueTab && (
+        <>
         <NovaCard accent className="w-full max-w-2xl">
           <div className="space-y-4">
             <div>
@@ -99,9 +115,36 @@ const ParametresPage: React.FC = () => {
             <button onClick={handleSaveShop} className="nova-btn-primary px-6 py-2.5">Enregistrer</button>
           </div>
         </NovaCard>
+
+        {/* Boutique code */}
+        <NovaCard accent className="w-full max-w-2xl mt-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <p className="text-xs text-muted-foreground mb-1">Code de récupération boutique</p>
+              <p className="text-2xl font-mono font-bold text-foreground tracking-widest">{boutiqueCode}</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Conservez ce code en lieu sûr. Il permet de retrouver vos données en cas de réinstallation.
+              </p>
+            </div>
+            <button
+              onClick={handleCopyCode}
+              className={cn(
+                'shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-all',
+                codeCopied
+                  ? 'border-secondary/40 bg-secondary/10 text-secondary'
+                  : 'border-border bg-muted text-foreground hover:bg-muted/80'
+              )}
+              aria-label="Copier le code boutique"
+            >
+              {codeCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {codeCopied ? 'Copié !' : 'Copier'}
+            </button>
+          </div>
+        </NovaCard>
+        </>
       )}
 
-      {activeTab === 'users' && (
+      {isUsersTab && (
         <div>
           <button onClick={() => setShowUserModal(true)} className="nova-btn-primary flex items-center gap-2 px-5 py-2.5 mb-6">
             <Plus className="w-4 h-4" /> Ajouter un utilisateur

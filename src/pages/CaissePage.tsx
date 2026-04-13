@@ -3,7 +3,7 @@ import { useProductStore, Product } from '@/stores/useProductStore';
 import { useSaleStore, PaymentMode, MobileOperator } from '@/stores/useSaleStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useStockStore } from '@/stores/useStockStore';
-import { formatPrice, formatFCFA, formatDate, formatTime } from '@/utils/formatters';
+import { formatPrice, formatFCFA } from '@/utils/formatters';
 
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ReceiptModal } from '@/components/ui/ReceiptModal';
@@ -12,13 +12,13 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { getStockStatus, cn } from '@/lib/utils';
 import { productImages } from '@/assets/productImages';
-import { Search, ScanBarcode, Minus, Plus, Trash2, ShoppingCart, Check, Package } from 'lucide-react';
+import { Search, ScanBarcode, Minus, Plus, Trash2, ShoppingCart, Check, Package, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Sale } from '@/stores/useSaleStore';
 
 const CaissePage: React.FC = () => {
   const { products } = useProductStore();
-  const { cart, discount, addToCart, removeFromCart, updateCartQuantity, setDiscount, getCartSubtotal, getCartTotal, completeSale } = useSaleStore();
+  const { cart, discount, addToCart, removeFromCart, updateCartQuantity, clearCart, setDiscount, getCartSubtotal, getCartTotal, completeSale } = useSaleStore();
   const { currentUser } = useAuthStore();
   const { addMovement } = useStockStore();
   const { updateStock } = useProductStore();
@@ -205,13 +205,23 @@ const CaissePage: React.FC = () => {
     <div className="flex flex-col h-full bg-card">
       <div className="p-4 lg:p-5 border-b border-border flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <ShoppingCart className="w-5 h-5 text-primary" />
+          <ShoppingCart className="w-5 h-5 text-primary" aria-hidden="true" />
           <h2 className="nova-heading text-foreground">Panier en cours</h2>
         </div>
         {cart.length > 0 && (
-          <span className="bg-primary/20 text-primary text-xs font-medium px-2.5 py-1 rounded-full">
-            {cartCount} article{cartCount > 1 ? 's' : ''}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="bg-primary/20 text-primary text-xs font-medium px-2.5 py-1 rounded-full">
+              {cartCount} article{cartCount > 1 ? 's' : ''}
+            </span>
+            <button
+              onClick={clearCart}
+              className="p-1.5 rounded-lg hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
+              aria-label="Vider le panier"
+              title="Vider le panier"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         )}
       </div>
 
@@ -243,11 +253,14 @@ const CaissePage: React.FC = () => {
                   <p className="text-[11px] text-muted-foreground">{formatFCFA(item.prixVente)} / u.</p>
                 </div>
                 <div className="flex items-center gap-1 lg:gap-2">
-                  <button onClick={() => updateCartQuantity(item.productId, item.quantity - 1)}
-                    className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-all active:scale-90">
-                    <Minus className="w-3 h-3 text-foreground" />
+                  <button
+                    onClick={() => updateCartQuantity(item.productId, item.quantity - 1)}
+                    className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-all active:scale-90"
+                    aria-label={`Réduire quantité de ${item.nom}`}
+                  >
+                    <Minus className="w-3 h-3 text-foreground" aria-hidden="true" />
                   </button>
-                  <span className="w-6 lg:w-8 text-center text-sm font-medium text-foreground tabular-nums">{item.quantity}</span>
+                  <span className="w-6 lg:w-8 text-center text-sm font-medium text-foreground tabular-nums" aria-label={`Quantité: ${item.quantity}`}>{item.quantity}</span>
                   <button onClick={() => {
                     const product = products.find(p => p.id === item.productId);
                     if (product && item.quantity >= product.stock) {
@@ -256,14 +269,19 @@ const CaissePage: React.FC = () => {
                     }
                     updateCartQuantity(item.productId, item.quantity + 1);
                   }}
-                    className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-all active:scale-90">
-                    <Plus className="w-3 h-3 text-foreground" />
+                    className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-all active:scale-90"
+                    aria-label={`Augmenter quantité de ${item.nom}`}
+                  >
+                    <Plus className="w-3 h-3 text-foreground" aria-hidden="true" />
                   </button>
                 </div>
                 <span className="text-xs lg:text-sm font-semibold text-foreground tabular-nums w-20 lg:w-24 text-right">{formatPrice(item.quantity * item.prixVente)}</span>
-                <button onClick={() => removeFromCart(item.productId)}
-                  className="p-1.5 rounded-lg hover:bg-destructive/20 transition-all active:scale-90 text-muted-foreground hover:text-destructive">
-                  <Trash2 className="w-4 h-4" />
+                <button
+                  onClick={() => removeFromCart(item.productId)}
+                  className="p-1.5 rounded-lg hover:bg-destructive/20 transition-all active:scale-90 text-muted-foreground hover:text-destructive"
+                  aria-label={`Supprimer ${item.nom} du panier`}
+                >
+                  <Trash2 className="w-4 h-4" aria-hidden="true" />
                 </button>
               </div>
             ))}
@@ -387,12 +405,14 @@ const CaissePage: React.FC = () => {
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="nova-input w-full pl-10 lg:pl-12 pr-10 lg:pr-12 py-2 lg:py-3 text-sm"
+              aria-label="Rechercher un produit ou scanner un code-barres"
             />
             <button
               onClick={() => setShowScanner(true)}
               className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 lg:p-2 rounded-lg hover:bg-muted transition-colors"
+              aria-label="Ouvrir le scanner de code-barres"
             >
-              <ScanBarcode className="w-4 lg:w-5 h-4 lg:h-5 text-muted-foreground" />
+              <ScanBarcode className="w-4 lg:w-5 h-4 lg:h-5 text-muted-foreground" aria-hidden="true" />
             </button>
           </div>
         </div>
