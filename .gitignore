@@ -1,3 +1,4 @@
+# See https://docs.github.com/en/get-started/git-basics/gitignore-example-node#node
 # Logs
 logs
 *.log
@@ -7,29 +8,45 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+node_modules/
+dist/
+dist-ssr/
 *.local
-
-# Firebase credentials — NEVER commit these
 .env
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.development
+.env.test
 .env.production
 
-# Playwright demo output (videos, screenshots, reports)
-demo-results/
-demo-report/
-playwright-report/
-test-results/
+# Vite
+.cache
+vite.config.ts.cache
+vite.config.js.cache
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
+# Testing
+coverage
+/coverage/
+
+# IDE
+.vscode/settings.json
 .idea
+*.swp
+*.swo
+
+# OS
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Bun
+bun.lockb
+
+# Playwright
+demo-results/
+
