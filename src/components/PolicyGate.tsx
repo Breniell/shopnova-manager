@@ -50,75 +50,47 @@ function savePolicyAcceptance(name: string): void {
 
 const sections = [
   {
-    title: '1. Qui sommes-nous ?',
-    content: `Legwan est un logiciel de gestion commerciale (point de vente, stocks, rapports financiers) conçu pour les petites et moyennes boutiques. Il est développé et distribué sous la marque Legwan.`,
+    title: '1. Présentation',
+    content: `Legwan est un logiciel de gestion de boutique (caisse, stocks, rapports) destiné aux commerçants. En utilisant ce logiciel, vous acceptez les conditions décrites dans cette politique.`,
   },
   {
-    title: '2. Données collectées',
-    content: `Le logiciel collecte et stocke les données suivantes dans votre compte boutique :
-• Informations sur la boutique (nom, adresse, téléphone, email)
-• Produits, catégories, prix d'achat et de vente, stocks
-• Historique complet des ventes et transactions
-• Mouvements de stock (entrées, sorties, ajustements)
-• Informations sur les fournisseurs
-• Clôtures de caisse et rapports financiers
-• Informations sur les utilisateurs (prénom, nom, rôle, code PIN chiffré SHA-256)
+    title: '2. Données enregistrées',
+    content: `Legwan enregistre uniquement les informations nécessaires au fonctionnement de votre boutique :
+• Informations de la boutique : nom, adresse, téléphone
+• Produits : désignation, prix, stock
+• Ventes et transactions
+• Mouvements de stock
+• Fournisseurs
+• Clôtures de caisse
+• Comptes utilisateurs : nom, rôle, code PIN (chiffré, non lisible)
 
-Aucune donnée bancaire, de carte de crédit ou de paiement mobile n'est collectée ou stockée par Legwan.`,
+Aucune donnée bancaire ni de paiement n'est collectée.`,
   },
   {
     title: '3. Utilisation des données',
-    content: `Vos données sont utilisées exclusivement pour :
-• Le fonctionnement normal du logiciel (enregistrement des ventes, gestion des stocks, rapports)
-• La synchronisation entre vos appareils via Firebase (infrastructure Google Cloud)
-• La génération de statistiques et rapports locaux pour votre boutique
+    content: `Vos données servent exclusivement à :
+• Faire fonctionner le logiciel (ventes, stocks, rapports)
+• Synchroniser vos données entre appareils via les serveurs de Google (Firebase)
 
-Legwan ne vend jamais vos données à des tiers. Vos données commerciales restent votre propriété exclusive.`,
+Legwan ne vend pas vos données et n'y accède pas à des fins commerciales. Vos données vous appartiennent.`,
   },
   {
-    title: '4. Stockage et sécurité',
-    content: `Les données sont stockées dans Firebase Firestore (Google Cloud Platform) avec :
-• Chiffrement des données en transit via TLS 1.2+
-• Chiffrement des données au repos par Google
-• Codes PIN utilisateurs hachés avec SHA-256 (non réversibles)
-• Accès sécurisé par authentification Firebase liée à votre identifiant appareil unique
-• Isolation complète des données par boutique : chaque installation a son propre espace isolé`,
+    title: '4. Sécurité',
+    content: `Vos données sont hébergées sur Firebase (Google Cloud), avec chiffrement en transit et au repos. Les codes PIN sont hachés de manière irréversible. Chaque boutique dispose de son propre espace de données isolé.`,
   },
   {
-    title: '5. Conservation des données',
-    content: `Vos données sont conservées tant que vous utilisez le logiciel. Vous pouvez à tout moment exporter ou supprimer vos données en nous contactant. En cas de désinstallation du logiciel, les données restent accessibles dans Firebase jusqu'à demande de suppression explicite.`,
-  },
-  {
-    title: '6. Droits de l\'utilisateur',
-    content: `Conformément à la réglementation applicable, vous disposez des droits suivants :
-• Droit d'accès : consulter toutes les données depuis le logiciel
-• Droit de rectification : modifier vos informations dans les paramètres
-• Droit à l'exportation : exporter vos données au format CSV ou PDF
-• Droit à la suppression : demander la suppression complète de vos données
-• Droit à la portabilité : récupérer vos données dans un format standard
+    title: '5. Vos droits',
+    content: `Vous pouvez à tout moment :
+• Consulter vos données depuis le logiciel
+• Modifier vos informations dans les paramètres
+• Exporter vos données (CSV, PDF)
+• Demander la suppression de vos données
 
-Pour exercer ces droits, contactez-nous à support@legwan.cm`,
+Pour toute demande : support@legwan.cm`,
   },
   {
-    title: '7. Partage des données',
-    content: `Vos données ne sont accessibles qu'à travers votre identifiant boutique unique. Nous ne partageons pas vos données avec des tiers, sauf :
-• Obligation légale (réquisition judiciaire, autorité compétente)
-• Infrastructure technique nécessaire (Google Firebase/Firestore)
-
-Google traite les données en tant que sous-traitant selon ses propres politiques de confidentialité.`,
-  },
-  {
-    title: '8. Modifications de la politique',
-    content: `Cette politique de confidentialité peut être mise à jour. En cas de modification substantielle, vous serez informé lors de la prochaine ouverture du logiciel et devrez accepter la nouvelle version pour continuer à utiliser Legwan.`,
-  },
-  {
-    title: '9. Contact et support',
-    content: `Pour toute question, réclamation ou exercice de vos droits concernant vos données personnelles :
-
-Email : support@legwan.cm
-Adresse : Douala, Cameroun
-
-Nous nous engageons à répondre à toute demande dans un délai de 30 jours ouvrables.`,
+    title: '6. Mises à jour de cette politique',
+    content: `Cette politique peut évoluer. En cas de modification, vous serez invité à l'accepter à nouveau lors de l'ouverture du logiciel.`,
   },
 ];
 
@@ -214,11 +186,10 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
               <ScrollText className="w-5 h-5 text-primary shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-foreground">
-                  Avant d'utiliser Legwan, veuillez lire attentivement cette politique de confidentialité.
+                  Lisez cette politique avant d'utiliser Legwan.
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Elle explique quelles données sont collectées, comment elles sont utilisées et protégées,
-                  et quels sont vos droits. Vous devez lire l'intégralité du document et signer pour continuer.
+                  Elle explique comment vos données sont gérées et protégées. Faites défiler jusqu'en bas, puis signez pour continuer.
                 </p>
               </div>
             </div>
@@ -310,10 +281,9 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
                 {checked && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
               </div>
               <span className="text-sm text-muted-foreground">
-                J'ai lu et j'accepte intégralement la{' '}
-                <strong className="text-foreground">Politique de Confidentialité de Legwan</strong>
-                {' '}dans sa version {POLICY_VERSION}. Je comprends comment mes données sont collectées,
-                utilisées et protégées.
+                J'ai lu et j'accepte la{' '}
+                <strong className="text-foreground">Politique de confidentialité Legwan</strong>
+                {' '}(version {POLICY_VERSION}).
               </span>
             </label>
           )}
@@ -339,8 +309,7 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
           </button>
 
           <p className="text-[10px] text-muted-foreground text-center">
-            En cliquant sur ce bouton, vous signez électroniquement votre accord avec cette politique.
-            Cette acceptation est enregistrée localement sur votre appareil.
+            Votre acceptation est enregistrée localement sur cet appareil.
           </p>
         </div>
       </div>
