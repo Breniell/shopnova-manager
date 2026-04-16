@@ -69,17 +69,11 @@ async function seedLocalMode(): Promise<void> {
 const SplashScreen: React.FC<{ message?: string }> = ({ message }) => (
   <div className="fixed inset-0 bg-background flex flex-col items-center justify-center gap-6 z-[9999]">
     {/* Logo mark */}
-    <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M32 4L58.5 19V45L32 60L5.5 45V19L32 4Z"
-        fill="#A93200"
-      />
-      <path
-        d="M22 28h20M22 36h12"
-        stroke="white"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
+    <svg width="64" height="64" viewBox="0 0 80 80" fill="none">
+      <rect width="80" height="80" rx="18" fill="#A93200"/>
+      <path d="M 54,14 A 22,22 0 1,0 54,60 L 54,42 L 40,42" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
+      <line x1="20" y1="13" x2="20" y2="60" stroke="white" strokeWidth="5" strokeLinecap="round"/>
+      <line x1="20" y1="60" x2="34" y2="60" stroke="white" strokeWidth="5" strokeLinecap="round"/>
     </svg>
 
     <div className="text-center">

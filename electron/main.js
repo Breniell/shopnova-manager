@@ -7,14 +7,23 @@
  *   - Handle system-level integrations (external links, window state, auto-update)
  */
 
-const { app, BrowserWindow, shell, Menu } = require('electron');
+const { app, BrowserWindow, shell, Menu, ipcMain } = require('electron');
 const path = require('path');
 
 const isDev = process.env.NODE_ENV === 'development';
 
 // ─── Auto-updater (production only) ──────────────────────────────────────────
-// Uncomment and configure when releases are published to GitHub
-// const { autoUpdater } = require('electron-updater');
+let autoUpdater = null;
+if (!isDev) {
+  try {
+    autoUpdater = require('electron-updater').autoUpdater;
+    autoUpdater.autoDownload = false;       // user decides when to download
+    autoUpdater.autoInstallOnAppQuit = true;
+    autoUpdater.logger = null;              // silence default logger
+  } catch (e) {
+    // electron-updater unavailable — silently skip
+  }
+}
 
 // ─── Single instance lock ──────────────────────────────────────────────────────
 const gotLock = app.requestSingleInstanceLock();
@@ -54,6 +63,10 @@ function createWindow() {
   win.once('ready-to-show', () => {
     win.show();
     win.focus();
+    // Check for updates 5 s after display so startup isn't slowed
+    if (autoUpdater) {
+      setTimeout(() => setupAutoUpdater(win), 5000);
+    }
   });
 
   // ── Open external links (mailto:, https://) in the default browser ──────────
@@ -91,6 +104,52 @@ function createWindow() {
 
   return win;
 }
+
+// ─── Auto-update orchestration ────────────────────────────────────────────────
+function setupAutoUpdater(win) {
+  // update-available → renderer shows "télécharger ?" banner
+  autoUpdater.on('update-available', (info) => {
+    win.webContents.send('update-available', {
+      version: info.version,
+      releaseNotes: info.releaseNotes ?? null,
+    });
+  });
+
+  // no update → nothing to do
+  autoUpdater.on('update-not-available', () => {
+    win.webContents.send('update-not-available');
+  });
+
+  // download progress → renderer shows progress bar
+  autoUpdater.on('download-progress', (progress) => {
+    win.webContents.send('update-download-progress', {
+      percent: Math.round(progress.percent),
+    });
+  });
+
+  // download complete → renderer shows "redémarrer" button
+  autoUpdater.on('update-downloaded', (info) => {
+    win.webContents.send('update-downloaded', { version: info.version });
+  });
+
+  autoUpdater.on('error', () => {
+    // Non-fatal — network may be unavailable, ignore silently
+  });
+
+  try { autoUpdater.checkForUpdates(); } catch (_) { /* no publish config yet */ }
+}
+
+// ─── IPC handlers (renderer → main) ──────────────────────────────────────────
+
+// User clicked "Télécharger la mise à jour"
+ipcMain.on('update-start-download', () => {
+  try { autoUpdater?.downloadUpdate(); } catch (_) {}
+});
+
+// User clicked "Redémarrer et installer"
+ipcMain.on('update-quit-and-install', () => {
+  autoUpdater?.quitAndInstall(false, true);
+});
 
 // ─── Minimal application menu ─────────────────────────────────────────────────
 function buildMenu() {

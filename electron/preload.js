@@ -14,4 +14,24 @@ contextBridge.exposeInMainWorld('legwan', {
 
   /** Platform: 'win32' | 'darwin' | 'linux' */
   platform: process.platform,
+
+  // ── Auto-update API ────────────────────────────────────────────────────────
+
+  /** Called when a new version is available on the server */
+  onUpdateAvailable: (cb) => ipcRenderer.on('update-available', (_e, info) => cb(info)),
+
+  /** Called when no update is available */
+  onUpdateNotAvailable: (cb) => ipcRenderer.on('update-not-available', () => cb()),
+
+  /** Called periodically during download with { percent: number } */
+  onUpdateDownloadProgress: (cb) => ipcRenderer.on('update-download-progress', (_e, p) => cb(p)),
+
+  /** Called when the update has been fully downloaded and is ready to install */
+  onUpdateDownloaded: (cb) => ipcRenderer.on('update-downloaded', (_e, info) => cb(info)),
+
+  /** Tell main to start downloading the available update */
+  startUpdateDownload: () => ipcRenderer.send('update-start-download'),
+
+  /** Quit the app and install the downloaded update */
+  quitAndInstall: () => ipcRenderer.send('update-quit-and-install'),
 });

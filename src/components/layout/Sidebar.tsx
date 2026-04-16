@@ -59,9 +59,10 @@ export const Sidebar: React.FC = () => {
         <div className="p-5 flex items-center justify-between">
           <div className="flex items-center gap-grid">
             <div className="w-9 h-9 flex items-center justify-center">
-              <svg viewBox="0 0 40 40" className="w-9 h-9">
-                <polygon points="20,2 36,11 36,29 20,38 4,29 4,11" fill="none" stroke="#A93200" strokeWidth="2" />
-                <path d="M20,12 L20,28 M16,20 L20,12 L24,20" stroke="#A93200" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              <svg viewBox="0 0 80 80" className="w-9 h-9" fill="none">
+                <path d="M 54,14 A 22,22 0 1,0 54,60 L 54,42 L 40,42" stroke="#A93200" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
+                <line x1="20" y1="13" x2="20" y2="60" stroke="#A93200" strokeWidth="5" strokeLinecap="round"/>
+                <line x1="20" y1="60" x2="34" y2="60" stroke="#A93200" strokeWidth="5" strokeLinecap="round"/>
               </svg>
             </div>
             <div>

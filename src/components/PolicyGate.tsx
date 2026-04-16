@@ -155,9 +155,10 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <svg viewBox="0 0 40 40" className="w-8 h-8">
-            <polygon points="20,2 36,11 36,29 20,38 4,29 4,11" fill="none" stroke="#A93200" strokeWidth="2" />
-            <path d="M20,12 L20,28 M16,20 L20,12 L24,20" stroke="#A93200" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          <svg viewBox="0 0 80 80" className="w-8 h-8" fill="none">
+            <path d="M 54,14 A 22,22 0 1,0 54,60 L 54,42 L 40,42" stroke="#A93200" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
+            <line x1="20" y1="13" x2="20" y2="60" stroke="#A93200" strokeWidth="5" strokeLinecap="round"/>
+            <line x1="20" y1="60" x2="34" y2="60" stroke="#A93200" strokeWidth="5" strokeLinecap="round"/>
           </svg>
           <span className="text-lg font-bold text-foreground">Legwan</span>
         </div>

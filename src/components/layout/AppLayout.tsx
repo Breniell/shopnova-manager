@@ -1,6 +1,7 @@
 import React, { forwardRef, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
+import { UpdateBanner } from '@/components/UpdateBanner';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -39,6 +40,7 @@ export const AppLayout = forwardRef<HTMLDivElement>((_props, ref) => {
   return (
     <div ref={ref} className="min-h-screen bg-background">
       <Sidebar />
+      <UpdateBanner />
       {/* Mobile header — pt-safe accounts for iOS notch */}
       {isMobile && (
         <div className="fixed top-0 left-0 right-0 z-10 bg-card border-b border-border px-4 flex items-center gap-3"

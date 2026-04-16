@@ -67,9 +67,14 @@ nsis:
   runAfterFinish: true
 
 # ── Auto-update (GitHub Releases) ─────────────────────────────────────────────
-# Uncomment once the first release is published on GitHub
-# publish:
-#   provider: github
-#   owner: Breniell
-#   repo: shopnova-manager
-#   releaseType: release
+# electron-updater vérifie les releases GitHub au démarrage de l'app.
+# Pour publier une mise à jour :
+#   1. Bumper la version dans package.json (ex: 1.0.0 → 1.1.0)
+#   2. npm run electron:dist
+#   3. Créer une GitHub Release avec le tag vX.Y.Z et joindre les fichiers release/
+publish:
+  provider: github
+  owner: Breniell
+  repo: shopnova-manager
+  releaseType: release
+  private: false

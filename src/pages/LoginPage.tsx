@@ -121,9 +121,11 @@ const LoginPage: React.FC = () => {
       <div className="hidden lg:flex w-[40%] flex-col justify-center items-center relative z-10 p-12">
         <div className="max-w-sm">
           <div className="flex items-center gap-grid mb-8">
-            <svg viewBox="0 0 40 40" className="w-12 h-12">
-              <polygon points="20,2 36,11 36,29 20,38 4,29 4,11" fill="none" stroke="#A93200" strokeWidth="2" />
-              <path d="M20,12 L20,28 M16,20 L20,12 L24,20" stroke="#A93200" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            <svg viewBox="0 0 80 80" className="w-12 h-12" fill="none">
+              <rect width="80" height="80" rx="18" fill="#A93200"/>
+              <path d="M 54,14 A 22,22 0 1,0 54,60 L 54,42 L 40,42" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
+              <line x1="20" y1="13" x2="20" y2="60" stroke="white" strokeWidth="5" strokeLinecap="round"/>
+              <line x1="20" y1="60" x2="34" y2="60" stroke="white" strokeWidth="5" strokeLinecap="round"/>
             </svg>
             <div>
               <h1 className="text-display-md font-bold text-foreground tracking-tight">Legwan</h1>
