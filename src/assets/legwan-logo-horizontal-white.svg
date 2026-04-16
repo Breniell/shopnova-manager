@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 48" fill="none">
+  <path d="M 28,4 A 16,16 0 1,0 28,34 L 28,22 L 20,22" stroke="#A93200" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="4" y1="3" x2="4" y2="34" stroke="#A93200" stroke-width="4.5" stroke-linecap="round"/>
+  <line x1="4" y1="34" x2="16" y2="34" stroke="#A93200" stroke-width="4.5" stroke-linecap="round"/>
+  <text x="44" y="27" font-family="'Space Grotesk', sans-serif" font-size="26" font-weight="700" fill="#FFFFFF" letter-spacing="-0.8">Legwan</text>
+</svg>
