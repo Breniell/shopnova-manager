@@ -48,7 +48,7 @@ describe('exportCSV', () => {
     vi.stubGlobal('Blob', blobSpy);
     exportCSV('rapport', ['Produit', 'Qté'], [['Bière', '12'], ['Eau', '6']]);
     expect(blobSpy).toHaveBeenCalledOnce();
-    const csvContent: string = blobSpy.mock.calls[0][0][0];
+    const csvContent = blobSpy.mock.calls[0][0][0] as string;
     expect(csvContent).toContain('Produit;Qté');
     expect(csvContent).toContain('Bière;12');
     expect(csvContent).toContain('Eau;6');
@@ -60,7 +60,7 @@ describe('exportCSV', () => {
     const blobSpy = vi.fn((...args: ConstructorParameters<typeof Blob>) => new RealBlob(...args));
     vi.stubGlobal('Blob', blobSpy);
     exportCSV('test', ['H'], [['v']]);
-    const csvContent: string = blobSpy.mock.calls[0][0][0];
+    const csvContent = blobSpy.mock.calls[0][0][0] as string;
     expect(csvContent.charCodeAt(0)).toBe(0xFEFF);
     vi.unstubAllGlobals();
   });
@@ -70,7 +70,7 @@ describe('exportCSV', () => {
     const blobSpy = vi.fn((...args: ConstructorParameters<typeof Blob>) => new RealBlob(...args));
     vi.stubGlobal('Blob', blobSpy);
     exportCSV('test', ['A', 'B', 'C'], [['x', 'y', 'z']]);
-    const csvContent: string = blobSpy.mock.calls[0][0][0];
+    const csvContent = blobSpy.mock.calls[0][0][0] as string;
     expect(csvContent).toContain('A;B;C');
     expect(csvContent).toContain('x;y;z');
     vi.unstubAllGlobals();
