@@ -41,16 +41,19 @@ import type { User } from '@/stores/useAuthStore';
 // ─── Default data for brand-new boutiques ─────────────────────────────────────
 
 async function buildDefaultUsers(): Promise<User[]> {
-  const gerantPin = await hashPin('1234');
+  // Test accounts seeded on first launch:
+  //   • Marie  Nguema  — Gérant   — PIN 1234
+  //   • Paul   Mbarga  — Caissier — PIN 5678
+  //   • Fatou  Diallo  — Caissier — PIN 0000
+  const [pinMarie, pinPaul, pinFatou] = await Promise.all([
+    hashPin('1234'),
+    hashPin('5678'),
+    hashPin('0000'),
+  ]);
   return [
-    {
-      id: 'u-gerant',
-      prenom: 'Gérant',
-      nom: '',
-      role: 'gérant',
-      pin: gerantPin,
-      color: '#A93200',
-    },
+    { id: 'u-marie', prenom: 'Marie', nom: 'Nguema', role: 'gérant',   pin: pinMarie, color: '#A93200' },
+    { id: 'u-paul',  prenom: 'Paul',  nom: 'Mbarga', role: 'caissier', pin: pinPaul,  color: '#00D4AA' },
+    { id: 'u-fatou', prenom: 'Fatou', nom: 'Diallo', role: 'caissier', pin: pinFatou, color: '#F59E0B' },
   ];
 }
 
