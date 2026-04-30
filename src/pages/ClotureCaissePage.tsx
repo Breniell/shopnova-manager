@@ -34,7 +34,7 @@ const ClotureCaissePage: React.FC = () => {
   const [editingFond, setEditingFond] = useState(false);
   const [fondInput, setFondInput] = useState(String(fondDeCaisse));
 
-  const isGerant = currentUser?.role === 'gerant';
+  const isGerant = currentUser?.role === 'gérant';
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
