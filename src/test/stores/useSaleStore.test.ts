@@ -150,7 +150,7 @@ describe('useSaleStore — completeSale', () => {
       userId: 'u1',
       userName: 'Test User',
     });
-    expect(sale.id).toMatch(/^s\d+$/);
+    expect(sale.id).toMatch(/^s\d+[a-z0-9]+$/);
     expect(sale.saleNumber).toMatch(/^LGW-\d{4}-\d{5}$/);
   });
 

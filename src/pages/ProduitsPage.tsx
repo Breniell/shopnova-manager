@@ -22,12 +22,17 @@ const ProduitsPage: React.FC = () => {
 
   const [form, setForm] = useState({
     nom: '', categorie: 'Alimentation' as Category, codeBarre: '', prixAchat: '',
-    prixVente: '', stock: '', seuilAlerte: '5', description: '',
+    prixVente: '', prixCible: '', prixPlancher: '', negociable: false,
+    stock: '', seuilAlerte: '5', description: '',
   });
 
   const openAdd = () => {
     setEditingProduct(null);
-    setForm({ nom: '', categorie: 'Alimentation', codeBarre: '', prixAchat: '', prixVente: '', stock: '', seuilAlerte: '5', description: '' });
+    setForm({
+      nom: '', categorie: 'Alimentation', codeBarre: '', prixAchat: '',
+      prixVente: '', prixCible: '', prixPlancher: '', negociable: false,
+      stock: '', seuilAlerte: '5', description: '',
+    });
     setShowModal(true);
   };
 
@@ -36,6 +41,9 @@ const ProduitsPage: React.FC = () => {
     setForm({
       nom: p.nom, categorie: p.categorie, codeBarre: p.codeBarre,
       prixAchat: String(p.prixAchat), prixVente: String(p.prixVente),
+      prixCible: p.prixCible !== undefined ? String(p.prixCible) : '',
+      prixPlancher: p.prixPlancher !== undefined ? String(p.prixPlancher) : '',
+      negociable: p.negociable === true,
       stock: String(p.stock), seuilAlerte: String(p.seuilAlerte), description: p.description || '',
     });
     setShowModal(true);
@@ -46,9 +54,33 @@ const ProduitsPage: React.FC = () => {
       toast.error('Veuillez remplir tous les champs obligatoires');
       return;
     }
+    const prixAchatNum = parseInt(form.prixAchat, 10) || 0;
+    const prixVenteNum = parseInt(form.prixVente, 10) || 0;
+    const prixCibleNum = form.prixCible ? parseInt(form.prixCible, 10) : undefined;
+    const prixPlancherNum = form.prixPlancher ? parseInt(form.prixPlancher, 10) : undefined;
+
+    // Validation des invariants du prix négociable
+    if (form.negociable) {
+      if (prixPlancherNum !== undefined && prixPlancherNum < prixAchatNum) {
+        toast.error('Plancher < prix d\'achat : vente à perte impossible');
+        return;
+      }
+      if (prixCibleNum !== undefined && prixPlancherNum !== undefined && prixCibleNum < prixPlancherNum) {
+        toast.error('Le prix cible doit être ≥ au plancher');
+        return;
+      }
+      if (prixCibleNum !== undefined && prixCibleNum > prixVenteNum) {
+        toast.error('Le prix cible doit être ≤ au prix affiché');
+        return;
+      }
+    }
+
     const data = {
       nom: form.nom, categorie: form.categorie, codeBarre: form.codeBarre || generateEAN13(),
-      prixAchat: parseInt(form.prixAchat, 10) || 0, prixVente: parseInt(form.prixVente, 10) || 0,
+      prixAchat: prixAchatNum, prixVente: prixVenteNum,
+      prixCible: form.negociable ? prixCibleNum : undefined,
+      prixPlancher: form.negociable ? prixPlancherNum : undefined,
+      negociable: form.negociable,
       stock: editingProduct ? editingProduct.stock : (parseInt(form.stock, 10) || 0),
       seuilAlerte: parseInt(form.seuilAlerte, 10) || 5, description: form.description,
     };
@@ -232,6 +264,54 @@ const ProduitsPage: React.FC = () => {
                   Marge: {formatFCFA((parseInt(form.prixVente, 10) || 0) - (parseInt(form.prixAchat, 10) || 0))} ({marge.toFixed(1)}%)
                 </div>
               )}
+
+              {/* ── Négociation ─────────────────────────────────────────── */}
+              <div className="border-t border-border pt-4">
+                <label className="flex items-center gap-2 text-sm font-medium text-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.negociable}
+                    onChange={e => setForm({ ...form, negociable: e.target.checked })}
+                    className="w-4 h-4 rounded"
+                  />
+                  Prix négociable à la caisse
+                </label>
+                <p className="text-[11px] text-muted-foreground mt-1 ml-6">
+                  Le caissier pourra modifier le prix entre le plancher et le prix affiché.
+                </p>
+
+                {form.negociable && (
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Prix plancher</label>
+                      <input
+                        type="number" min="0"
+                        value={form.prixPlancher}
+                        onChange={e => setForm({ ...form, prixPlancher: e.target.value })}
+                        className="nova-input w-full"
+                        placeholder={form.prixAchat || '0'}
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Min absolu (vide → prix d'achat)
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Prix cible</label>
+                      <input
+                        type="number" min="0"
+                        value={form.prixCible}
+                        onChange={e => setForm({ ...form, prixCible: e.target.value })}
+                        className="nova-input w-full"
+                        placeholder={form.prixVente || '0'}
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Cible idéale (vide → prix affiché)
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {!editingProduct && (
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">Stock initial</label>

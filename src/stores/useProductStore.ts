@@ -17,7 +17,10 @@ export interface Product {
   categorie: Category;
   codeBarre: string;
   prixAchat: number;
-  prixVente: number;
+  prixVente: number;          // = prix affiché / prix de référence pour le client
+  prixCible?: number;         // prix idéal (entre plancher et vente) — alerte si vendu en dessous
+  prixPlancher?: number;      // prix minimum absolu — bloqué en dessous sauf override gérant
+  negociable?: boolean;       // autorise (ou non) la modification du prix à la caisse
   stock: number;
   seuilAlerte: number;
   description?: string;

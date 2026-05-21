@@ -2,11 +2,14 @@ import React, { useState, useMemo } from 'react';
 import { useSaleStore } from '@/stores/useSaleStore';
 import { useCaisseStore } from '@/stores/useCaisseStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { usePaymentStore } from '@/stores/usePaymentStore';
+import { useCashSessionStore, CASHOUT_TYPE_LABELS } from '@/stores/useCashSessionStore';
+import { CashOutModal } from '@/components/ui/CashOutModal';
 import { NovaCard } from '@/components/ui/NovaCard';
 import { StatCard } from '@/components/ui/StatCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/lib/utils';
-import { Calculator, Check, DollarSign, Smartphone, History, AlertTriangle, Wallet, Edit2 } from 'lucide-react';
+import { Calculator, Check, DollarSign, Smartphone, History, AlertTriangle, Wallet, Edit2, Receipt, Plus, Clock, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPrice, formatFCFA, formatDate, formatTime, formatDateShort } from '@/utils/formatters';
 
@@ -27,42 +30,108 @@ const ClotureCaissePage: React.FC = () => {
   const { sales } = useSaleStore();
   const { clotures, fondDeCaisse, addCloture, setFondDeCaisse } = useCaisseStore();
   const { currentUser } = useAuthStore();
+  const { payments } = usePaymentStore();
+  const { getCurrentSession, getSessionCashOuts, closeSession } = useCashSessionStore();
   const [activeTab, setActiveTab] = useState<'cloture' | 'historique'>('cloture');
   const [counts, setCounts] = useState<Record<number, string>>({});
   const [notes, setNotes] = useState('');
   const [isDone, setIsDone] = useState(false);
   const [editingFond, setEditingFond] = useState(false);
   const [fondInput, setFondInput] = useState(String(fondDeCaisse));
+  const [showCashOutModal, setShowCashOutModal] = useState(false);
 
   const isGerant = currentUser?.role === 'gérant';
+
+  // ── Mode "session" ou mode "journalier" (legacy) ────────────────────────
+  // Si l'utilisateur a une session active, on calcule sur la session.
+  // Sinon on garde le mode journalier (pour la rétro-compat avec les anciennes
+  // ventes sans cashSessionId, et pour les gérants en mode back-office).
+  const currentSession = getCurrentSession();
+  const inSessionMode = currentSession !== null;
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  const todaySales = useMemo(() =>
-    sales.filter(s => {
-      const sd = new Date(s.date);
-      return sd >= today && s.status !== 'refunded';
-    }),
-    [sales, today]
-  );
+  // Bornes temporelles pour les calculs :
+  // - session mode : depuis l'ouverture de la session
+  // - legacy mode  : depuis minuit aujourd'hui
+  const periodStart = inSessionMode && currentSession
+    ? new Date(currentSession.openedAt)
+    : today;
 
-  const totalEspeces = todaySales
+  // ── Ventes incluses dans la période ─────────────────────────────────────
+  const periodSales = useMemo(() => {
+    return sales.filter(s => {
+      if (s.status === 'refunded') return false;
+      if (inSessionMode && currentSession) {
+        // En mode session, on filtre par cashSessionId. Ne pas se baser sur la
+        // date seule : si une vente legacy traîne dans la période, on l'exclut.
+        return s.cashSessionId === currentSession.id;
+      }
+      return new Date(s.date) >= periodStart;
+    });
+  }, [sales, inSessionMode, currentSession, periodStart]);
+
+  // ── Règlements de crédit dans la période ────────────────────────────────
+  const periodPayments = useMemo(() => {
+    return payments.filter(p => {
+      if (inSessionMode && currentSession) {
+        return p.cashSessionId === currentSession.id;
+      }
+      return new Date(p.date) >= periodStart;
+    });
+  }, [payments, inSessionMode, currentSession, periodStart]);
+
+  // ── Sorties de caisse dans la session (mode session uniquement) ─────────
+  const sessionCashOuts = useMemo(() => {
+    if (!currentSession) return [];
+    return getSessionCashOuts(currentSession.id);
+  }, [currentSession, getSessionCashOuts]);
+
+  const totalCashOuts = sessionCashOuts.reduce((sum, c) => sum + c.amount, 0);
+
+  // ── Ventes à crédit (information seule, n'entrent PAS dans l'attendu) ──
+  const periodCreditSales = useMemo(
+    () => periodSales.filter(s => s.paymentMode === 'credit'),
+    [periodSales]
+  );
+  const totalCreditPeriod = periodCreditSales.reduce((sum, s) => sum + s.total, 0);
+
+  // ── Espèces ─────────────────────────────────────────────────────────────
+  const totalEspecesVentes = periodSales
     .filter(s => s.paymentMode === 'especes')
     .reduce((sum, s) => sum + s.total, 0);
+  const totalEspecesReglements = periodPayments
+    .filter(p => p.channel === 'especes')
+    .reduce((sum, p) => sum + p.amount, 0);
+  const totalEspeces = totalEspecesVentes + totalEspecesReglements;
 
-  const totalMobile = todaySales
+  // ── Mobile money ────────────────────────────────────────────────────────
+  const totalMobileVentes = periodSales
     .filter(s => s.paymentMode === 'mobile_money')
     .reduce((sum, s) => sum + s.total, 0);
+  const totalMobileReglements = periodPayments
+    .filter(p => p.channel === 'mobile_money')
+    .reduce((sum, p) => sum + p.amount, 0);
+  const totalMobile = totalMobileVentes + totalMobileReglements;
 
-  // CA encaissé = espèces + mobile money (revenus du jour)
+  // CA encaissé = espèces + mobile money (ne contient PAS les crédits non réglés)
   const caEncaisse = totalEspeces + totalMobile;
 
-  // Solde journalier = CA encaissé + fond de caisse (valeur totale gérée)
-  const soldeJournalier = caEncaisse + fondDeCaisse;
+  // ── Fond de référence ─────────────────────────────────────────────────────
+  // En mode session, on utilise le fondInitial déclaré à l'ouverture.
+  // En mode legacy, on utilise le fondDeCaisse global (persistant côté Caisse store).
+  const fondReference = inSessionMode && currentSession
+    ? currentSession.fondInitial
+    : fondDeCaisse;
 
-  // Montant attendu physiquement dans le tiroir = espèces + fond de caisse
-  const totalAttenduPhysique = totalEspeces + fondDeCaisse;
+  // Solde journalier = CA encaissé + fond (valeur totale gérée)
+  const soldeJournalier = caEncaisse + fondReference;
+
+  // ── Montant attendu physiquement dans le tiroir ──────────────────────────
+  // = fond + espèces entrées - sorties de caisse de la session
+  // En mode legacy, totalCashOuts = 0 (pas de sorties associées).
+  const totalAttenduPhysique = totalEspeces + fondReference - totalCashOuts;
 
   const totalCompte = useMemo(() => {
     return denominations.reduce((sum, d) => {
@@ -101,6 +170,22 @@ const ClotureCaissePage: React.FC = () => {
       if (qty > 0) details[String(d.value)] = qty;
     });
 
+    // Mode session : on ferme la session de caisse en plus de l'enregistrement
+    // de cloture (qui sert d'historique consolidé pour la page Historique).
+    if (inSessionMode && currentSession) {
+      try {
+        closeSession(currentSession.id, {
+          totalCompte,
+          details,
+          ecart,
+          notesCloture: notes || undefined,
+        });
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Erreur clôture session');
+        return;
+      }
+    }
+
     addCloture({
       date: new Date().toISOString(),
       userId: currentUser.id,
@@ -115,7 +200,7 @@ const ClotureCaissePage: React.FC = () => {
     });
 
     setIsDone(true);
-    toast.success('Clôture de caisse validée !');
+    toast.success(inSessionMode ? 'Session clôturée !' : 'Clôture de caisse validée !');
     setTimeout(() => {
       setIsDone(false);
       setCounts({});
@@ -187,13 +272,28 @@ const ClotureCaissePage: React.FC = () => {
           </div>
 
           {/* KPI — Solde journalier (full width highlight) */}
-          <div className="mb-6 p-4 rounded-xl border border-primary/30 bg-primary/5 flex items-center justify-between">
+          <div className="mb-3 p-4 rounded-xl border border-primary/30 bg-primary/5 flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Solde journalier</p>
               <p className="text-xs text-muted-foreground/70 mt-0.5">CA encaissé + fond de caisse</p>
             </div>
             <span className="text-2xl font-bold text-primary tabular-nums">{formatFCFA(soldeJournalier)}</span>
           </div>
+
+          {/* Info ventes à crédit du jour (n'entrent pas dans la caisse) */}
+          {periodCreditSales.length > 0 && (
+            <div className="mb-6 p-3 rounded-xl border border-red-500/30 bg-red-500/5 flex items-center gap-3">
+              <Receipt className="w-4 h-4 text-red-400 shrink-0" />
+              <div className="flex-1 text-xs">
+                <p className="text-red-400 font-medium">
+                  {periodCreditSales.length} vente{periodCreditSales.length > 1 ? 's' : ''} à crédit aujourd'hui : {formatFCFA(totalCreditPeriod)}
+                </p>
+                <p className="text-muted-foreground mt-0.5">
+                  Non compté{periodCreditSales.length > 1 ? 'es' : 'e'} en caisse — les règlements à venir apparaîtront le jour où ils seront perçus.
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
             {/* Comptage */}
@@ -266,7 +366,7 @@ const ClotureCaissePage: React.FC = () => {
 
                 <div className="pt-4 space-y-3">
                   <div className="text-xs text-muted-foreground">
-                    {todaySales.length} vente{todaySales.length > 1 ? 's' : ''} aujourd'hui • Caissier : {currentUser?.prenom} {currentUser?.nom}
+                    {periodSales.length} vente{periodSales.length > 1 ? 's' : ''} aujourd'hui • Caissier : {currentUser?.prenom} {currentUser?.nom}
                   </div>
                   <button
                     onClick={handleValidate}

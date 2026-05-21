@@ -16,6 +16,11 @@ import RapportsPage from "./pages/RapportsPage";
 import ParametresPage from "./pages/ParametresPage";
 import ClotureCaissePage from "./pages/ClotureCaissePage";
 import FournisseursPage from "./pages/FournisseursPage";
+import ClientsPage from "./pages/ClientsPage";
+import DepensesPage from "./pages/DepensesPage";
+import OuvertureSessionPage from "./pages/OuvertureSessionPage";
+import InventairePage from "./pages/InventairePage";
+import CreditPage from "./pages/CreditPage";
 
 const queryClient = new QueryClient();
 
@@ -31,10 +36,15 @@ const App = () => (
           <Route element={<AppLayout />}>
             <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/caisse" element={<ProtectedRoute allowedRoles={['gérant', 'caissier']}><CaissePage /></ProtectedRoute>} />
+            <Route path="/ouverture-session" element={<ProtectedRoute allowedRoles={['gérant', 'caissier']}><OuvertureSessionPage /></ProtectedRoute>} />
+            <Route path="/clients" element={<ProtectedRoute allowedRoles={['gérant', 'caissier']}><ClientsPage /></ProtectedRoute>} />
+            <Route path="/credit" element={<ProtectedRoute allowedRoles={['gérant', 'caissier']}><CreditPage /></ProtectedRoute>} />
             <Route path="/produits" element={<ProtectedRoute allowedRoles={['gérant']}><ProduitsPage /></ProtectedRoute>} />
             <Route path="/stock" element={<ProtectedRoute allowedRoles={['gérant']}><StockPage /></ProtectedRoute>} />
+            <Route path="/inventaire" element={<ProtectedRoute allowedRoles={['gérant']}><InventairePage /></ProtectedRoute>} />
             <Route path="/fournisseurs" element={<ProtectedRoute allowedRoles={['gérant']}><FournisseursPage /></ProtectedRoute>} />
             <Route path="/ventes" element={<ProtectedRoute allowedRoles={['gérant']}><VentesPage /></ProtectedRoute>} />
+            <Route path="/depenses" element={<ProtectedRoute allowedRoles={['gérant']}><DepensesPage /></ProtectedRoute>} />
             <Route path="/cloture" element={<ProtectedRoute allowedRoles={['gérant', 'caissier']}><ClotureCaissePage /></ProtectedRoute>} />
             <Route path="/rapports" element={<ProtectedRoute allowedRoles={['gérant']}><RapportsPage /></ProtectedRoute>} />
             <Route path="/parametres" element={<ProtectedRoute allowedRoles={['gérant']}><ParametresPage /></ProtectedRoute>} />

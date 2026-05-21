@@ -1,15 +1,23 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useProductStore, Product } from '@/stores/useProductStore';
 import { useSaleStore, PaymentMode, MobileOperator } from '@/stores/useSaleStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useStockStore } from '@/stores/useStockStore';
+import { useCashSessionStore } from '@/stores/useCashSessionStore';
+import { usePaymentStore } from '@/stores/usePaymentStore';
+import type { Customer } from '@/stores/useCustomerStore';
+import { checkCreditLimit, getCustomerOutstanding } from '@/lib/credit';
 import { formatPrice, formatFCFA } from '@/utils/formatters';
 
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ReceiptModal } from '@/components/ui/ReceiptModal';
 import { BarcodeScanner } from '@/components/ui/BarcodeScanner';
+import { CustomerPicker } from '@/components/ui/CustomerPicker';
+import { PriceEditor } from '@/components/ui/PriceEditor';
+import { ManagerOverrideModal } from '@/components/ui/ManagerOverrideModal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { isNegociable, getEffectiveFloor, getAppliedPrice } from '@/lib/pricing';
 import { getStockStatus, cn } from '@/lib/utils';
 import { productImages } from '@/assets/productImages';
 import { Search, ScanBarcode, Minus, Plus, Trash2, ShoppingCart, Check, Package, X } from 'lucide-react';
@@ -18,8 +26,10 @@ import type { Sale } from '@/stores/useSaleStore';
 
 const CaissePage: React.FC = () => {
   const { products } = useProductStore();
-  const { cart, discount, addToCart, removeFromCart, updateCartQuantity, clearCart, setDiscount, getCartSubtotal, getCartTotal, completeSale } = useSaleStore();
+  const { cart, discount, addToCart, removeFromCart, updateCartQuantity, clearCart, setDiscount, getCartSubtotal, getCartTotal, completeSale, applyPriceOverride } = useSaleStore();
   const { currentUser } = useAuthStore();
+  const { getCurrentSession } = useCashSessionStore();
+  const currentSession = getCurrentSession();
   const { addMovement } = useStockStore();
   const { updateStock } = useProductStore();
   const [search, setSearch] = useState('');
@@ -33,6 +43,15 @@ const CaissePage: React.FC = () => {
   const [showReceipt, setShowReceipt] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
+  // Client identifié pour la vente en cours (optionnel sauf pour crédit)
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  // Date d'échéance pour les ventes à crédit (optionnel)
+  const [dueDate, setDueDate] = useState<string>('');
+  // Négociation de prix : ligne du panier en cours d'édition + contexte d'override
+  const [priceEditorTarget, setPriceEditorTarget] = useState<{ productId: string; currentPrice: number } | null>(null);
+  const [overrideContext, setOverrideContext] = useState<{
+    productId: string; productName: string; requestedPrice: number; floor: number;
+  } | null>(null);
   // Mobile: toggle between products view and cart view
   const [mobileView, setMobileView] = useState<'products' | 'cart'>('products');
   const searchRef = useRef<HTMLInputElement>(null);
@@ -138,9 +157,32 @@ const CaissePage: React.FC = () => {
   const change = paymentMode === 'especes' && amountReceived ? (parseInt(amountReceived, 10) || 0) - total : 0;
   const cartCount = cart.reduce((sum, c) => sum + c.quantity, 0);
 
+  // ─── Calculs crédit ──────────────────────────────────────────────────────
+  const { sales: allSales } = useSaleStore();
+  const { payments: allPayments } = usePaymentStore();
+
+  // Encours actuel du client sélectionné (somme des soldes restants)
+  const customerOutstanding = useMemo(() => {
+    if (!selectedCustomer) return 0;
+    return getCustomerOutstanding(selectedCustomer.id, allSales, allPayments);
+  }, [selectedCustomer, allSales, allPayments]);
+
+  // Vérification du plafond si vente à crédit
+  const creditLimitCheck = useMemo(() => {
+    if (paymentMode !== 'credit' || !selectedCustomer) return { ok: true as const };
+    return checkCreditLimit(
+      selectedCustomer.id,
+      total,
+      selectedCustomer.plafondCredit,
+      allSales,
+      allPayments,
+    );
+  }, [paymentMode, selectedCustomer, total, allSales, allPayments]);
+
   const canValidate = cart.length > 0 && !isProcessing && (
     paymentMode === 'especes' ? (amountReceived && (parseInt(amountReceived, 10) || 0) >= total) :
     paymentMode === 'mobile_money' ? !!mobileRef.trim() :
+    paymentMode === 'credit' ? (!!selectedCustomer && creditLimitCheck.ok) :
     false
   );
 
@@ -157,6 +199,9 @@ const CaissePage: React.FC = () => {
         changeGiven: paymentMode === 'especes' ? Math.max(0, change) : undefined,
         userId: currentUser.id,
         userName: `${currentUser.prenom} ${currentUser.nom}`,
+        customerId: selectedCustomer?.id,
+        customerName: selectedCustomer ? `${selectedCustomer.prenom} ${selectedCustomer.nom}` : undefined,
+        dueDate: paymentMode === 'credit' && dueDate ? dueDate : undefined,
       });
 
       sale.items.forEach(item => {
@@ -186,6 +231,8 @@ const CaissePage: React.FC = () => {
         setShowReceipt(true);
         setAmountReceived('');
         setMobileRef('');
+        setSelectedCustomer(null);
+        setDueDate('');
         setMobileView('products');
       }, 600);
 
@@ -225,6 +272,14 @@ const CaissePage: React.FC = () => {
         )}
       </div>
 
+      {/* Customer picker */}
+      <div className="px-4 lg:px-5 pt-3 pb-2 border-b border-border shrink-0">
+        <CustomerPicker
+          selectedCustomer={selectedCustomer}
+          onSelect={setSelectedCustomer}
+        />
+      </div>
+
       {cart.length === 0 ? (
         <EmptyState
           icon={<Package className="w-12 h-12" />}
@@ -250,7 +305,45 @@ const CaissePage: React.FC = () => {
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-xs lg:text-sm font-medium text-foreground truncate">{item.nom}</p>
-                  <p className="text-[11px] text-muted-foreground">{formatFCFA(item.prixVente)} / u.</p>
+                  {(() => {
+                    const product = products.find(p => p.id === item.productId);
+                    const applied = getAppliedPrice(item);
+                    const negotiable = product ? isNegociable(product) : false;
+                    const isNegotiated = !!item.negotiated;
+                    const belowFloor = item.negotiated?.belowFloor;
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!product) return;
+                          if (!negotiable) {
+                            toast.info('Ce produit n\'est pas négociable');
+                            return;
+                          }
+                          setPriceEditorTarget({ productId: item.productId, currentPrice: applied });
+                        }}
+                        disabled={!negotiable}
+                        className={cn(
+                          'text-[11px] transition-colors mt-0.5 -ml-0.5 px-1 py-0.5 rounded',
+                          negotiable
+                            ? 'cursor-pointer hover:bg-muted'
+                            : 'cursor-default',
+                          isNegotiated && belowFloor ? 'text-destructive font-semibold'
+                            : isNegotiated ? 'text-amber-400 font-medium'
+                            : 'text-muted-foreground'
+                        )}
+                        title={negotiable ? 'Cliquer pour négocier le prix' : 'Prix fixe'}
+                      >
+                        {isNegotiated && (
+                          <span className="line-through text-muted-foreground/60 mr-1 tabular-nums">
+                            {formatFCFA(item.prixVente)}
+                          </span>
+                        )}
+                        <span className="tabular-nums">{formatFCFA(applied)}</span> / u.
+                        {isNegotiated && (belowFloor ? ' ⚡' : ' •')}
+                      </button>
+                    );
+                  })()}
                 </div>
                 <div className="flex items-center gap-1 lg:gap-2">
                   <button
@@ -275,7 +368,7 @@ const CaissePage: React.FC = () => {
                     <Plus className="w-3 h-3 text-foreground" aria-hidden="true" />
                   </button>
                 </div>
-                <span className="text-xs lg:text-sm font-semibold text-foreground tabular-nums w-20 lg:w-24 text-right">{formatPrice(item.quantity * item.prixVente)}</span>
+                <span className="text-xs lg:text-sm font-semibold text-foreground tabular-nums w-20 lg:w-24 text-right">{formatPrice(item.quantity * getAppliedPrice(item))}</span>
                 <button
                   onClick={() => removeFromCart(item.productId)}
                   className="p-1.5 rounded-lg hover:bg-destructive/20 transition-all active:scale-90 text-muted-foreground hover:text-destructive"
@@ -312,18 +405,20 @@ const CaissePage: React.FC = () => {
 
             {/* Payment mode tabs */}
             <div className="flex gap-2">
-              {(['especes', 'mobile_money'] as PaymentMode[]).map(mode => (
+              {(['especes', 'mobile_money', 'credit'] as PaymentMode[]).map(mode => (
                 <button
                   key={mode}
                   onClick={() => setPaymentMode(mode)}
                   className={cn(
                     'flex-1 py-2 rounded-lg text-xs font-medium transition-all duration-150 border',
                     paymentMode === mode
-                      ? 'bg-primary/15 border-primary text-primary'
+                      ? mode === 'credit'
+                        ? 'bg-red-500/15 border-red-500 text-red-400'
+                        : 'bg-primary/15 border-primary text-primary'
                       : 'bg-muted border-border text-muted-foreground hover:text-foreground'
                   )}
                 >
-                  {mode === 'especes' ? '💵 Espèces' : '📱 Mobile Money'}
+                  {mode === 'especes' ? '💵 Espèces' : mode === 'mobile_money' ? '📱 Mobile' : '🧾 Crédit'}
                 </button>
               ))}
             </div>
@@ -358,6 +453,47 @@ const CaissePage: React.FC = () => {
                 <input type="text" value={mobileRef} onChange={e => setMobileRef(e.target.value)} className="nova-input w-full py-2" placeholder="Référence transaction" />
               </div>
             )}
+            {paymentMode === 'credit' && (
+              <div className="space-y-2">
+                {!selectedCustomer ? (
+                  <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs">
+                    ⚠ Sélectionnez un client en haut du panier pour vendre à crédit
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Encours actuel</span>
+                      <span className="text-foreground tabular-nums">
+                        {formatFCFA(customerOutstanding)}
+                      </span>
+                    </div>
+                    {selectedCustomer.plafondCredit !== undefined && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Plafond crédit</span>
+                        <span className="text-foreground tabular-nums">
+                          {formatFCFA(selectedCustomer.plafondCredit)}
+                        </span>
+                      </div>
+                    )}
+                    {creditLimitCheck.ok === false && (
+                      <div className="p-2 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-xs">
+                        Plafond dépassé. Encours après vente : {formatFCFA(creditLimitCheck.afterSale)}
+                      </div>
+                    )}
+                    <input
+                      type="date" value={dueDate}
+                      onChange={e => setDueDate(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="nova-input w-full py-2 text-xs"
+                      placeholder="Date d'échéance (optionnel)"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Le client signera le reçu comme reconnaissance de dette.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
 
             <button
               onClick={handleValidate}
@@ -380,6 +516,35 @@ const CaissePage: React.FC = () => {
       )}
     </div>
   );
+
+  // ── Guard : un caissier doit avoir une session ouverte pour vendre ────────
+  // Le gérant peut accéder à la caisse sans session (rôle backoffice mixte),
+  // mais sera invité à en ouvrir une au moment de la première vente.
+  if (currentUser?.role === 'caissier' && !currentSession) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center p-4">
+        <div className="nova-card-accent p-8 max-w-md text-center">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/15 flex items-center justify-center mx-auto mb-4">
+            <ShoppingCart className="w-8 h-8 text-amber-400" />
+          </div>
+          <h2 className="nova-heading text-lg text-foreground mb-2">
+            Aucune session de caisse ouverte
+          </h2>
+          <p className="text-sm text-muted-foreground mb-5">
+            Vous devez ouvrir une session et déclarer votre fond de caisse
+            avant de pouvoir enregistrer des ventes.
+          </p>
+          <button
+            onClick={() => window.location.href = '/ouverture-session'}
+            className="nova-btn-primary px-5 py-2.5 inline-flex items-center gap-2"
+          >
+            Ouvrir une session
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in flex flex-col lg:flex-row" style={{ height: 'calc(100vh - 0px)' }}>
@@ -515,6 +680,60 @@ const CaissePage: React.FC = () => {
         onScan={handleBarcodeScanned}
       />
       <ReceiptModal sale={receiptSale} open={showReceipt} onClose={() => setShowReceipt(false)} />
+
+      {/* Négociation de prix */}
+      <PriceEditor
+        open={!!priceEditorTarget}
+        product={priceEditorTarget ? products.find(p => p.id === priceEditorTarget.productId) ?? null : null}
+        currentPrice={priceEditorTarget?.currentPrice ?? 0}
+        onClose={() => setPriceEditorTarget(null)}
+        onApply={(newPrice, requiresOverride) => {
+          if (!priceEditorTarget) return;
+          const product = products.find(p => p.id === priceEditorTarget.productId);
+          if (!product) return;
+
+          if (requiresOverride) {
+            // On ouvre la modal d'autorisation gérant ; PriceEditor se ferme.
+            setOverrideContext({
+              productId: product.id,
+              productName: product.nom,
+              requestedPrice: newPrice,
+              floor: getEffectiveFloor(product),
+            });
+            setPriceEditorTarget(null);
+          } else {
+            // Application directe
+            applyPriceOverride(product.id, newPrice, false);
+            const isBelowTarget = product.prixCible !== undefined && newPrice < product.prixCible;
+            if (isBelowTarget) {
+              toast.warning('Prix négocié — marge réduite');
+            } else if (newPrice < product.prixVente) {
+              toast.success('Prix négocié appliqué');
+            } else {
+              toast.success('Prix appliqué');
+            }
+            setPriceEditorTarget(null);
+          }
+        }}
+      />
+
+      {/* Autorisation gérant pour vendre sous le plancher */}
+      <ManagerOverrideModal
+        open={!!overrideContext}
+        context={overrideContext}
+        onClose={() => setOverrideContext(null)}
+        onAuthorized={(manager) => {
+          if (!overrideContext) return;
+          applyPriceOverride(
+            overrideContext.productId,
+            overrideContext.requestedPrice,
+            true,
+            { userId: manager.userId, userName: manager.userName }
+          );
+          toast.success(`Override autorisé par ${manager.userName}`);
+          setOverrideContext(null);
+        }}
+      />
     </div>
   );
 };

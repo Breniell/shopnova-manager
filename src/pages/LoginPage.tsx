@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore, User } from '@/stores/useAuthStore';
+import { useCashSessionStore } from '@/stores/useCashSessionStore';
 import { ArrowLeft, Shield, ShoppingCart, BarChart3, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -63,7 +64,25 @@ const LoginPage: React.FC = () => {
       setIsLoggingIn(true);
       const result = await login(selectedUser.id, newPin);
       if (result.success) {
-        navigate('/');
+        // Cas caissier : vérifier qu'il a une session active, sinon le rediriger
+        // vers la page d'ouverture pour déclarer son fond de caisse.
+        // Le gérant n'a pas besoin de session pour faire du back-office.
+        if (selectedUser.role === 'caissier') {
+          const open = useCashSessionStore.getState().getOpenSessionForUser(selectedUser.id);
+          if (open) {
+            useCashSessionStore.getState()._setCurrentSessionId(open.id);
+            navigate('/caisse');
+          } else {
+            navigate('/ouverture-session');
+          }
+        } else {
+          // Gérant : on restaure quand même la session s'il en avait une ouverte
+          const open = useCashSessionStore.getState().getOpenSessionForUser(selectedUser.id);
+          if (open) {
+            useCashSessionStore.getState()._setCurrentSessionId(open.id);
+          }
+          navigate('/');
+        }
       } else if (result.locked && result.remainingSeconds) {
         startLockTimer(result.remainingSeconds);
         setPin('');

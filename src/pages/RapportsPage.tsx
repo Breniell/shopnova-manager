@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { useSaleStore } from '@/stores/useSaleStore';
 import { useProductStore } from '@/stores/useProductStore';
+import { useExpenseStore } from '@/stores/useExpenseStore';
 import { StatCard } from '@/components/ui/StatCard';
 import { NovaCard } from '@/components/ui/NovaCard';
 import { getStockStatus, cn } from '@/lib/utils';
-import { DollarSign, ShoppingCart, TrendingUp, Percent, Download } from 'lucide-react';
+import { DollarSign, ShoppingCart, TrendingUp, Percent, Download, TrendingDown, Wallet } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid } from 'recharts';
 import { exportCSV, exportPDF } from '@/lib/export';
 import { toast } from 'sonner';
@@ -15,6 +16,7 @@ type Period = 'today' | 'week' | 'month';
 const RapportsPage: React.FC = () => {
   const { sales } = useSaleStore();
   const { products } = useProductStore();
+  const { expenses } = useExpenseStore();
   const [period, setPeriod] = useState<Period>('week');
 
   const now = new Date();
@@ -35,6 +37,13 @@ const RapportsPage: React.FC = () => {
     return isum + (product ? product.prixAchat * item.quantity : 0);
   }, 0), 0);
   const margin = totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue * 100) : 0;
+
+  // ── Dépenses sur la période ──────────────────────────────────────────────
+  const periodExpenses = expenses.filter(e => new Date(e.date) >= periodStart && new Date(e.date) <= now);
+  const totalExpenses = periodExpenses.reduce((sum, e) => sum + e.montant, 0);
+  // Bénéfice net = CA - coût marchandises vendues (COGS) - dépenses opérationnelles
+  const beneficeNet = totalRevenue - totalCost - totalExpenses;
+  const beneficeNetMargin = totalRevenue > 0 ? (beneficeNet / totalRevenue * 100) : 0;
 
   // Daily chart
   const days = period === 'today' ? 1 : period === 'week' ? 7 : 30;
@@ -101,11 +110,18 @@ const RapportsPage: React.FC = () => {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
-        <StatCard icon={<DollarSign className="w-4 h-4 text-primary" />} iconBg="bg-primary/20" value={formatPrice(totalRevenue)} label="Revenu total" />
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4 mb-6">
+        <StatCard icon={<DollarSign className="w-4 h-4 text-primary" />} iconBg="bg-primary/20" value={formatPrice(totalRevenue)} label="Chiffre d'affaires" />
         <StatCard icon={<ShoppingCart className="w-4 h-4 text-secondary" />} iconBg="bg-secondary/20" value={String(periodSales.length)} label="Nombre de ventes" />
         <StatCard icon={<TrendingUp className="w-4 h-4 text-amber-400" />} iconBg="bg-amber-500/20" value={formatPrice(avgCart)} label="Panier moyen" />
-        <StatCard icon={<Percent className="w-4 h-4 text-emerald-400" />} iconBg="bg-emerald-500/20" value={`${margin.toFixed(1)}%`} label="Marge bénéficiaire" />
+        <StatCard icon={<TrendingDown className="w-4 h-4 text-red-400" />} iconBg="bg-red-500/20" value={formatPrice(totalExpenses)} label="Dépenses" />
+        <StatCard
+          icon={<Wallet className={cn('w-4 h-4', beneficeNet < 0 ? 'text-destructive' : 'text-emerald-400')} />}
+          iconBg={beneficeNet < 0 ? 'bg-destructive/20' : 'bg-emerald-500/20'}
+          value={formatPrice(beneficeNet)}
+          label={`Bénéfice net (${beneficeNetMargin.toFixed(1)}%)`}
+        />
+        <StatCard icon={<Percent className="w-4 h-4 text-emerald-400" />} iconBg="bg-emerald-500/20" value={`${margin.toFixed(1)}%`} label="Marge brute" />
       </div>
 
       {/* Chart */}

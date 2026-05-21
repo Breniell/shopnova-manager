@@ -32,6 +32,11 @@ import type { Sale } from '@/stores/useSaleStore';
 import type { StockMovement } from '@/stores/useStockStore';
 import type { User } from '@/stores/useAuthStore';
 import type { Supplier } from '@/stores/useSupplierStore';
+import type { Customer } from '@/stores/useCustomerStore';
+import type { Payment } from '@/stores/usePaymentStore';
+import type { Expense } from '@/stores/useExpenseStore';
+import type { CashSession, CashOut } from '@/stores/useCashSessionStore';
+import type { InventorySession } from '@/stores/useInventoryStore';
 import type { ClotureCaisse } from '@/stores/useCaisseStore';
 
 // ─── Guard ──────────────────────────────────────────────────────────────────
@@ -52,6 +57,18 @@ const p = {
   movement:      (bid: string, mid: string) => `boutiques/${bid}/stock_movements/${mid}`,
   suppliers:     (bid: string) => `boutiques/${bid}/suppliers`,
   supplier:      (bid: string, sid: string) => `boutiques/${bid}/suppliers/${sid}`,
+  customers:     (bid: string) => `boutiques/${bid}/customers`,
+  customer:      (bid: string, cid: string) => `boutiques/${bid}/customers/${cid}`,
+  payments:      (bid: string) => `boutiques/${bid}/payments`,
+  payment:       (bid: string, pid: string) => `boutiques/${bid}/payments/${pid}`,
+  expenses:      (bid: string) => `boutiques/${bid}/expenses`,
+  expense:       (bid: string, eid: string) => `boutiques/${bid}/expenses/${eid}`,
+  cashSessions:  (bid: string) => `boutiques/${bid}/cash_sessions`,
+  cashSession:   (bid: string, sid: string) => `boutiques/${bid}/cash_sessions/${sid}`,
+  cashOuts:      (bid: string) => `boutiques/${bid}/cash_outs`,
+  cashOut:       (bid: string, oid: string) => `boutiques/${bid}/cash_outs/${oid}`,
+  inventorySessions: (bid: string) => `boutiques/${bid}/inventory_sessions`,
+  inventorySession:  (bid: string, sid: string) => `boutiques/${bid}/inventory_sessions/${sid}`,
   clotures:      (bid: string) => `boutiques/${bid}/clotures`,
   cloture:       (bid: string, cid: string) => `boutiques/${bid}/clotures/${cid}`,
   saleCounter:   (bid: string) => `boutiques/${bid}/meta/saleCounter`,
@@ -182,6 +199,137 @@ export async function fsSaveSupplier(bid: string, supplier: Supplier): Promise<v
 export async function fsDeleteSupplier(bid: string, supplierId: string): Promise<void> {
   if (!isFirebaseConfigured) return;
   await deleteDoc(doc(db, p.supplier(bid, supplierId)));
+}
+
+// ─── Customers ───────────────────────────────────────────────────────────────
+export async function fsLoadCustomers(bid: string): Promise<Customer[]> {
+  if (!isFirebaseConfigured) return [];
+  const snap = await getDocs(collection(db, p.customers(bid)));
+  return snap.docs.map(d => ({ ...(d.data() as Customer), id: d.id }));
+}
+
+export async function fsSaveCustomer(bid: string, customer: Customer): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  const { id, ...data } = customer;
+  await setDoc(doc(db, p.customer(bid, id)), data);
+}
+
+export async function fsDeleteCustomer(bid: string, customerId: string): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  await deleteDoc(doc(db, p.customer(bid, customerId)));
+}
+
+// ─── Payments (règlements crédit) ────────────────────────────────────────────
+export async function fsLoadPayments(bid: string): Promise<Payment[]> {
+  if (!isFirebaseConfigured) return [];
+  const snap = await getDocs(
+    query(collection(db, p.payments(bid)), orderBy('date', 'desc'))
+  );
+  return snap.docs.map(d => {
+    const data = d.data();
+    return { ...(data as Payment), id: d.id, date: toDate(data.date) };
+  });
+}
+
+export async function fsSavePayment(bid: string, payment: Payment): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  const { id, ...data } = payment;
+  await setDoc(doc(db, p.payment(bid, id)), {
+    ...data,
+    date: toTimestamp(payment.date),
+  });
+}
+
+export async function fsDeletePayment(bid: string, paymentId: string): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  await deleteDoc(doc(db, p.payment(bid, paymentId)));
+}
+
+// ─── Expenses (dépenses) ─────────────────────────────────────────────────────
+export async function fsLoadExpenses(bid: string): Promise<Expense[]> {
+  if (!isFirebaseConfigured) return [];
+  const snap = await getDocs(
+    query(collection(db, p.expenses(bid)), orderBy('date', 'desc'))
+  );
+  return snap.docs.map(d => {
+    const data = d.data();
+    return { ...(data as Expense), id: d.id, date: toDate(data.date) };
+  });
+}
+
+export async function fsSaveExpense(bid: string, expense: Expense): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  const { id, ...data } = expense;
+  await setDoc(doc(db, p.expense(bid, id)), {
+    ...data,
+    date: toTimestamp(expense.date),
+  });
+}
+
+export async function fsDeleteExpense(bid: string, expenseId: string): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  await deleteDoc(doc(db, p.expense(bid, expenseId)));
+}
+
+// ─── Cash Sessions ───────────────────────────────────────────────────────────
+export async function fsLoadCashSessions(bid: string): Promise<CashSession[]> {
+  if (!isFirebaseConfigured) return [];
+  const snap = await getDocs(
+    query(collection(db, p.cashSessions(bid)), orderBy('openedAt', 'desc'))
+  );
+  return snap.docs.map(d => ({ ...(d.data() as CashSession), id: d.id }));
+}
+
+export async function fsSaveCashSession(bid: string, session: CashSession): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  const { id, ...data } = session;
+  await setDoc(doc(db, p.cashSession(bid, id)), data);
+}
+
+// ─── Cash Outs (sorties de caisse) ───────────────────────────────────────────
+export async function fsLoadCashOuts(bid: string): Promise<CashOut[]> {
+  if (!isFirebaseConfigured) return [];
+  const snap = await getDocs(
+    query(collection(db, p.cashOuts(bid)), orderBy('date', 'desc'))
+  );
+  return snap.docs.map(d => {
+    const data = d.data();
+    return { ...(data as CashOut), id: d.id, date: toDate(data.date) };
+  });
+}
+
+export async function fsSaveCashOut(bid: string, cashOut: CashOut): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  const { id, ...data } = cashOut;
+  await setDoc(doc(db, p.cashOut(bid, id)), {
+    ...data,
+    date: toTimestamp(cashOut.date),
+  });
+}
+
+export async function fsDeleteCashOut(bid: string, cashOutId: string): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  await deleteDoc(doc(db, p.cashOut(bid, cashOutId)));
+}
+
+// ─── Inventory Sessions ──────────────────────────────────────────────────────
+export async function fsLoadInventorySessions(bid: string): Promise<InventorySession[]> {
+  if (!isFirebaseConfigured) return [];
+  const snap = await getDocs(
+    query(collection(db, p.inventorySessions(bid)), orderBy('createdAt', 'desc'))
+  );
+  return snap.docs.map(d => ({ ...(d.data() as InventorySession), id: d.id }));
+}
+
+export async function fsSaveInventorySession(bid: string, session: InventorySession): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  const { id, ...data } = session;
+  await setDoc(doc(db, p.inventorySession(bid, id)), data);
+}
+
+export async function fsDeleteInventorySession(bid: string, sessionId: string): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  await deleteDoc(doc(db, p.inventorySession(bid, sessionId)));
 }
 
 // ─── Clotures ────────────────────────────────────────────────────────────────

@@ -6,16 +6,20 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, ShoppingCart, Package, Warehouse,
-  Receipt, BarChart3, Settings, LogOut, Calculator, Truck, X
+  Receipt, BarChart3, Settings, LogOut, Calculator, Truck, Users, CreditCard, TrendingDown, ClipboardList, X
 } from 'lucide-react';
 
 const navItems = [
   { path: '/', label: 'Tableau de bord', icon: LayoutDashboard, roles: ['gérant', 'caissier'] as const },
   { path: '/caisse', label: 'Point de vente', icon: ShoppingCart, roles: ['gérant', 'caissier'] as const },
+  { path: '/clients', label: 'Clients', icon: Users, roles: ['gérant', 'caissier'] as const },
+  { path: '/credit', label: 'Crédit & créances', icon: CreditCard, roles: ['gérant', 'caissier'] as const },
   { path: '/produits', label: 'Produits', icon: Package, roles: ['gérant'] as const },
   { path: '/stock', label: 'Stock', icon: Warehouse, roles: ['gérant'] as const },
+  { path: '/inventaire', label: 'Inventaire', icon: ClipboardList, roles: ['gérant'] as const },
   { path: '/fournisseurs', label: 'Fournisseurs', icon: Truck, roles: ['gérant'] as const },
   { path: '/ventes', label: 'Ventes', icon: Receipt, roles: ['gérant'] as const },
+  { path: '/depenses', label: 'Dépenses', icon: TrendingDown, roles: ['gérant'] as const },
   { path: '/cloture', label: 'Clôture caisse', icon: Calculator, roles: ['gérant', 'caissier'] as const },
   { path: '/rapports', label: 'Rapports', icon: BarChart3, roles: ['gérant'] as const },
   { path: '/parametres', label: 'Paramètres', icon: Settings, roles: ['gérant'] as const },

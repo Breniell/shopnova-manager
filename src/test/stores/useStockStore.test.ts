@@ -60,7 +60,18 @@ describe('useStockStore — addMovement', () => {
   it('assigns a unique id starting with "m"', () => {
     useStockStore.getState().addMovement(newMovement);
     const m = useStockStore.getState().movements[0];
-    expect(m.id).toMatch(/^m\d+$/);
+    // Format: m{timestamp}{random5} pour éviter les collisions
+    expect(m.id).toMatch(/^m\d+[a-z0-9]+$/);
+  });
+
+  it('generates unique IDs for rapid consecutive movements', () => {
+    // Régression : Date.now() peut collisionner dans la même milliseconde
+    const m1 = useStockStore.getState().addMovement(newMovement);
+    const m2 = useStockStore.getState().addMovement(newMovement);
+    const m3 = useStockStore.getState().addMovement(newMovement);
+    expect(m1.id).not.toBe(m2.id);
+    expect(m2.id).not.toBe(m3.id);
+    expect(m1.id).not.toBe(m3.id);
   });
 
   it('stores all movement fields correctly', () => {

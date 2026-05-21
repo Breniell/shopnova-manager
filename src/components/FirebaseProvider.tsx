@@ -25,6 +25,12 @@ import {
   fsLoadSales,
   fsLoadMovements,
   fsLoadSuppliers,
+  fsLoadCustomers,
+  fsLoadPayments,
+  fsLoadExpenses,
+  fsLoadCashSessions,
+  fsLoadCashOuts,
+  fsLoadInventorySessions,
   fsLoadClotures,
   fsLoadSaleCounter,
 } from '@/services/firestoreService';
@@ -33,6 +39,11 @@ import { useProductStore } from '@/stores/useProductStore';
 import { useSaleStore } from '@/stores/useSaleStore';
 import { useStockStore } from '@/stores/useStockStore';
 import { useSupplierStore } from '@/stores/useSupplierStore';
+import { useCustomerStore } from '@/stores/useCustomerStore';
+import { usePaymentStore } from '@/stores/usePaymentStore';
+import { useExpenseStore } from '@/stores/useExpenseStore';
+import { useCashSessionStore } from '@/stores/useCashSessionStore';
+import { useInventoryStore } from '@/stores/useInventoryStore';
 import { useCaisseStore } from '@/stores/useCaisseStore';
 import { useSettingsStore, defaultShopSettings, type ShopSettings } from '@/stores/useSettingsStore';
 import { hashPin } from '@/lib/crypto';
@@ -146,26 +157,41 @@ async function bootstrapFirebase(): Promise<void> {
   }
 
   // 4. Load all data from Firestore (uses IndexedDB cache offline — instant)
-  const [settings, users, products, sales, movements, suppliers, clotures, saleCounter] = await Promise.all([
+  const [
+    settings, users, products, sales, movements, suppliers, customers, payments, expenses,
+    cashSessions, cashOuts, inventorySessions, clotures, saleCounter
+  ] = await Promise.all([
     fsLoadSettings(boutiqueId),
     fsLoadUsers(boutiqueId),
     fsLoadProducts(boutiqueId),
     fsLoadSales(boutiqueId),
     fsLoadMovements(boutiqueId),
     fsLoadSuppliers(boutiqueId),
+    fsLoadCustomers(boutiqueId),
+    fsLoadPayments(boutiqueId),
+    fsLoadExpenses(boutiqueId),
+    fsLoadCashSessions(boutiqueId),
+    fsLoadCashOuts(boutiqueId),
+    fsLoadInventorySessions(boutiqueId),
     fsLoadClotures(boutiqueId),
     fsLoadSaleCounter(boutiqueId),
   ]);
 
   // 5. Populate Zustand stores
-  if (settings)          useSettingsStore.getState()._setSettings(settings as ShopSettings);
-  if (users.length)      useAuthStore.getState()._setUsers(users);
-  if (products.length)   useProductStore.getState()._setProducts(products);
-  if (sales.length)      useSaleStore.getState()._setSales(sales);
-  if (movements.length)  useStockStore.getState()._setMovements(movements);
-  if (suppliers.length)  useSupplierStore.getState()._setSuppliers(suppliers);
-  if (clotures.length)   useCaisseStore.getState()._setClotures(clotures);
-  if (saleCounter > 0)   useSaleStore.getState()._setSaleCounter(saleCounter);
+  if (settings)            useSettingsStore.getState()._setSettings(settings as ShopSettings);
+  if (users.length)        useAuthStore.getState()._setUsers(users);
+  if (products.length)     useProductStore.getState()._setProducts(products);
+  if (sales.length)        useSaleStore.getState()._setSales(sales);
+  if (movements.length)    useStockStore.getState()._setMovements(movements);
+  if (suppliers.length)    useSupplierStore.getState()._setSuppliers(suppliers);
+  if (customers.length)    useCustomerStore.getState()._setCustomers(customers);
+  if (payments.length)     usePaymentStore.getState()._setPayments(payments);
+  if (expenses.length)     useExpenseStore.getState()._setExpenses(expenses);
+  if (cashSessions.length) useCashSessionStore.getState()._setSessions(cashSessions);
+  if (cashOuts.length)     useCashSessionStore.getState()._setCashOuts(cashOuts);
+  if (inventorySessions.length) useInventoryStore.getState()._setSessions(inventorySessions);
+  if (clotures.length)     useCaisseStore.getState()._setClotures(clotures);
+  if (saleCounter > 0)     useSaleStore.getState()._setSaleCounter(saleCounter);
 }
 
 export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

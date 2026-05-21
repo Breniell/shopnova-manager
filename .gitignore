@@ -49,4 +49,8 @@ bun.lockb
 
 # Playwright
 demo-results/
+screenshots/
+
+# Build artifacts
+release/
 
