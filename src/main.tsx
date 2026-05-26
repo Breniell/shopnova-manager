@@ -25,17 +25,3 @@ if (authData) {
 }
 
 createRoot(document.getElementById("root")!).render(<ErrorBoundary><App /></ErrorBoundary>);
-
-// Screenshot mode — expose stores for Playwright seeding (dev only, never bundled in prod)
-if (import.meta.env.DEV) {
-  import('./stores/useAuthStore').then(({ useAuthStore }) =>
-  import('./stores/useProductStore').then(({ useProductStore }) =>
-  import('./stores/useSaleStore').then(({ useSaleStore }) =>
-  import('./stores/useStockStore').then(({ useStockStore }) =>
-  import('./stores/useSettingsStore').then(({ useSettingsStore }) => {
-    (window as unknown as Record<string, unknown>).__legwan__ = {
-      auth: useAuthStore, products: useProductStore,
-      sales: useSaleStore, stock: useStockStore, settings: useSettingsStore,
-    };
-  })))));
-}

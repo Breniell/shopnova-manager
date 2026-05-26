@@ -44,14 +44,6 @@ async function clickButton(page: Page, text: RegExp | string, timeout = 8000) {
 // ─── DÉMO ────────────────────────────────────────────────────────────────────
 
 test("Démo complète Legwan", async ({ page }) => {
-  await page.addInitScript(() => {
-    localStorage.setItem('legwan-policy-accepted', JSON.stringify({
-      version: '1.0',
-      accepted: true,
-      name: 'Test Playwright',
-      date: new Date().toISOString(),
-    }));
-  });
 
   // ══════════════════════════════════════════════════════
   // 1. Écran de connexion

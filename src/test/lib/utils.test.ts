@@ -8,8 +8,8 @@ describe('cn', () => {
   });
 
   it('ignores falsy values', () => {
-    const optionalClass = false;
-    expect(cn('foo', optionalClass, undefined, null, '')).toBe('foo');
+    const includeBar: boolean = false;
+    expect(cn('foo', includeBar && 'bar', undefined, null, '')).toBe('foo');
   });
 
   it('resolves Tailwind conflicts (last wins)', () => {

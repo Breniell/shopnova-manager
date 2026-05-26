@@ -49,8 +49,10 @@ bun.lockb
 
 # Playwright
 demo-results/
-screenshots/
 
-# Build artifacts
+# Build / local backups
+build/
 release/
+screenshots/
+__bb_backup__/
 
