@@ -15,7 +15,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { CheckCircle2, ScrollText, Shield, ChevronDown } from 'lucide-react';
 
-const POLICY_VERSION = '1.0';
+const POLICY_VERSION = '1.3.2';
 const STORAGE_KEY    = 'legwan-policy-accepted';
 
 interface PolicyRecord {
