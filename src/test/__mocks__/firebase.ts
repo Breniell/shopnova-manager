@@ -10,6 +10,12 @@ export const getApps = () => [];
 // firebase/auth
 export const getAuth = () => ({ authStateReady: async () => {}, currentUser: null });
 export const signInAnonymously = async () => ({ user: { uid: 'test-boutique-id' } });
+export const signInWithEmailAndPassword = async () => ({ user: { uid: 'test-boutique-id', email: 'test@example.com', isAnonymous: false } });
+export const linkWithCredential = async (user: unknown) => ({ user });
+export const sendPasswordResetEmail = async () => {};
+export const EmailAuthProvider = {
+  credential: (email: string, password: string) => ({ email, password }),
+};
 
 // firebase/firestore
 export const CACHE_SIZE_UNLIMITED = Infinity;

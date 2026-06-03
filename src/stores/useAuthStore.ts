@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { hashPin } from '@/lib/crypto';
+import { hashPin, generateSalt } from '@/lib/crypto';
 import { getBoutiqueId } from '@/services/boutiqueService';
 import { fsSaveUser, fsDeleteUser } from '@/services/firestoreService';
 
@@ -12,6 +12,7 @@ export interface User {
   nom: string;
   role: UserRole;
   pin: string; // SHA-256 hash
+  salt?: string; // per-user random salt (undefined = legacy global salt)
   color: string;
 }
 
@@ -32,7 +33,7 @@ interface AuthState {
 
   login: (userId: string, pin: string) => Promise<LoginResult>;
   logout: () => void;
-  addUser: (user: Omit<User, 'id'> & { pin: string }) => Promise<void>;
+  addUser: (user: Omit<User, 'id' | 'salt'> & { pin: string }) => Promise<void>;
   updateUserPin: (userId: string, newPin: string) => Promise<void>;
   deleteUser: (userId: string) => void;
 }
@@ -43,7 +44,6 @@ const LOCK_DURATION_MS = 5 * 60 * 1000;
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
-      // users is populated by FirebaseProvider on startup
       users: [],
       currentUser: null,
       isAuthenticated: false,
@@ -61,11 +61,25 @@ export const useAuthStore = create<AuthState>()(
         }
 
         const user = state.users.find(u => u.id === userId);
-        const hashedPin = await hashPin(pin);
+        // Use per-user salt when present, fall back to legacy global salt for old users
+        const hashedPin = await hashPin(pin, user?.salt);
 
         if (user && user.pin === hashedPin) {
+          let finalUser = user;
+
+          // Transparent migration: upgrade legacy-salt users to per-user salt on first login
+          if (!user.salt) {
+            const newSalt = generateSalt();
+            const newHash = await hashPin(pin, newSalt);
+            finalUser = { ...user, salt: newSalt, pin: newHash };
+            set(state => ({ users: state.users.map(u => u.id === userId ? finalUser : u) }));
+            try {
+              fsSaveUser(getBoutiqueId(), finalUser).catch(console.error);
+            } catch { /* Firebase not yet initialized — will sync later */ }
+          }
+
           set({
-            currentUser: user,
+            currentUser: finalUser,
             isAuthenticated: true,
             loginAttempts: { ...state.loginAttempts, [userId]: { count: 0, lockedUntil: null } },
           });
@@ -88,24 +102,36 @@ export const useAuthStore = create<AuthState>()(
       logout: () => set({ currentUser: null, isAuthenticated: false }),
 
       addUser: async (userData) => {
-        const id = Date.now().toString();
-        const hashedPin = await hashPin(userData.pin);
-        const newUser: User = { ...userData, id, pin: hashedPin };
+        const id = crypto.randomUUID();
+        const salt = generateSalt();
+        const hashedPin = await hashPin(userData.pin, salt);
+        const newUser: User = { ...userData, id, pin: hashedPin, salt };
         set(state => ({ users: [...state.users, newUser] }));
-        fsSaveUser(getBoutiqueId(), newUser).catch(console.error);
+        try {
+          fsSaveUser(getBoutiqueId(), newUser).catch(console.error);
+        } catch { /* Firebase not yet initialized */ }
       },
 
       updateUserPin: async (userId, newPin) => {
-        const hashedPin = await hashPin(newPin);
-        const updated = get().users.map(u => u.id === userId ? { ...u, pin: hashedPin } : u);
+        const newSalt = generateSalt();
+        const hashedPin = await hashPin(newPin, newSalt);
+        const updated = get().users.map(u =>
+          u.id === userId ? { ...u, pin: hashedPin, salt: newSalt } : u
+        );
         set({ users: updated });
         const user = updated.find(u => u.id === userId);
-        if (user) fsSaveUser(getBoutiqueId(), user).catch(console.error);
+        if (user) {
+          try {
+            fsSaveUser(getBoutiqueId(), user).catch(console.error);
+          } catch { /* Firebase not yet initialized */ }
+        }
       },
 
       deleteUser: (userId) => {
         set(state => ({ users: state.users.filter(u => u.id !== userId) }));
-        fsDeleteUser(getBoutiqueId(), userId).catch(console.error);
+        try {
+          fsDeleteUser(getBoutiqueId(), userId).catch(console.error);
+        } catch { /* Firebase not yet initialized */ }
       },
     }),
     {

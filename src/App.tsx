@@ -21,6 +21,7 @@ import DepensesPage from "./pages/DepensesPage";
 import OuvertureSessionPage from "./pages/OuvertureSessionPage";
 import InventairePage from "./pages/InventairePage";
 import CreditPage from "./pages/CreditPage";
+import SuperAdminPage from "./pages/superadmin/SuperAdminPage";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,8 @@ const App = () => (
             <Route path="/rapports" element={<ProtectedRoute allowedRoles={['gérant']}><RapportsPage /></ProtectedRoute>} />
             <Route path="/parametres" element={<ProtectedRoute allowedRoles={['gérant']}><ParametresPage /></ProtectedRoute>} />
           </Route>
+          {/* Super-admin console — not in AppLayout, handles its own auth */}
+          <Route path="/superadmin" element={<SuperAdminPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </HashRouter>

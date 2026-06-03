@@ -1,22 +1,31 @@
 /**
- * PolicyGate — Écran de politique de confidentialité
+ * PolicyGate — Écran de politique de confidentialité + création du compte admin
  *
- * Affiché au premier lancement du logiciel (ou après une mise à jour de politique).
- * L'utilisateur doit :
+ * Affiché uniquement à la première installation (ou si la version de politique change).
+ *
+ * Phase 1 — Politique :
  *   1. Lire la politique jusqu'en bas (scroll obligatoire)
- *   2. Entrer son nom (signature numérique)
+ *   2. Entrer son nom complet (signature numérique)
  *   3. Cocher la case d'acceptation
- *   4. Cliquer sur "J'accepte et je continue"
+ *   4. Cliquer sur "J'accepte"
  *
- * L'acceptation est enregistrée dans localStorage avec date et version.
- * Si la version de la politique change, l'écran réapparaît.
+ * Phase 2 — Compte administrateur (nouvelles installations uniquement) :
+ *   5. Saisir prénom, nom et code PIN (4 chiffres)
+ *   6. Confirmer le PIN
+ *   7. Cliquer sur "Créer mon compte"
+ *
+ * Le profil ainsi créé devient l'unique compte gérant initial de la boutique.
+ * Les données du compte en attente sont stockées sous legwan-pending-admin
+ * (PIN haché + sel par utilisateur) et consommées par FirebaseProvider.
  */
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, ScrollText, Shield, ChevronDown } from 'lucide-react';
+import { CheckCircle2, ScrollText, Shield, ChevronDown, UserPlus, KeyRound } from 'lucide-react';
+import { hashPin, generateSalt } from '@/lib/crypto';
 
-const POLICY_VERSION = '1.3.2';
+const POLICY_VERSION = '1.4.0';
 const STORAGE_KEY    = 'legwan-policy-accepted';
+const PENDING_ADMIN_KEY = 'legwan-pending-admin';
 
 interface PolicyRecord {
   version: string;
@@ -36,6 +45,11 @@ function isPolicyAccepted(): boolean {
   }
 }
 
+/** True if the user has never accepted any version of the policy (brand-new install). */
+function isNewInstall(): boolean {
+  return localStorage.getItem(STORAGE_KEY) === null;
+}
+
 function savePolicyAcceptance(name: string): void {
   const record: PolicyRecord = {
     version: POLICY_VERSION,
@@ -46,37 +60,41 @@ function savePolicyAcceptance(name: string): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(record));
 }
 
-// ─── Policy text ──────────────────────────────────────────────────────────────
+// ─── Policy sections ──────────────────────────────────────────────────────────
 
 const sections = [
   {
     title: '1. Présentation',
-    content: `Legwan est un logiciel de gestion de boutique (caisse, stocks, rapports) destiné aux commerçants. En utilisant ce logiciel, vous acceptez les conditions décrites dans cette politique.`,
+    content: `Legwan est un logiciel de gestion de boutique (caisse, stocks, rapports) destiné aux commerçants d'Afrique subsaharienne. En installant et en utilisant ce logiciel, vous acceptez les conditions décrites dans cette politique.`,
   },
   {
     title: '2. Données enregistrées',
     content: `Legwan enregistre uniquement les informations nécessaires au fonctionnement de votre boutique :
+• Compte administrateur : prénom, nom, rôle (créé lors de la première installation)
+• Comptes utilisateurs supplémentaires : nom, rôle, code PIN (haché de manière irréversible)
 • Informations de la boutique : nom, adresse, téléphone
 • Produits : désignation, prix, stock
 • Ventes et transactions
 • Mouvements de stock
-• Fournisseurs
-• Clôtures de caisse
-• Comptes utilisateurs : nom, rôle, code PIN (chiffré, non lisible)
+• Fournisseurs et clients
+• Clôtures de caisse et sessions de caisse
 
-Aucune donnée bancaire ni de paiement n'est collectée.`,
+Aucune donnée bancaire ni de paiement ne sont collectées.`,
   },
   {
     title: '3. Utilisation des données',
     content: `Vos données servent exclusivement à :
 • Faire fonctionner le logiciel (ventes, stocks, rapports)
 • Synchroniser vos données entre appareils via les serveurs de Google (Firebase)
+• Permettre à l'éditeur de Legwan de monitorer la qualité du service : des statistiques agrégées anonymisées (nombre de ventes, chiffre d'affaires total, nombre de produits, version de l'application) sont envoyées à une plateforme centralisée pour assurer la maintenance et les mises à jour
+
+Ces données agrégées ne contiennent aucune donnée personnelle (noms de clients, détails de transactions).
 
 Legwan ne vend pas vos données et n'y accède pas à des fins commerciales. Vos données vous appartiennent.`,
   },
   {
     title: '4. Sécurité',
-    content: `Vos données sont hébergées sur Firebase (Google Cloud), avec chiffrement en transit et au repos. Les codes PIN sont hachés de manière irréversible. Chaque boutique dispose de son propre espace de données isolé.`,
+    content: `Vos données sont hébergées sur Firebase (Google Cloud), avec chiffrement en transit et au repos. Les codes PIN sont hachés de manière irréversible avec un sel cryptographique unique par utilisateur. Chaque boutique dispose de son propre espace de données isolé inaccessible aux autres boutiques.`,
   },
   {
     title: '5. Vos droits',
@@ -90,23 +108,58 @@ Pour toute demande : support@legwan.cm`,
   },
   {
     title: '6. Mises à jour de cette politique',
-    content: `Cette politique peut évoluer. En cas de modification, vous serez invité à l'accepter à nouveau lors de l'ouverture du logiciel.`,
+    content: `Cette politique peut évoluer. En cas de modification importante, vous serez invité à l'accepter à nouveau lors de l'ouverture du logiciel.`,
   },
 ];
 
+// ─── PIN digit pad ─────────────────────────────────────────────────────────────
+
+const PinDots: React.FC<{ length: number; error: boolean }> = ({ length, error }) => (
+  <div className={cn('flex justify-center gap-3 my-4', error && 'animate-[pin-shake_0.4s_ease-in-out]')}>
+    {[0, 1, 2, 3].map(i => (
+      <div
+        key={i}
+        className={cn(
+          'w-3.5 h-3.5 rounded-full transition-all duration-150',
+          i < length
+            ? error ? 'bg-destructive scale-110' : 'bg-primary scale-110'
+            : 'bg-muted-foreground/30'
+        )}
+      />
+    ))}
+  </div>
+);
+
 // ─── PolicyGate component ─────────────────────────────────────────────────────
+
+type Phase = 'policy' | 'admin-setup';
 
 export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [accepted, setAccepted] = useState(isPolicyAccepted);
+  const [phase, setPhase] = useState<Phase>('policy');
+
+  // Phase 1 state
   const [scrolledToBottom, setScrolledToBottom] = useState(false);
-  const [name, setName] = useState('');
+  const [sigName, setSigName] = useState('');
   const [checked, setChecked] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Phase 2 state — admin account creation
+  const [adminPrenom, setAdminPrenom] = useState('');
+  const [adminNom, setAdminNom] = useState('');
+  const [adminPin, setAdminPin] = useState('');
+  const [adminConfirmPin, setAdminConfirmPin] = useState('');
+  const [pinStep, setPinStep] = useState<'enter' | 'confirm'>('enter');
+  const [pinError, setPinError] = useState(false);
+  const [showPinText, setShowPinText] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+
   const today = new Date().toLocaleDateString('fr-FR', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   });
+
+  // ── Phase 1: scroll tracking ──────────────────────────────────────────────
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -119,7 +172,6 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
     const el = scrollRef.current;
     if (!el) return;
     el.addEventListener('scroll', handleScroll);
-    // Check immediately in case content is short
     handleScroll();
     return () => el.removeEventListener('scroll', handleScroll);
   }, [handleScroll]);
@@ -128,16 +180,243 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
     scrollRef.current?.scrollBy({ top: 300, behavior: 'smooth' });
   };
 
-  const canSubmit = scrolledToBottom && name.trim().length >= 3 && checked && !submitted;
+  const canSubmitPolicy = scrolledToBottom && sigName.trim().length >= 3 && checked && !submitted;
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
+  const handlePolicyAccept = () => {
+    if (!canSubmitPolicy) return;
     setSubmitted(true);
-    savePolicyAcceptance(name);
-    setTimeout(() => setAccepted(true), 800);
+
+    if (isNewInstall()) {
+      // Pre-fill admin name from signature
+      const parts = sigName.trim().split(' ');
+      setAdminPrenom(parts[0] ?? '');
+      setAdminNom(parts.slice(1).join(' ') ?? '');
+      // Go to admin setup instead of finishing immediately
+      setTimeout(() => {
+        setPhase('admin-setup');
+        setSubmitted(false);
+      }, 400);
+    } else {
+      // Existing install re-accepting after version update — no admin setup needed
+      savePolicyAcceptance(sigName);
+      setTimeout(() => setAccepted(true), 800);
+    }
   };
 
+  // ── Phase 2: PIN numpad ───────────────────────────────────────────────────
+
+  const currentPin = pinStep === 'enter' ? adminPin : adminConfirmPin;
+
+  const handlePinDigit = (digit: string) => {
+    if (currentPin.length >= 4 || isCreating) return;
+    const next = currentPin + digit;
+
+    if (pinStep === 'enter') {
+      setAdminPin(next);
+      if (next.length === 4) {
+        setTimeout(() => setPinStep('confirm'), 200);
+      }
+    } else {
+      setAdminConfirmPin(next);
+      if (next.length === 4) {
+        if (next === adminPin) {
+          // PINs match — create account
+          handleCreateAdmin(next);
+        } else {
+          // Mismatch — shake and reset confirm
+          setPinError(true);
+          setTimeout(() => {
+            setAdminConfirmPin('');
+            setPinError(false);
+          }, 600);
+        }
+      }
+    }
+  };
+
+  const handlePinBackspace = () => {
+    if (isCreating) return;
+    if (pinStep === 'enter') {
+      setAdminPin(p => p.slice(0, -1));
+    } else {
+      if (adminConfirmPin.length === 0) {
+        // Go back to entry step
+        setPinStep('enter');
+        setAdminPin('');
+      } else {
+        setAdminConfirmPin(p => p.slice(0, -1));
+      }
+    }
+  };
+
+  // Keyboard support in phase 2
+  useEffect(() => {
+    if (phase !== 'admin-setup') return;
+    const onKey = (e: KeyboardEvent) => {
+      if (/^[0-9]$/.test(e.key)) handlePinDigit(e.key);
+      else if (e.key === 'Backspace') handlePinBackspace();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [phase, adminPin, adminConfirmPin, pinStep, isCreating]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleCreateAdmin = async (confirmedPin: string) => {
+    if (!adminPrenom.trim() || !adminNom.trim()) return;
+    setIsCreating(true);
+
+    const salt = generateSalt();
+    const hashedPin = await hashPin(confirmedPin, salt);
+
+    localStorage.setItem(PENDING_ADMIN_KEY, JSON.stringify({
+      prenom: adminPrenom.trim(),
+      nom: adminNom.trim(),
+      hashedPin,
+      salt,
+    }));
+
+    savePolicyAcceptance(sigName);
+    setTimeout(() => setAccepted(true), 600);
+  };
+
+  const canProceedToPin = adminPrenom.trim().length >= 2 && adminNom.trim().length >= 2;
+
+  // ── Render ───────────────────────────────────────────────────────────────
+
   if (accepted) return <>{children}</>;
+
+  // ── Phase 2: admin account creation ──────────────────────────────────────
+
+  if (phase === 'admin-setup') {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-background flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md nova-card p-8 animate-fade-in">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
+              <UserPlus className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-foreground">Créez votre compte administrateur</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Ce compte vous donne accès à toutes les fonctions de gestion.
+              </p>
+            </div>
+          </div>
+
+          {/* Name fields (only editable before PIN entry) */}
+          {pinStep === 'enter' && adminPin.length === 0 ? (
+            <div className="space-y-4 mb-6">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Prénom <span className="text-destructive">*</span></label>
+                  <input
+                    type="text"
+                    value={adminPrenom}
+                    onChange={e => setAdminPrenom(e.target.value)}
+                    className="nova-input w-full"
+                    placeholder="Jean-Paul"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Nom <span className="text-destructive">*</span></label>
+                  <input
+                    type="text"
+                    value={adminNom}
+                    onChange={e => setAdminNom(e.target.value)}
+                    className="nova-input w-full"
+                    placeholder="Nkomo"
+                  />
+                </div>
+              </div>
+
+              <div className="nova-card p-3 border-primary/20 bg-primary/5 text-xs text-muted-foreground">
+                <KeyRound className="w-3.5 h-3.5 text-primary inline mr-1.5" />
+                Vous choisirez un code PIN à 4 chiffres à l'étape suivante. Vous pourrez ajouter d'autres utilisateurs depuis les Paramètres.
+              </div>
+
+              <button
+                onClick={() => canProceedToPin && undefined}
+                disabled={!canProceedToPin}
+                className={cn(
+                  'w-full py-3 rounded-xl font-semibold text-sm transition-all',
+                  canProceedToPin
+                    ? 'nova-btn-primary cursor-default'
+                    : 'bg-muted text-muted-foreground cursor-not-allowed'
+                )}
+                style={{ pointerEvents: canProceedToPin ? 'none' : undefined }}
+              >
+                {canProceedToPin
+                  ? 'Choisissez votre code PIN ci-dessous ↓'
+                  : 'Renseignez prénom et nom pour continuer'}
+              </button>
+            </div>
+          ) : (
+            <div className="mb-2 nova-card p-3 border-border/60 bg-muted/30 flex items-center gap-3">
+              <div
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-semibold text-white shrink-0"
+                style={{ backgroundColor: '#A93200' }}
+              >
+                {adminPrenom[0]}{adminNom[0]}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">{adminPrenom} {adminNom}</p>
+                <span className="text-[10px] font-medium bg-primary/15 text-primary px-2 py-0.5 rounded-full">Gérant</span>
+              </div>
+            </div>
+          )}
+
+          {/* PIN section */}
+          {canProceedToPin && (
+            <div className="mt-4">
+              <p className="text-xs text-muted-foreground text-center mb-1">
+                {pinStep === 'enter'
+                  ? 'Choisissez votre code PIN (4 chiffres)'
+                  : 'Confirmez votre code PIN'}
+              </p>
+
+              <PinDots length={currentPin.length} error={pinError} />
+
+              {pinError && (
+                <p className="text-center text-xs text-destructive mb-2 animate-fade-in">
+                  Les codes PIN ne correspondent pas — recommencez
+                </p>
+              )}
+
+              {isCreating && (
+                <p className="text-center text-xs text-secondary mb-2 animate-fade-in">
+                  Création du compte…
+                </p>
+              )}
+
+              {/* Numpad */}
+              <div className="grid grid-cols-3 gap-2 max-w-[240px] mx-auto mt-3">
+                {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '←'].map((key, i) => {
+                  if (key === '') return <div key={i} />;
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => key === '←' ? handlePinBackspace() : handlePinDigit(key)}
+                      disabled={isCreating}
+                      className="w-16 h-16 rounded-xl bg-muted border border-border text-foreground text-xl font-medium hover:bg-muted/80 active:scale-95 transition-all duration-100 mx-auto flex items-center justify-center disabled:opacity-40"
+                    >
+                      {key}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <p className="text-[10px] text-muted-foreground text-center mt-4">
+                Votre PIN ne sera jamais affiché ni stocké en clair.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Phase 1: policy ───────────────────────────────────────────────────────
 
   return (
     <div className="fixed inset-0 z-[9999] bg-background flex flex-col">
@@ -168,9 +447,7 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
       <div className="shrink-0 h-1 bg-muted">
         <div
           className="h-full bg-primary transition-all duration-300"
-          style={{
-            width: scrolledToBottom ? '100%' : '0%',
-          }}
+          style={{ width: scrolledToBottom ? '100%' : '0%' }}
         />
       </div>
 
@@ -181,7 +458,6 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
         style={{ scrollBehavior: 'smooth' }}
       >
         <div className="max-w-3xl mx-auto space-y-6 pb-8">
-          {/* Intro */}
           <div className="nova-card p-5 border-primary/20 bg-primary/5">
             <div className="flex items-start gap-3">
               <ScrollText className="w-5 h-5 text-primary shrink-0 mt-0.5" />
@@ -196,7 +472,6 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
             </div>
           </div>
 
-          {/* Sections */}
           {sections.map((section, i) => (
             <div key={i} className="nova-card p-5">
               <h2 className="text-sm font-semibold text-foreground mb-3">{section.title}</h2>
@@ -206,7 +481,6 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
             </div>
           ))}
 
-          {/* Last updated */}
           <p className="text-xs text-muted-foreground text-center pb-4">
             Politique de confidentialité Legwan — Version {POLICY_VERSION} — En vigueur depuis le 1er janvier 2026
           </p>
@@ -228,8 +502,6 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
       {/* Signature & acceptance panel */}
       <div className="shrink-0 border-t border-border bg-card p-4 lg:p-6">
         <div className="max-w-3xl mx-auto space-y-4">
-
-          {/* Status message */}
           {!scrolledToBottom && (
             <p className="text-xs text-amber-500 text-center">
               Lisez l'intégralité de la politique de confidentialité pour continuer.
@@ -238,7 +510,6 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
 
           {scrolledToBottom && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Signature */}
               <div>
                 <label className="text-xs text-muted-foreground mb-1.5 block">
                   Votre nom complet <span className="text-destructive">*</span>
@@ -246,15 +517,14 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
                 </label>
                 <input
                   type="text"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
+                  value={sigName}
+                  onChange={e => setSigName(e.target.value)}
                   className="nova-input w-full"
                   placeholder="Ex: Jean-Paul Nkomo"
                   autoFocus
                   aria-label="Votre nom complet pour signer"
                 />
               </div>
-              {/* Date */}
               <div>
                 <label className="text-xs text-muted-foreground mb-1.5 block">Date d'acceptation</label>
                 <div className="nova-input w-full text-muted-foreground bg-muted/50 cursor-not-allowed">
@@ -289,21 +559,20 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
             </label>
           )}
 
-          {/* Submit */}
           <button
-            onClick={handleSubmit}
-            disabled={!canSubmit}
+            onClick={handlePolicyAccept}
+            disabled={!canSubmitPolicy}
             className={cn(
               'w-full py-3 rounded-xl font-semibold text-base transition-all duration-200 flex items-center justify-center gap-2',
-              canSubmit
+              canSubmitPolicy
                 ? 'nova-btn-primary'
                 : 'bg-muted text-muted-foreground cursor-not-allowed',
               submitted && 'bg-secondary text-secondary-foreground'
             )}
-            aria-disabled={!canSubmit}
+            aria-disabled={!canSubmitPolicy}
           >
             {submitted ? (
-              <><CheckCircle2 className="w-5 h-5" /> Accepté — Chargement…</>
+              <><CheckCircle2 className="w-5 h-5" /> Accepté…</>
             ) : (
               <>J'accepte et je continue vers Legwan</>
             )}

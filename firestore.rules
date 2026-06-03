@@ -3,8 +3,9 @@ rules_version = '2';
 // ─────────────────────────────────────────────────────────────────────────────
 // Legwan — Firestore Security Rules
 //
-// Architecture: each boutique has an isolated subtree at boutiques/{boutiqueId}
-// The boutiqueId = the Firebase Anonymous Auth UID of the device.
+// Architecture: each boutique has an isolated subtree at boutiques/{boutiqueId}.
+// The boutiqueId is the Firebase Auth UID. A boutique starts anonymous, then can
+// be linked to Email/Password so the same UID can be restored on a new machine.
 //
 // Rule: only the authenticated user whose UID matches the boutiqueId can
 //       read or write their boutique's data. No other user can access it.
@@ -28,6 +29,25 @@ service cloud.firestore {
     match /boutiques/{boutiqueId}/{subcollection}/{docId}/{rest=**} {
       allow read, write: if request.auth != null
                          && request.auth.uid == boutiqueId;
+    }
+
+    // ── Platform registry (developer super-admin monitoring) ─────────────────
+    // Each boutique writes its own heartbeat entry.
+    // Only the developer (identified by email) can list and read all entries.
+    match /platform/registry/{boutiqueId} {
+      // Boutique writes its own entry only
+      allow write: if request.auth != null && request.auth.uid == boutiqueId;
+      // Developer reads any entry
+      allow read: if request.auth != null
+                  && request.auth.token.email != null
+                  && request.auth.token.email == 'breniellkouda@gmail.com';
+    }
+
+    // Allow superadmin to list the registry collection
+    match /platform/registry {
+      allow list: if request.auth != null
+                  && request.auth.token.email != null
+                  && request.auth.token.email == 'breniellkouda@gmail.com';
     }
 
     // ── Deny everything else ─────────────────────────────────────────────────

@@ -1,11 +1,19 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useAuthStore, User } from '@/stores/useAuthStore';
 import { NovaCard } from '@/components/ui/NovaCard';
 import { cn } from '@/lib/utils';
-import { Store, Users, KeyRound, Trash2, Plus, X, Copy, Check } from 'lucide-react';
+import { Store, Users, KeyRound, Trash2, Plus, X, Copy, Check, Cloud, Mail } from 'lucide-react';
 import { toast } from 'sonner';
-import { getBoutiqueId, getBoutiqueCode } from '@/services/boutiqueService';
+import {
+  getBoutiqueId,
+  getBoutiqueCode,
+  getBoutiqueRecoveryErrorMessage,
+  getBoutiqueRecoveryStatus,
+  linkBoutiqueRecoveryAccount,
+  sendBoutiqueRecoveryPasswordReset,
+  type BoutiqueRecoveryStatus,
+} from '@/services/boutiqueService';
 
 const ParametresPage: React.FC = () => {
   const { shop, updateShop } = useSettingsStore();
@@ -17,20 +25,71 @@ const ParametresPage: React.FC = () => {
   const [confirmPin, setConfirmPin] = useState('');
   const [newUser, setNewUser] = useState({ prenom: '', nom: '', role: 'caissier' as 'gérant' | 'caissier', pin: '', confirmPin: '' });
   const [codeCopied, setCodeCopied] = useState(false);
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState<User | null>(null);
+  const [recoveryStatus, setRecoveryStatus] = useState<BoutiqueRecoveryStatus | null>(null);
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [recoveryPassword, setRecoveryPassword] = useState('');
+  const [recoveryPasswordConfirm, setRecoveryPasswordConfirm] = useState('');
+  const [isRecoverySaving, setIsRecoverySaving] = useState(false);
 
   const [localShop, setLocalShop] = useState(shop);
 
   const boutiqueId = getBoutiqueId();
   const boutiqueCode = getBoutiqueCode(boutiqueId);
+  const isLocalMode = boutiqueId === 'local-boutique' || boutiqueId.startsWith('local-');
   const isBoutiqueTab = activeTab === 'boutique';
   const isUsersTab = activeTab === 'users';
 
+  useEffect(() => {
+    getBoutiqueRecoveryStatus()
+      .then(status => {
+        setRecoveryStatus(status);
+        setRecoveryEmail(status.email ?? '');
+      })
+      .catch(() => setRecoveryStatus(null));
+  }, []);
+
   const handleCopyCode = () => {
-    navigator.clipboard.writeText(boutiqueCode).then(() => {
+    navigator.clipboard.writeText(boutiqueId).then(() => {
       setCodeCopied(true);
-      toast.success('Code boutique copié');
+      toast.success('Identifiant boutique copié');
       setTimeout(() => setCodeCopied(false), 2000);
     });
+  };
+
+  const refreshRecoveryStatus = async () => {
+    const status = await getBoutiqueRecoveryStatus();
+    setRecoveryStatus(status);
+    setRecoveryEmail(status.email ?? recoveryEmail);
+  };
+
+  const handleEnableRecovery = async () => {
+    if (!recoveryEmail.trim()) { toast.error('Email requis'); return; }
+    if (recoveryPassword.length < 6) { toast.error('Mot de passe: 6 caracteres minimum'); return; }
+    if (recoveryPassword !== recoveryPasswordConfirm) { toast.error('Les mots de passe ne correspondent pas'); return; }
+
+    setIsRecoverySaving(true);
+    try {
+      await linkBoutiqueRecoveryAccount(recoveryEmail, recoveryPassword);
+      setRecoveryPassword('');
+      setRecoveryPasswordConfirm('');
+      await refreshRecoveryStatus();
+      toast.success('Recuperation cloud activee');
+    } catch (err) {
+      toast.error(getBoutiqueRecoveryErrorMessage(err));
+    } finally {
+      setIsRecoverySaving(false);
+    }
+  };
+
+  const handleSendRecoveryReset = async () => {
+    if (!recoveryEmail.trim()) { toast.error('Email requis'); return; }
+    try {
+      await sendBoutiqueRecoveryPasswordReset(recoveryEmail);
+      toast.success('Email de reinitialisation envoye');
+    } catch (err) {
+      toast.error(getBoutiqueRecoveryErrorMessage(err));
+    }
   };
 
   const handleSaveShop = () => {
@@ -42,7 +101,7 @@ const ParametresPage: React.FC = () => {
     if (!newUser.prenom || !newUser.nom) { toast.error('Prénom et nom requis'); return; }
     if (newUser.pin.length !== 4) { toast.error('Le PIN doit contenir 4 chiffres'); return; }
     if (newUser.pin !== newUser.confirmPin) { toast.error('Les PINs ne correspondent pas'); return; }
-    const colors = ['#6C63FF', '#00D4AA', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+    const colors = ['#A93200', '#00D4AA', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
     await addUser({ prenom: newUser.prenom, nom: newUser.nom, role: newUser.role, pin: newUser.pin, color: colors[users.length % colors.length] });
     toast.success('Utilisateur ajouté');
     setShowUserModal(false);
@@ -120,10 +179,10 @@ const ParametresPage: React.FC = () => {
         <NovaCard accent className="w-full max-w-2xl mt-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
-              <p className="text-xs text-muted-foreground mb-1">Code de récupération boutique</p>
+              <p className="text-xs text-muted-foreground mb-1">Code boutique</p>
               <p className="text-2xl font-mono font-bold text-foreground tracking-widest">{boutiqueCode}</p>
               <p className="text-xs text-muted-foreground mt-2">
-                Conservez ce code en lieu sûr. Il permet de retrouver vos données en cas de réinstallation.
+                Code court pour identifier la boutique. Pour restaurer sur une autre machine, activez le compte cloud ci-dessous.
               </p>
             </div>
             <button
@@ -134,11 +193,79 @@ const ParametresPage: React.FC = () => {
                   ? 'border-secondary/40 bg-secondary/10 text-secondary'
                   : 'border-border bg-muted text-foreground hover:bg-muted/80'
               )}
-              aria-label="Copier le code boutique"
+              aria-label="Copier l'identifiant complet"
             >
               {codeCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {codeCopied ? 'Copié !' : 'Copier'}
+              {codeCopied ? 'Copié !' : 'Copier ID'}
             </button>
+          </div>
+        </NovaCard>
+
+        <NovaCard accent className="w-full max-w-2xl mt-4">
+          <div className="space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+                <Cloud className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Sauvegarde et recuperation cloud</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Liez cette boutique a un email et un mot de passe. En cas de machine perdue, reinstallez Legwan puis restaurez depuis l ecran de connexion.
+                </p>
+              </div>
+            </div>
+
+            {!isLocalMode && (
+              <div className="pt-1">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Identifiant complet Firebase</p>
+                <p className="text-[11px] font-mono text-muted-foreground break-all bg-muted/40 rounded px-2 py-1.5 select-all">
+                  {boutiqueId}
+                </p>
+              </div>
+            )}
+
+            {isLocalMode ? (
+              <p className="text-sm text-destructive rounded-lg bg-destructive/10 border border-destructive/20 px-3 py-2">
+                Firebase n est pas configure: la recuperation cloud est inactive dans ce build.
+              </p>
+            ) : recoveryStatus?.isRecoveryEnabled ? (
+              <div className="space-y-3">
+                <div className="rounded-lg border border-secondary/20 bg-secondary/10 px-3 py-2">
+                  <p className="text-sm text-secondary font-medium">Recuperation active</p>
+                  <p className="text-xs text-muted-foreground mt-1 break-all">{recoveryStatus.email}</p>
+                </div>
+                <button
+                  onClick={handleSendRecoveryReset}
+                  className="flex items-center justify-center gap-2 rounded-lg bg-muted px-4 py-2 text-sm text-foreground hover:bg-muted/80 transition-colors"
+                >
+                  <Mail className="w-4 h-4" /> Envoyer un email de reinitialisation
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Email proprietaire</label>
+                  <input type="email" value={recoveryEmail} onChange={e => setRecoveryEmail(e.target.value)} className="nova-input w-full" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Mot de passe</label>
+                    <input type="password" value={recoveryPassword} onChange={e => setRecoveryPassword(e.target.value)} className="nova-input w-full" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Confirmation</label>
+                    <input type="password" value={recoveryPasswordConfirm} onChange={e => setRecoveryPasswordConfirm(e.target.value)} className="nova-input w-full" />
+                  </div>
+                </div>
+                <button
+                  onClick={handleEnableRecovery}
+                  disabled={isRecoverySaving}
+                  className="nova-btn-primary px-6 py-2.5 disabled:opacity-60"
+                >
+                  {isRecoverySaving ? 'Activation...' : 'Activer la recuperation'}
+                </button>
+              </div>
+            )}
           </div>
         </NovaCard>
         </>
@@ -164,7 +291,7 @@ const ParametresPage: React.FC = () => {
                     <KeyRound className="w-3 h-3" /> Changer PIN
                   </button>
                   {user.role !== 'gérant' && (
-                    <button onClick={() => { deleteUser(user.id); toast.success('Utilisateur supprimé'); }} className="text-xs px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors flex items-center gap-1">
+                    <button onClick={() => setConfirmDeleteUser(user)} className="text-xs px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors flex items-center gap-1">
                       <Trash2 className="w-3 h-3" /> Supprimer
                     </button>
                   )}
@@ -213,6 +340,39 @@ const ParametresPage: React.FC = () => {
             <div className="flex gap-3 mt-6">
               <button onClick={() => setShowUserModal(false)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors">Annuler</button>
               <button onClick={handleAddUser} className="flex-1 nova-btn-primary py-2.5">Ajouter</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete user confirmation modal */}
+      {confirmDeleteUser && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setConfirmDeleteUser(null)}>
+          <div className="nova-card w-full max-w-[380px] p-5 lg:p-6 animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-destructive" />
+              </div>
+              <div>
+                <h2 className="nova-heading text-base text-foreground">Supprimer l'utilisateur</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">{confirmDeleteUser.prenom} {confirmDeleteUser.nom}</p>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground mb-6">
+              Cette action est irréversible. L'utilisateur ne pourra plus se connecter à Legwan.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmDeleteUser(null)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors">Annuler</button>
+              <button
+                onClick={() => {
+                  deleteUser(confirmDeleteUser.id);
+                  toast.success('Utilisateur supprimé');
+                  setConfirmDeleteUser(null);
+                }}
+                className="flex-1 py-2.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors font-medium"
+              >
+                Supprimer
+              </button>
             </div>
           </div>
         </div>

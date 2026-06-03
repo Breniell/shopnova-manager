@@ -4,14 +4,14 @@
  * Bootstraps the Firebase connection on app startup:
  *   1. Signs in anonymously → gets the permanent boutiqueId
  *   2. Checks if this boutique already exists in Firestore
- *   3. If new: seeds default settings + default gérant user
+ *   3. If new: reads legwan-pending-admin (set by PolicyGate) to create the real
+ *      admin account, then seeds Firestore via fsInitializeBoutique
  *   4. Loads all collections (uses IndexedDB cache when offline → instant)
  *   5. Populates all Zustand stores
  *   6. Renders children (the app)
  *
  * Shows a branded splash screen while initializing.
- * If Firebase is not configured (missing env vars), runs in pure-local mode:
- *   - Seeds a default gérant user (PIN 1234) so the app is usable without Firebase.
+ * If Firebase is not configured (missing env vars), runs in pure-local mode.
  */
 import React, { useState, useEffect } from 'react';
 import { initBoutique } from '@/services/boutiqueService';
@@ -35,27 +35,73 @@ import {
   fsLoadSaleCounter,
 } from '@/services/firestoreService';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { useProductStore } from '@/stores/useProductStore';
-import { useSaleStore } from '@/stores/useSaleStore';
-import { useStockStore } from '@/stores/useStockStore';
-import { useSupplierStore } from '@/stores/useSupplierStore';
-import { useCustomerStore } from '@/stores/useCustomerStore';
-import { usePaymentStore } from '@/stores/usePaymentStore';
-import { useExpenseStore } from '@/stores/useExpenseStore';
-import { useCashSessionStore } from '@/stores/useCashSessionStore';
-import { useInventoryStore } from '@/stores/useInventoryStore';
-import { useCaisseStore } from '@/stores/useCaisseStore';
+import { useProductStore, type Product } from '@/stores/useProductStore';
+import { useSaleStore, type Sale } from '@/stores/useSaleStore';
+import { useStockStore, type StockMovement } from '@/stores/useStockStore';
+import { useSupplierStore, type Supplier } from '@/stores/useSupplierStore';
+import { useCustomerStore, type Customer } from '@/stores/useCustomerStore';
+import { usePaymentStore, type Payment } from '@/stores/usePaymentStore';
+import { useExpenseStore, type Expense } from '@/stores/useExpenseStore';
+import { useCashSessionStore, type CashOut, type CashSession } from '@/stores/useCashSessionStore';
+import { useInventoryStore, type InventorySession } from '@/stores/useInventoryStore';
+import { useCaisseStore, type ClotureCaisse } from '@/stores/useCaisseStore';
 import { useSettingsStore, defaultShopSettings, type ShopSettings } from '@/stores/useSettingsStore';
-import { hashPin } from '@/lib/crypto';
+import { hashPin, generateSalt } from '@/lib/crypto';
 import type { User } from '@/stores/useAuthStore';
+import { sendRegistryHeartbeat } from '@/services/registryService';
+
+const PENDING_ADMIN_KEY = 'legwan-pending-admin';
+
+type BootstrapData = [
+  ShopSettings | null,
+  User[],
+  Product[],
+  Sale[],
+  StockMovement[],
+  Supplier[],
+  Customer[],
+  Payment[],
+  Expense[],
+  CashSession[],
+  CashOut[],
+  InventorySession[],
+  ClotureCaisse[],
+  number,
+];
 
 // ─── Default data for brand-new boutiques ─────────────────────────────────────
 
+/**
+ * Builds the initial user list for a new boutique.
+ *
+ * Priority 1: legwan-pending-admin set by PolicyGate (real owner account).
+ * Priority 2: demo accounts for dev/local mode when no admin was configured.
+ */
 async function buildDefaultUsers(): Promise<User[]> {
-  // Test accounts seeded on first launch:
-  //   • Marie  Nguema  — Gérant   — PIN 1234
-  //   • Paul   Mbarga  — Caissier — PIN 5678
-  //   • Fatou  Diallo  — Caissier — PIN 0000
+  const pendingRaw = localStorage.getItem(PENDING_ADMIN_KEY);
+  if (pendingRaw) {
+    try {
+      const { prenom, nom, hashedPin, salt } = JSON.parse(pendingRaw) as {
+        prenom: string; nom: string; hashedPin: string; salt: string;
+      };
+      if (prenom && nom && hashedPin && salt) {
+        localStorage.removeItem(PENDING_ADMIN_KEY);
+        return [{
+          id: crypto.randomUUID(),
+          prenom: prenom.trim(),
+          nom: nom.trim(),
+          role: 'gérant',
+          pin: hashedPin,
+          salt,
+          color: '#A93200',
+        }];
+      }
+    } catch {
+      localStorage.removeItem(PENDING_ADMIN_KEY);
+    }
+  }
+
+  // Fallback: seeded demo accounts (dev / local mode only)
   const [pinMarie, pinPaul, pinFatou] = await Promise.all([
     hashPin('1234'),
     hashPin('5678'),
@@ -71,7 +117,6 @@ async function buildDefaultUsers(): Promise<User[]> {
 // ─── Seed local demo data (no Firebase) ──────────────────────────────────────
 
 async function seedLocalMode(): Promise<void> {
-  // Only seed if no users are loaded yet
   if (useAuthStore.getState().users.length > 0) return;
   const defaultUsers = await buildDefaultUsers();
   useAuthStore.getState()._setUsers(defaultUsers);
@@ -82,7 +127,6 @@ async function seedLocalMode(): Promise<void> {
 
 const SplashScreen: React.FC<{ message?: string }> = ({ message }) => (
   <div className="fixed inset-0 bg-background flex flex-col items-center justify-center gap-6 z-[9999]">
-    {/* Logo mark */}
     <svg width="64" height="64" viewBox="0 0 80 80" fill="none">
       <rect width="80" height="80" rx="18" fill="#A93200"/>
       <path d="M 54,14 A 22,22 0 1,0 54,60 L 54,42 L 40,42" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -97,7 +141,6 @@ const SplashScreen: React.FC<{ message?: string }> = ({ message }) => (
       </p>
     </div>
 
-    {/* Progress bar */}
     <div className="w-48 h-1 bg-muted rounded-full overflow-hidden">
       <div className="h-full bg-primary rounded-full animate-[loading_1.5s_ease-in-out_infinite]" style={{ width: '60%' }} />
     </div>
@@ -132,53 +175,74 @@ const ErrorScreen: React.FC<{ error: string }> = ({ error }) => (
   </div>
 );
 
-// ─── Main provider ─────────────────────────────────────────────────────────────
+// ─── Main bootstrap ─────────────────────────────────────────────────────────────
 
 async function bootstrapFirebase(): Promise<void> {
   // 1. Authenticate + get boutiqueId
   const boutiqueId = await initBoutique();
 
-  // 2. Check if this boutique exists in Firestore
-  const initialized = await fsIsBoutiqueInitialized(boutiqueId);
+  // 2. Check if this boutique already exists in Firestore
+  let initialized = false;
+  try {
+    initialized = await fsIsBoutiqueInitialized(boutiqueId);
+  } catch (err) {
+    console.warn('Firebase bootstrap offline fallback (isBoutiqueInitialized failed):', err);
+  }
 
   if (!initialized) {
-    // 3. First launch — seed defaults
+    // Brand-new boutique: seed Firestore with the admin account from PolicyGate
+    // (or demo accounts in dev mode), then seed local state.
     const defaultUsers = await buildDefaultUsers();
-    await fsInitializeBoutique(boutiqueId, {
-      settings: defaultShopSettings,
-      users: defaultUsers,
-    });
 
-    // Populate stores with the seeded defaults
+    try {
+      await fsInitializeBoutique(boutiqueId, {
+        settings: defaultShopSettings,
+        users: defaultUsers,
+      });
+    } catch (err) {
+      // Offline on first launch — still seed local state so app is usable
+      console.warn('Firebase bootstrap offline: boutique init deferred', err);
+    }
+
     useAuthStore.getState()._setUsers(defaultUsers);
     useSettingsStore.getState()._setSettings(defaultShopSettings);
-    // Products, sales, suppliers, clotures start empty for a new boutique
     return;
   }
 
-  // 4. Load all data from Firestore (uses IndexedDB cache offline — instant)
+  // 3. Load all data from Firestore (IndexedDB cache → instant offline)
+  let results: BootstrapData;
+  try {
+    results = await Promise.all([
+      fsLoadSettings(boutiqueId),
+      fsLoadUsers(boutiqueId),
+      fsLoadProducts(boutiqueId),
+      fsLoadSales(boutiqueId),
+      fsLoadMovements(boutiqueId),
+      fsLoadSuppliers(boutiqueId),
+      fsLoadCustomers(boutiqueId),
+      fsLoadPayments(boutiqueId),
+      fsLoadExpenses(boutiqueId),
+      fsLoadCashSessions(boutiqueId),
+      fsLoadCashOuts(boutiqueId),
+      fsLoadInventorySessions(boutiqueId),
+      fsLoadClotures(boutiqueId),
+      fsLoadSaleCounter(boutiqueId),
+    ]);
+  } catch (err) {
+    console.warn('Firebase bootstrap offline fallback (data load failed):', err);
+    if (!await trySeedLocalMode()) {
+      throw err;
+    }
+    return;
+  }
+
   const [
     settings, users, products, sales, movements, suppliers, customers, payments, expenses,
     cashSessions, cashOuts, inventorySessions, clotures, saleCounter
-  ] = await Promise.all([
-    fsLoadSettings(boutiqueId),
-    fsLoadUsers(boutiqueId),
-    fsLoadProducts(boutiqueId),
-    fsLoadSales(boutiqueId),
-    fsLoadMovements(boutiqueId),
-    fsLoadSuppliers(boutiqueId),
-    fsLoadCustomers(boutiqueId),
-    fsLoadPayments(boutiqueId),
-    fsLoadExpenses(boutiqueId),
-    fsLoadCashSessions(boutiqueId),
-    fsLoadCashOuts(boutiqueId),
-    fsLoadInventorySessions(boutiqueId),
-    fsLoadClotures(boutiqueId),
-    fsLoadSaleCounter(boutiqueId),
-  ]);
+  ] = results;
 
-  // 5. Populate Zustand stores
-  if (settings)            useSettingsStore.getState()._setSettings(settings as ShopSettings);
+  // 4. Populate Zustand stores
+  if (settings)            useSettingsStore.getState()._setSettings(settings);
   if (users.length)        useAuthStore.getState()._setUsers(users);
   if (products.length)     useProductStore.getState()._setProducts(products);
   if (sales.length)        useSaleStore.getState()._setSales(sales);
@@ -191,7 +255,24 @@ async function bootstrapFirebase(): Promise<void> {
   if (cashOuts.length)     useCashSessionStore.getState()._setCashOuts(cashOuts);
   if (inventorySessions.length) useInventoryStore.getState()._setSessions(inventorySessions);
   if (clotures.length)     useCaisseStore.getState()._setClotures(clotures);
-  if (saleCounter > 0)     useSaleStore.getState()._setSaleCounter(saleCounter);
+  if (typeof saleCounter === 'number' && saleCounter > 0) useSaleStore.getState()._setSaleCounter(saleCounter);
+
+  // 5. Send platform registry heartbeat (fire-and-forget, never blocks startup)
+  const isRecoveryEnabled = !!(await import('@/services/boutiqueService')
+    .then(m => m.getBoutiqueRecoveryStatus())
+    .then(s => s.isRecoveryEnabled)
+    .catch(() => false));
+  sendRegistryHeartbeat(isRecoveryEnabled).catch(() => {});
+}
+
+async function trySeedLocalMode(): Promise<boolean> {
+  try {
+    await seedLocalMode();
+    return true;
+  } catch (err) {
+    console.warn('Local fallback failed:', err);
+    return false;
+  }
 }
 
 export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -200,7 +281,6 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     if (!isFirebaseConfigured) {
-      // Pure-local mode: seed a default gérant user so the app is usable
       seedLocalMode().then(() => setReady(true));
       return;
     }
@@ -217,3 +297,4 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   if (!ready) return <SplashScreen />;
   return <>{children}</>;
 };
+
