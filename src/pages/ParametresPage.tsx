@@ -3,7 +3,7 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useAuthStore, User } from '@/stores/useAuthStore';
 import { NovaCard } from '@/components/ui/NovaCard';
 import { cn } from '@/lib/utils';
-import { Store, Users, KeyRound, Trash2, Plus, X, Copy, Check, Cloud, Mail } from 'lucide-react';
+import { Store, Users, KeyRound, Trash2, Plus, X, Copy, Check, Cloud, Mail, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   getBoutiqueId,
@@ -17,7 +17,7 @@ import {
 
 const ParametresPage: React.FC = () => {
   const { shop, updateShop } = useSettingsStore();
-  const { users, addUser, updateUserPin, deleteUser } = useAuthStore();
+  const { users, addUser, updateUserPin, updateUserInfo, deleteUser } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'boutique' | 'users'>('boutique');
   const [showUserModal, setShowUserModal] = useState(false);
   const [showPinModal, setShowPinModal] = useState<User | null>(null);
@@ -26,6 +26,8 @@ const ParametresPage: React.FC = () => {
   const [newUser, setNewUser] = useState({ prenom: '', nom: '', role: 'caissier' as 'gérant' | 'caissier', pin: '', confirmPin: '' });
   const [codeCopied, setCodeCopied] = useState(false);
   const [confirmDeleteUser, setConfirmDeleteUser] = useState<User | null>(null);
+  const [editUser, setEditUser] = useState<User | null>(null);
+  const [editUserInfo, setEditUserInfo] = useState({ prenom: '', nom: '', role: 'caissier' as 'gérant' | 'caissier' });
   const [recoveryStatus, setRecoveryStatus] = useState<BoutiqueRecoveryStatus | null>(null);
   const [recoveryEmail, setRecoveryEmail] = useState('');
   const [recoveryPassword, setRecoveryPassword] = useState('');
@@ -287,14 +289,20 @@ const ParametresPage: React.FC = () => {
                   {user.role === 'gérant' ? 'Gérant' : 'Caissier'}
                 </span>
                 <div className="flex flex-wrap justify-center gap-2 mt-4">
-                  <button onClick={() => { setShowPinModal(user); setNewPin(''); setConfirmPin(''); }} className="text-xs px-3 py-1.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors flex items-center gap-1">
-                    <KeyRound className="w-3 h-3" /> Changer PIN
+                  <button
+                    onClick={() => { setEditUser(user); setEditUserInfo({ prenom: user.prenom, nom: user.nom, role: user.role }); }}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors flex items-center gap-1"
+                  >
+                    <Pencil className="w-3 h-3" /> Modifier
                   </button>
-                  {user.role !== 'gérant' && (
+                  <button onClick={() => { setShowPinModal(user); setNewPin(''); setConfirmPin(''); }} className="text-xs px-3 py-1.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors flex items-center gap-1">
+                    <KeyRound className="w-3 h-3" /> PIN
+                  </button>
+                  {users.filter(u => u.role === 'gérant').length > 1 || user.role !== 'gérant' ? (
                     <button onClick={() => setConfirmDeleteUser(user)} className="text-xs px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors flex items-center gap-1">
                       <Trash2 className="w-3 h-3" /> Supprimer
                     </button>
-                  )}
+                  ) : null}
                 </div>
               </NovaCard>
             ))}
@@ -340,6 +348,59 @@ const ParametresPage: React.FC = () => {
             <div className="flex gap-3 mt-6">
               <button onClick={() => setShowUserModal(false)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors">Annuler</button>
               <button onClick={handleAddUser} className="flex-1 nova-btn-primary py-2.5">Ajouter</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit user modal */}
+      {editUser && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setEditUser(null)}>
+          <div className="nova-card w-full max-w-[420px] p-5 lg:p-6 animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="nova-heading text-lg text-foreground">Modifier l'utilisateur</h2>
+              <button onClick={() => setEditUser(null)} className="p-2 rounded-lg hover:bg-muted"><X className="w-5 h-5 text-muted-foreground" /></button>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Prénom *</label>
+                  <input type="text" value={editUserInfo.prenom} onChange={e => setEditUserInfo({ ...editUserInfo, prenom: e.target.value })} className="nova-input w-full" autoFocus />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Nom *</label>
+                  <input type="text" value={editUserInfo.nom} onChange={e => setEditUserInfo({ ...editUserInfo, nom: e.target.value })} className="nova-input w-full" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Rôle</label>
+                <select
+                  value={editUserInfo.role}
+                  onChange={e => setEditUserInfo({ ...editUserInfo, role: e.target.value as 'gérant' | 'caissier' })}
+                  className="nova-input w-full"
+                  disabled={editUser.role === 'gérant' && users.filter(u => u.role === 'gérant').length === 1}
+                >
+                  <option value="caissier">Caissier</option>
+                  <option value="gérant">Gérant</option>
+                </select>
+                {editUser.role === 'gérant' && users.filter(u => u.role === 'gérant').length === 1 && (
+                  <p className="text-[10px] text-muted-foreground mt-1">Impossible de changer le rôle du dernier gérant.</p>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setEditUser(null)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors">Annuler</button>
+              <button
+                onClick={() => {
+                  if (!editUserInfo.prenom.trim() || !editUserInfo.nom.trim()) { toast.error('Prénom et nom requis'); return; }
+                  updateUserInfo(editUser.id, editUserInfo);
+                  toast.success('Utilisateur mis à jour');
+                  setEditUser(null);
+                }}
+                className="flex-1 nova-btn-primary py-2.5"
+              >
+                Enregistrer
+              </button>
             </div>
           </div>
         </div>

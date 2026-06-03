@@ -35,6 +35,7 @@ interface AuthState {
   logout: () => void;
   addUser: (user: Omit<User, 'id' | 'salt'> & { pin: string }) => Promise<void>;
   updateUserPin: (userId: string, newPin: string) => Promise<void>;
+  updateUserInfo: (userId: string, info: { prenom: string; nom: string; role: UserRole }) => void;
   deleteUser: (userId: string) => void;
 }
 
@@ -125,6 +126,20 @@ export const useAuthStore = create<AuthState>()(
             fsSaveUser(getBoutiqueId(), user).catch(console.error);
           } catch { /* Firebase not yet initialized */ }
         }
+      },
+
+      updateUserInfo: (userId, info) => {
+        const updated = get().users.map(u =>
+          u.id === userId ? { ...u, ...info } : u
+        );
+        set({ users: updated });
+        const user = updated.find(u => u.id === userId);
+        if (user) {
+          try { fsSaveUser(getBoutiqueId(), user).catch(console.error); } catch {}
+        }
+        // Update currentUser if it's the same user
+        const current = get().currentUser;
+        if (current?.id === userId) set({ currentUser: { ...current, ...info } });
       },
 
       deleteUser: (userId) => {
