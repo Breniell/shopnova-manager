@@ -1,29 +1,29 @@
 /**
- * PolicyGate — Écran de politique de confidentialité + création du compte admin
+ * PolicyGate â€” Ã‰cran de politique de confidentialitÃ© + crÃ©ation du compte admin
  *
- * Affiché uniquement à la première installation (ou si la version de politique change).
+ * AffichÃ© uniquement Ã  la premiÃ¨re installation (ou si la version de politique change).
  *
- * Phase 1 — Politique :
+ * Phase 1 â€” Politique :
  *   1. Lire la politique jusqu'en bas (scroll obligatoire)
- *   2. Entrer son nom complet (signature numérique)
+ *   2. Entrer son nom complet (signature numÃ©rique)
  *   3. Cocher la case d'acceptation
  *   4. Cliquer sur "J'accepte"
  *
- * Phase 2 — Compte administrateur (nouvelles installations uniquement) :
- *   5. Saisir prénom, nom et code PIN (4 chiffres)
+ * Phase 2 â€” Compte administrateur (nouvelles installations uniquement) :
+ *   5. Saisir prÃ©nom, nom et code PIN (4 chiffres)
  *   6. Confirmer le PIN
- *   7. Cliquer sur "Créer mon compte"
+ *   7. Cliquer sur "CrÃ©er mon compte"
  *
- * Le profil ainsi créé devient l'unique compte gérant initial de la boutique.
- * Les données du compte en attente sont stockées sous legwan-pending-admin
- * (PIN haché + sel par utilisateur) et consommées par FirebaseProvider.
+ * Le profil ainsi crÃ©Ã© devient l'unique compte gÃ©rant initial de la boutique.
+ * Les donnÃ©es du compte en attente sont stockÃ©es sous legwan-pending-admin
+ * (PIN hachÃ© + sel par utilisateur) et consommÃ©es par FirebaseProvider.
  */
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { CheckCircle2, ScrollText, Shield, ChevronDown, UserPlus, KeyRound } from 'lucide-react';
 import { hashPin, generateSalt } from '@/lib/crypto';
 
-const POLICY_VERSION = '1.4.0';
+const POLICY_VERSION = '1.4.1';
 const STORAGE_KEY    = 'legwan-policy-accepted';
 const PENDING_ADMIN_KEY = 'legwan-pending-admin';
 
@@ -60,59 +60,59 @@ function savePolicyAcceptance(name: string): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(record));
 }
 
-// ─── Policy sections ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Policy sections â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const sections = [
   {
-    title: '1. Présentation',
-    content: `Legwan est un logiciel de gestion de boutique (caisse, stocks, rapports) destiné aux commerçants d'Afrique subsaharienne. En installant et en utilisant ce logiciel, vous acceptez les conditions décrites dans cette politique.`,
+    title: '1. PrÃ©sentation',
+    content: `Legwan est un logiciel de gestion de boutique (caisse, stocks, rapports) destinÃ© aux commerÃ§ants d'Afrique subsaharienne. En installant et en utilisant ce logiciel, vous acceptez les conditions dÃ©crites dans cette politique.`,
   },
   {
-    title: '2. Données enregistrées',
-    content: `Legwan enregistre uniquement les informations nécessaires au fonctionnement de votre boutique :
-• Compte administrateur : prénom, nom, rôle (créé lors de la première installation)
-• Comptes utilisateurs supplémentaires : nom, rôle, code PIN (haché de manière irréversible)
-• Informations de la boutique : nom, adresse, téléphone
-• Produits : désignation, prix, stock
-• Ventes et transactions
-• Mouvements de stock
-• Fournisseurs et clients
-• Clôtures de caisse et sessions de caisse
+    title: '2. DonnÃ©es enregistrÃ©es',
+    content: `Legwan enregistre uniquement les informations nÃ©cessaires au fonctionnement de votre boutique :
+â€¢ Compte administrateur : prÃ©nom, nom, rÃ´le (crÃ©Ã© lors de la premiÃ¨re installation)
+â€¢ Comptes utilisateurs supplÃ©mentaires : nom, rÃ´le, code PIN (hachÃ© de maniÃ¨re irrÃ©versible)
+â€¢ Informations de la boutique : nom, adresse, tÃ©lÃ©phone
+â€¢ Produits : dÃ©signation, prix, stock
+â€¢ Ventes et transactions
+â€¢ Mouvements de stock
+â€¢ Fournisseurs et clients
+â€¢ ClÃ´tures de caisse et sessions de caisse
 
-Aucune donnée bancaire ni de paiement ne sont collectées.`,
+Aucune donnÃ©e bancaire ni de paiement ne sont collectÃ©es.`,
   },
   {
-    title: '3. Utilisation des données',
-    content: `Vos données servent exclusivement à :
-• Faire fonctionner le logiciel (ventes, stocks, rapports)
-• Synchroniser vos données entre appareils via les serveurs de Google (Firebase)
-• Permettre à l'éditeur de Legwan de monitorer la qualité du service : des statistiques agrégées anonymisées (nombre de ventes, chiffre d'affaires total, nombre de produits, version de l'application) sont envoyées à une plateforme centralisée pour assurer la maintenance et les mises à jour
+    title: '3. Utilisation des donnÃ©es',
+    content: `Vos donnÃ©es servent exclusivement Ã  :
+â€¢ Faire fonctionner le logiciel (ventes, stocks, rapports)
+â€¢ Synchroniser vos donnÃ©es entre appareils via les serveurs de Google (Firebase)
+â€¢ Permettre Ã  l'Ã©diteur de Legwan de monitorer la qualitÃ© du service : des statistiques agrÃ©gÃ©es anonymisÃ©es (nombre de ventes, chiffre d'affaires total, nombre de produits, version de l'application) sont envoyÃ©es Ã  une plateforme centralisÃ©e pour assurer la maintenance et les mises Ã  jour
 
-Ces données agrégées ne contiennent aucune donnée personnelle (noms de clients, détails de transactions).
+Ces donnÃ©es agrÃ©gÃ©es ne contiennent aucune donnÃ©e personnelle (noms de clients, dÃ©tails de transactions).
 
-Legwan ne vend pas vos données et n'y accède pas à des fins commerciales. Vos données vous appartiennent.`,
+Legwan ne vend pas vos donnÃ©es et n'y accÃ¨de pas Ã  des fins commerciales. Vos donnÃ©es vous appartiennent.`,
   },
   {
-    title: '4. Sécurité',
-    content: `Vos données sont hébergées sur Firebase (Google Cloud), avec chiffrement en transit et au repos. Les codes PIN sont hachés de manière irréversible avec un sel cryptographique unique par utilisateur. Chaque boutique dispose de son propre espace de données isolé inaccessible aux autres boutiques.`,
+    title: '4. SÃ©curitÃ©',
+    content: `Vos donnÃ©es sont hÃ©bergÃ©es sur Firebase (Google Cloud), avec chiffrement en transit et au repos. Les codes PIN sont hachÃ©s de maniÃ¨re irrÃ©versible avec un sel cryptographique unique par utilisateur. Chaque boutique dispose de son propre espace de donnÃ©es isolÃ© inaccessible aux autres boutiques.`,
   },
   {
     title: '5. Vos droits',
-    content: `Vous pouvez à tout moment :
-• Consulter vos données depuis le logiciel
-• Modifier vos informations dans les paramètres
-• Exporter vos données (CSV, PDF)
-• Demander la suppression de vos données
+    content: `Vous pouvez Ã  tout moment :
+â€¢ Consulter vos donnÃ©es depuis le logiciel
+â€¢ Modifier vos informations dans les paramÃ¨tres
+â€¢ Exporter vos donnÃ©es (CSV, PDF)
+â€¢ Demander la suppression de vos donnÃ©es
 
 Pour toute demande : support@legwan.cm`,
   },
   {
-    title: '6. Mises à jour de cette politique',
-    content: `Cette politique peut évoluer. En cas de modification importante, vous serez invité à l'accepter à nouveau lors de l'ouverture du logiciel.`,
+    title: '6. Mises Ã  jour de cette politique',
+    content: `Cette politique peut Ã©voluer. En cas de modification importante, vous serez invitÃ© Ã  l'accepter Ã  nouveau lors de l'ouverture du logiciel.`,
   },
 ];
 
-// ─── PIN digit pad ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ PIN digit pad â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const PinDots: React.FC<{ length: number; error: boolean }> = ({ length, error }) => (
   <div className={cn('flex justify-center gap-3 my-4', error && 'animate-[pin-shake_0.4s_ease-in-out]')}>
@@ -130,7 +130,7 @@ const PinDots: React.FC<{ length: number; error: boolean }> = ({ length, error }
   </div>
 );
 
-// ─── PolicyGate component ─────────────────────────────────────────────────────
+// â”€â”€â”€ PolicyGate component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type Phase = 'policy' | 'admin-setup';
 
@@ -145,7 +145,7 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
   const [submitted, setSubmitted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Phase 2 state — admin account creation
+  // Phase 2 state â€” admin account creation
   const [adminPrenom, setAdminPrenom] = useState('');
   const [adminNom, setAdminNom] = useState('');
   const [adminPin, setAdminPin] = useState('');
@@ -159,7 +159,7 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   });
 
-  // ── Phase 1: scroll tracking ──────────────────────────────────────────────
+  // â”€â”€ Phase 1: scroll tracking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -197,13 +197,13 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
         setSubmitted(false);
       }, 400);
     } else {
-      // Existing install re-accepting after version update — no admin setup needed
+      // Existing install re-accepting after version update â€” no admin setup needed
       savePolicyAcceptance(sigName);
       setTimeout(() => setAccepted(true), 800);
     }
   };
 
-  // ── Phase 2: PIN numpad ───────────────────────────────────────────────────
+  // â”€â”€ Phase 2: PIN numpad â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const currentPin = pinStep === 'enter' ? adminPin : adminConfirmPin;
 
@@ -220,10 +220,10 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
       setAdminConfirmPin(next);
       if (next.length === 4) {
         if (next === adminPin) {
-          // PINs match — create account
+          // PINs match â€” create account
           handleCreateAdmin(next);
         } else {
-          // Mismatch — shake and reset confirm
+          // Mismatch â€” shake and reset confirm
           setPinError(true);
           setTimeout(() => {
             setAdminConfirmPin('');
@@ -280,11 +280,11 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
 
   const canProceedToPin = adminPrenom.trim().length >= 2 && adminNom.trim().length >= 2;
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   if (accepted) return <>{children}</>;
 
-  // ── Phase 2: admin account creation ──────────────────────────────────────
+  // â”€â”€ Phase 2: admin account creation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   if (phase === 'admin-setup') {
     return (
@@ -296,9 +296,9 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
               <UserPlus className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-foreground">Créez votre compte administrateur</h2>
+              <h2 className="text-base font-bold text-foreground">CrÃ©ez votre compte administrateur</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Ce compte vous donne accès à toutes les fonctions de gestion.
+                Ce compte vous donne accÃ¨s Ã  toutes les fonctions de gestion.
               </p>
             </div>
           </div>
@@ -308,7 +308,7 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
             <div className="space-y-4 mb-6">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Prénom <span className="text-destructive">*</span></label>
+                  <label className="text-xs text-muted-foreground mb-1 block">PrÃ©nom <span className="text-destructive">*</span></label>
                   <input
                     type="text"
                     value={adminPrenom}
@@ -332,7 +332,7 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
 
               <div className="nova-card p-3 border-primary/20 bg-primary/5 text-xs text-muted-foreground">
                 <KeyRound className="w-3.5 h-3.5 text-primary inline mr-1.5" />
-                Vous choisirez un code PIN à 4 chiffres à l'étape suivante. Vous pourrez ajouter d'autres utilisateurs depuis les Paramètres.
+                Vous choisirez un code PIN Ã  4 chiffres Ã  l'Ã©tape suivante. Vous pourrez ajouter d'autres utilisateurs depuis les ParamÃ¨tres.
               </div>
 
               <button
@@ -347,8 +347,8 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
                 style={{ pointerEvents: canProceedToPin ? 'none' : undefined }}
               >
                 {canProceedToPin
-                  ? 'Choisissez votre code PIN ci-dessous ↓'
-                  : 'Renseignez prénom et nom pour continuer'}
+                  ? 'Choisissez votre code PIN ci-dessous â†“'
+                  : 'Renseignez prÃ©nom et nom pour continuer'}
               </button>
             </div>
           ) : (
@@ -361,7 +361,7 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
               </div>
               <div>
                 <p className="text-sm font-medium text-foreground">{adminPrenom} {adminNom}</p>
-                <span className="text-[10px] font-medium bg-primary/15 text-primary px-2 py-0.5 rounded-full">Gérant</span>
+                <span className="text-[10px] font-medium bg-primary/15 text-primary px-2 py-0.5 rounded-full">GÃ©rant</span>
               </div>
             </div>
           )}
@@ -379,24 +379,24 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
 
               {pinError && (
                 <p className="text-center text-xs text-destructive mb-2 animate-fade-in">
-                  Les codes PIN ne correspondent pas — recommencez
+                  Les codes PIN ne correspondent pas â€” recommencez
                 </p>
               )}
 
               {isCreating && (
                 <p className="text-center text-xs text-secondary mb-2 animate-fade-in">
-                  Création du compte…
+                  CrÃ©ation du compteâ€¦
                 </p>
               )}
 
               {/* Numpad */}
               <div className="grid grid-cols-3 gap-2 max-w-[240px] mx-auto mt-3">
-                {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '←'].map((key, i) => {
+                {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'â†'].map((key, i) => {
                   if (key === '') return <div key={i} />;
                   return (
                     <button
                       key={i}
-                      onClick={() => key === '←' ? handlePinBackspace() : handlePinDigit(key)}
+                      onClick={() => key === 'â†' ? handlePinBackspace() : handlePinDigit(key)}
                       disabled={isCreating}
                       className="w-16 h-16 rounded-xl bg-muted border border-border text-foreground text-xl font-medium hover:bg-muted/80 active:scale-95 transition-all duration-100 mx-auto flex items-center justify-center disabled:opacity-40"
                     >
@@ -407,7 +407,7 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
               </div>
 
               <p className="text-[10px] text-muted-foreground text-center mt-4">
-                Votre PIN ne sera jamais affiché ni stocké en clair.
+                Votre PIN ne sera jamais affichÃ© ni stockÃ© en clair.
               </p>
             </div>
           )}
@@ -416,7 +416,7 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
     );
   }
 
-  // ── Phase 1: policy ───────────────────────────────────────────────────────
+  // â”€â”€ Phase 1: policy â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   return (
     <div className="fixed inset-0 z-[9999] bg-background flex flex-col">
@@ -427,10 +427,10 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
         </div>
         <div>
           <h1 className="text-base font-bold text-foreground">
-            Politique de Confidentialité — Legwan
+            Politique de ConfidentialitÃ© â€” Legwan
           </h1>
           <p className="text-xs text-muted-foreground">
-            Version {POLICY_VERSION} · Veuillez lire et accepter avant d'utiliser le logiciel
+            Version {POLICY_VERSION} Â· Veuillez lire et accepter avant d'utiliser le logiciel
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
@@ -466,7 +466,7 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
                   Lisez cette politique avant d'utiliser Legwan.
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Elle explique comment vos données sont gérées et protégées. Faites défiler jusqu'en bas, puis signez pour continuer.
+                  Elle explique comment vos donnÃ©es sont gÃ©rÃ©es et protÃ©gÃ©es. Faites dÃ©filer jusqu'en bas, puis signez pour continuer.
                 </p>
               </div>
             </div>
@@ -482,7 +482,7 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
           ))}
 
           <p className="text-xs text-muted-foreground text-center pb-4">
-            Politique de confidentialité Legwan — Version {POLICY_VERSION} — En vigueur depuis le 1er janvier 2026
+            Politique de confidentialitÃ© Legwan â€” Version {POLICY_VERSION} â€” En vigueur depuis le 1er janvier 2026
           </p>
         </div>
       </div>
@@ -492,10 +492,10 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
         <button
           onClick={scrollDown}
           className="absolute bottom-48 left-1/2 -translate-x-1/2 flex items-center gap-2 text-xs text-muted-foreground bg-card border border-border px-4 py-2 rounded-full shadow-lg hover:text-foreground transition-colors animate-bounce"
-          aria-label="Faire défiler vers le bas"
+          aria-label="Faire dÃ©filer vers le bas"
         >
           <ChevronDown className="w-3 h-3" />
-          Faites défiler pour lire la suite
+          Faites dÃ©filer pour lire la suite
         </button>
       )}
 
@@ -504,7 +504,7 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
         <div className="max-w-3xl mx-auto space-y-4">
           {!scrolledToBottom && (
             <p className="text-xs text-amber-500 text-center">
-              Lisez l'intégralité de la politique de confidentialité pour continuer.
+              Lisez l'intÃ©gralitÃ© de la politique de confidentialitÃ© pour continuer.
             </p>
           )}
 
@@ -513,7 +513,7 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
               <div>
                 <label className="text-xs text-muted-foreground mb-1.5 block">
                   Votre nom complet <span className="text-destructive">*</span>
-                  <span className="text-muted-foreground/60 ml-1">(signature numérique)</span>
+                  <span className="text-muted-foreground/60 ml-1">(signature numÃ©rique)</span>
                 </label>
                 <input
                   type="text"
@@ -553,7 +553,7 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
               </div>
               <span className="text-sm text-muted-foreground">
                 J'ai lu et j'accepte la{' '}
-                <strong className="text-foreground">Politique de confidentialité Legwan</strong>
+                <strong className="text-foreground">Politique de confidentialitÃ© Legwan</strong>
                 {' '}(version {POLICY_VERSION}).
               </span>
             </label>
@@ -572,17 +572,18 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
             aria-disabled={!canSubmitPolicy}
           >
             {submitted ? (
-              <><CheckCircle2 className="w-5 h-5" /> Accepté…</>
+              <><CheckCircle2 className="w-5 h-5" /> AcceptÃ©â€¦</>
             ) : (
               <>J'accepte et je continue vers Legwan</>
             )}
           </button>
 
           <p className="text-[10px] text-muted-foreground text-center">
-            Votre acceptation est enregistrée localement sur cet appareil.
+            Votre acceptation est enregistrÃ©e localement sur cet appareil.
           </p>
         </div>
       </div>
     </div>
   );
 };
+

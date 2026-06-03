@@ -20,7 +20,7 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useExpenseStore } from '@/stores/useExpenseStore';
 import { useCashSessionStore } from '@/stores/useCashSessionStore';
 
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.4.1';
 
 export interface RegistryLocation {
   lat: number;
@@ -87,7 +87,7 @@ async function geocodeAddress(adresse: string, nom: string): Promise<RegistryLoc
 /**
  * Send a heartbeat to the platform registry.
  * Geocodes address on first run or when address has changed.
- * Fire-and-forget — never throws.
+ * Fire-and-forget â€” never throws.
  */
 export async function sendRegistryHeartbeat(isRecoveryEnabled: boolean): Promise<void> {
   if (!isFirebaseConfigured) return;
@@ -123,11 +123,11 @@ export async function sendRegistryHeartbeat(isRecoveryEnabled: boolean): Promise
           location = await geocodeAddress(settings.adresse, settings.nom);
         }
       } else {
-        // First time — geocode now
+        // First time â€” geocode now
         location = await geocodeAddress(settings.adresse, settings.nom);
       }
     } catch {
-      // Offline — skip geocoding
+      // Offline â€” skip geocoding
     }
 
     const entry: Omit<RegistryEntry, 'boutiqueId'> = {
@@ -166,3 +166,4 @@ export async function sendRegistryHeartbeat(isRecoveryEnabled: boolean): Promise
     console.warn('[registry] heartbeat failed:', err);
   }
 }
+
