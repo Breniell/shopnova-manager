@@ -1,12 +1,13 @@
 /**
  * Legwan Platform Registry
  *
- * Each boutique installation reports anonymized aggregate stats to
- * platform/registry/{boutiqueId} in Firestore.  Only the developer
- * (superadmin) can read across all boutiques; each boutique can only
- * write its own entry.
+ * Each boutique reports anonymised aggregate stats + automatic geolocation
+ * to registry/{boutiqueId} in Firestore at every startup.
  *
- * Called once per app bootstrap (after Firebase is ready and stores are loaded).
+ * Geolocation strategy (automatic, no user action required):
+ *   1. IP geolocation  — instant, city-level accuracy, no permission needed
+ *   2. Nominatim       — street-level accuracy when address is filled in settings
+ * The best available location is stored; Nominatim upgrades IP coords when possible.
  */
 import { doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '@/lib/firebase';
@@ -22,11 +23,18 @@ import { useCashSessionStore } from '@/stores/useCashSessionStore';
 
 const APP_VERSION = '1.4.2';
 
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export type LocationSource = 'ip' | 'address' | 'nominatim';
+
 export interface RegistryLocation {
   lat: number;
   lng: number;
   geocodedAt: string;
-  source: 'nominatim';
+  source: LocationSource;
+  city?: string;
+  country?: string;
+  precision: 'city' | 'street'; // ip = city, nominatim/address = street
 }
 
 export interface RegistryEntry {
@@ -53,6 +61,8 @@ export interface RegistryEntry {
   adresseForGeocode?: string;
 }
 
+// ─── Platform detection ───────────────────────────────────────────────────────
+
 function getPlatform(): string {
   if (typeof navigator === 'undefined') return 'unknown';
   const ua = navigator.userAgent.toLowerCase();
@@ -62,32 +72,112 @@ function getPlatform(): string {
   return 'web';
 }
 
+// ─── Geolocation — Level 1: IP-based (automatic, no user action) ─────────────
+
+interface IpGeoResult {
+  lat: number;
+  lng: number;
+  city?: string;
+  country?: string;
+}
+
+async function fetchIpGeo(url: string, parse: (d: Record<string, unknown>) => IpGeoResult | null): Promise<IpGeoResult | null> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return null;
+    const data = await res.json() as Record<string, unknown>;
+    return parse(data);
+  } catch {
+    return null;
+  }
+}
+
+async function getIpLocation(): Promise<RegistryLocation | null> {
+  // Try multiple free IP geolocation services (HTTPS, no API key)
+  const services: Array<{
+    url: string;
+    parse: (d: Record<string, unknown>) => IpGeoResult | null;
+  }> = [
+    {
+      url: 'https://ipwho.is/',
+      parse: d => d.success && typeof d.latitude === 'number' && typeof d.longitude === 'number'
+        ? { lat: d.latitude as number, lng: d.longitude as number, city: d.city as string, country: d.country as string }
+        : null,
+    },
+    {
+      url: 'https://ipapi.co/json/',
+      parse: d => typeof d.latitude === 'number' && typeof d.longitude === 'number'
+        ? { lat: d.latitude as number, lng: d.longitude as number, city: d.city as string, country: d.country_name as string }
+        : null,
+    },
+    {
+      url: 'https://geolocation-db.com/json/',
+      parse: d => typeof d.latitude === 'number' && typeof d.longitude === 'number'
+        ? { lat: d.latitude as number, lng: d.longitude as number, city: d.city as string, country: d.country_name as string }
+        : null,
+    },
+  ];
+
+  for (const svc of services) {
+    const result = await fetchIpGeo(svc.url, svc.parse);
+    if (result) {
+      return {
+        lat: result.lat,
+        lng: result.lng,
+        geocodedAt: new Date().toISOString(),
+        source: 'ip',
+        precision: 'city',
+        city: result.city,
+        country: result.country,
+      };
+    }
+  }
+  return null;
+}
+
+// ─── Geolocation — Level 2: Address via Nominatim (street-level) ─────────────
+
 async function geocodeAddress(adresse: string, nom: string): Promise<RegistryLocation | null> {
   if (!adresse?.trim()) return null;
   try {
     const query = encodeURIComponent(`${adresse}, ${nom}`);
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`,
-      { headers: { 'User-Agent': `Legwan/${APP_VERSION} (support@legwan.cm)` } }
+      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1&addressdetails=1`,
+      {
+        headers: { 'User-Agent': `Legwan/${APP_VERSION} (support@legwan.cm)` },
+        signal: AbortSignal.timeout(8000),
+      }
     );
     if (!res.ok) return null;
-    const results = await res.json() as Array<{ lat: string; lon: string }>;
+    const results = await res.json() as Array<{ lat: string; lon: string; address?: { city?: string; town?: string; country?: string } }>;
     if (!results.length) return null;
+    const r = results[0];
     return {
-      lat: parseFloat(results[0].lat),
-      lng: parseFloat(results[0].lon),
+      lat: parseFloat(r.lat),
+      lng: parseFloat(r.lon),
       geocodedAt: new Date().toISOString(),
       source: 'nominatim',
+      precision: 'street',
+      city: r.address?.city ?? r.address?.town,
+      country: r.address?.country,
     };
   } catch {
     return null;
   }
 }
 
+// ─── Registry heartbeat ───────────────────────────────────────────────────────
+
 /**
- * Send a heartbeat to the platform registry.
- * Geocodes address on first run or when address has changed.
- * Fire-and-forget â€” never throws.
+ * Sends a heartbeat to registry/{boutiqueId} in Firestore.
+ *
+ * Geolocation logic:
+ * - On first run: get IP location immediately (automatic), then try Nominatim upgrade
+ * - On subsequent runs: keep existing location unless address changed (re-geocode)
+ * - IP location is always refreshed to track machine moves
+ * - Nominatim (street-level) takes priority over IP (city-level) when available
+ *
+ * Fire-and-forget — never throws.
  */
 export async function sendRegistryHeartbeat(isRecoveryEnabled: boolean): Promise<void> {
   if (!isFirebaseConfigured) return;
@@ -109,34 +199,42 @@ export async function sendRegistryHeartbeat(isRecoveryEnabled: boolean): Promise
       .filter(s => s.status === 'completed')
       .reduce((sum, s) => sum + (s.total ?? s.subtotal ?? 0), 0);
 
-    // Load existing entry to decide whether to re-geocode
+    // ── Geolocation strategy ──────────────────────────────────────────────────
     let location: RegistryLocation | null = null;
     const adresseKey = `${settings.nom}::${settings.adresse}`;
+
     try {
       const snap = await getDoc(docRef);
-      if (snap.exists()) {
-        const existing = snap.data() as RegistryEntry;
-        if (existing.location && existing.adresseForGeocode === adresseKey) {
-          location = existing.location;
-        }
-        if (!location && settings.adresse?.trim()) {
-          location = await geocodeAddress(settings.adresse, settings.nom);
-        }
+      const existing = snap.exists() ? (snap.data() as RegistryEntry) : null;
+
+      if (existing?.location?.precision === 'street' && existing.adresseForGeocode === adresseKey) {
+        // Keep precise street-level location — don't re-geocode if address unchanged
+        location = existing.location;
       } else {
-        // First time â€” geocode now
-        location = await geocodeAddress(settings.adresse, settings.nom);
+        // Step 1: Get IP location immediately (automatic, no user input needed)
+        const ipLoc = await getIpLocation();
+
+        // Step 2: Try to upgrade to street-level via Nominatim if address is set
+        const nominatimLoc = settings.adresse?.trim()
+          ? await geocodeAddress(settings.adresse, settings.nom)
+          : null;
+
+        // Nominatim (street) > IP (city) — use best available
+        location = nominatimLoc ?? ipLoc ?? existing?.location ?? null;
       }
     } catch {
-      // Offline â€” skip geocoding
+      // Offline — try IP geolocation anyway (it works independently of Firestore)
+      location = await getIpLocation().catch(() => null);
     }
 
-    const entry: Omit<RegistryEntry, 'boutiqueId'> = {
+    // ── Build entry ───────────────────────────────────────────────────────────
+    const entry: Omit<RegistryEntry, 'registeredAt'> = {
+      boutiqueId,
       nom: settings.nom || 'Boutique sans nom',
       adresse: settings.adresse || '',
       telephone: settings.telephone || '',
       version: APP_VERSION,
       platform: getPlatform(),
-      registeredAt: Timestamp.now(), // will be overwritten by merge if already exists
       lastSeen: Timestamp.now(),
       isRecoveryEnabled,
       stats: {
@@ -153,17 +251,11 @@ export async function sendRegistryHeartbeat(isRecoveryEnabled: boolean): Promise
       adresseForGeocode: adresseKey,
     };
 
-    // Use set with merge so registeredAt is only written once
-    await setDoc(docRef, {
-      ...entry,
-      boutiqueId,
-    }, { merge: true });
-
-    // Ensure registeredAt is only set on first write
+    await setDoc(docRef, { ...entry, registeredAt: Timestamp.now() }, { merge: true });
+    // Ensure registeredAt is only set once (merge preserves existing value)
     await setDoc(docRef, { lastSeen: Timestamp.now() }, { merge: true });
+
   } catch (err) {
-    // Never let registry failures crash the app
     console.warn('[registry] heartbeat failed:', err);
   }
 }
-
