@@ -2,10 +2,20 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore, User } from '@/stores/useAuthStore';
 import { useCashSessionStore } from '@/stores/useCashSessionStore';
-import { ArrowLeft, Shield, ShoppingCart, BarChart3, Lock } from 'lucide-react';
+import { ArrowLeft, Shield, ShoppingCart, BarChart3, Lock, Cloud, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isFirebaseConfigured } from '@/lib/firebase';
+import {
+  getBoutiqueRecoveryErrorMessage,
+  getSavedRecoveryEmail,
+  sendBoutiqueRecoveryPasswordReset,
+  signInBoutiqueRecoveryAccount,
+} from '@/services/boutiqueService';
+import { toast } from 'sonner';
+import { useTranslation } from '@/i18n';
 
 const LoginPage: React.FC = () => {
+  const { t } = useTranslation();
   const { users, login } = useAuthStore();
   const navigate = useNavigate();
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -14,6 +24,12 @@ const LoginPage: React.FC = () => {
   const [locked, setLocked] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [showRecovery, setShowRecovery] = useState(false);
+  const [recoveryEmail, setRecoveryEmail] = useState(getSavedRecoveryEmail());
+  const [recoveryPassword, setRecoveryPassword] = useState('');
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [isRecovering, setIsRecovering] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const lockTimerRef = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
@@ -48,10 +64,50 @@ const LoginPage: React.FC = () => {
 
   const handleBack = () => {
     setSelectedUser(null);
+    setShowRecovery(false);
     setPin('');
     setError(false);
     setLocked(false);
+    setRecoveryError(null);
     if (lockTimerRef.current) clearInterval(lockTimerRef.current);
+  };
+
+  const handleRecoverySubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setRecoveryError(null);
+    setResetSent(false);
+
+    if (!recoveryEmail.trim() || !recoveryPassword) {
+      setRecoveryError(t('login.email') + ' / ' + t('login.password'));
+      return;
+    }
+
+    setIsRecovering(true);
+    try {
+      await signInBoutiqueRecoveryAccount(recoveryEmail, recoveryPassword);
+      toast.success(t('login.restoreBtn') + '…');
+      window.setTimeout(() => window.location.reload(), 350);
+    } catch (err) {
+      setRecoveryError(getBoutiqueRecoveryErrorMessage(err));
+    } finally {
+      setIsRecovering(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    if (!recoveryEmail.trim()) {
+      setRecoveryError(t('login.email'));
+      return;
+    }
+
+    setRecoveryError(null);
+    setResetSent(false);
+    try {
+      await sendBoutiqueRecoveryPasswordReset(recoveryEmail);
+      setResetSent(true);
+    } catch (err) {
+      setRecoveryError(getBoutiqueRecoveryErrorMessage(err));
+    }
   };
 
   const handlePinDigit = useCallback(async (digit: string) => {
@@ -167,10 +223,76 @@ const LoginPage: React.FC = () => {
 
       <div className="flex-1 flex items-center justify-center relative z-10 p-8">
         <div className="w-full max-w-md nova-card p-8 backdrop-blur-xl bg-card/80">
-          {!selectedUser ? (
+          {showRecovery ? (
+            <div className="animate-fade-in">
+              <button onClick={handleBack} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8">
+                <ArrowLeft className="w-4 h-4" /> {t('login.back')}
+              </button>
+
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
+                  <Cloud className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="nova-heading text-title-lg text-foreground">{t('login.restoreTitle')}</h2>
+                  <p className="text-sm text-muted-foreground">{t('login.restoreSubtitle')}</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleRecoverySubmit} className="space-y-4 mt-6">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t('login.email')}</label>
+                  <input
+                    type="email"
+                    value={recoveryEmail}
+                    onChange={e => setRecoveryEmail(e.target.value)}
+                    className="nova-input w-full"
+                    autoComplete="email"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t('login.password')}</label>
+                  <input
+                    type="password"
+                    value={recoveryPassword}
+                    onChange={e => setRecoveryPassword(e.target.value)}
+                    className="nova-input w-full"
+                    autoComplete="current-password"
+                  />
+                </div>
+
+                {recoveryError && (
+                  <p className="text-sm text-destructive rounded-lg bg-destructive/10 border border-destructive/20 px-3 py-2">
+                    {recoveryError}
+                  </p>
+                )}
+
+                {resetSent && (
+                  <p className="text-sm text-secondary rounded-lg bg-secondary/10 border border-secondary/20 px-3 py-2">
+                    {t('login.resetSent')}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isRecovering}
+                  className="nova-btn-primary w-full py-2.5 disabled:opacity-60"
+                >
+                  {isRecovering ? t('common.loading') : t('login.restoreBtn')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePasswordReset}
+                  className="w-full py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Mail className="w-4 h-4" /> {t('login.forgotPassword')}
+                </button>
+              </form>
+            </div>
+          ) : !selectedUser ? (
             <>
-              <h2 className="nova-heading text-title-lg text-foreground mb-2">Connexion</h2>
-              <p className="text-sm text-muted-foreground mb-8">Sélectionnez votre profil</p>
+              <h2 className="nova-heading text-title-lg text-foreground mb-2">{t('login.title')}</h2>
+              <p className="text-sm text-muted-foreground mb-8">{t('login.subtitle')}</p>
 
               <div className="grid grid-cols-1 gap-grid">
                 {users.map(user => (
@@ -193,17 +315,35 @@ const LoginPage: React.FC = () => {
                           ? 'bg-primary/20 text-primary'
                           : 'bg-secondary/20 text-secondary'
                       )}>
-                        {user.role === 'gérant' ? 'Gérant' : 'Caissier'}
+                        {user.role === 'gérant' ? t('login.role.gerant') : t('login.role.caissier')}
                       </span>
                     </div>
                   </button>
                 ))}
               </div>
+
+              {isFirebaseConfigured && (
+                <div className="mt-6 pt-6 border-t border-border/60">
+                  <button
+                    onClick={() => {
+                      setShowRecovery(true);
+                      setRecoveryError(null);
+                      setResetSent(false);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors"
+                  >
+                    <Cloud className="w-4 h-4" /> {t('login.restore')}
+                  </button>
+                  <p className="text-xs text-muted-foreground text-center mt-3">
+                    {t('login.restoreHint')}
+                  </p>
+                </div>
+              )}
             </>
           ) : (
             <div className="animate-fade-in">
               <button onClick={handleBack} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8">
-                <ArrowLeft className="w-4 h-4" /> Retour
+                <ArrowLeft className="w-4 h-4" /> {t('login.back')}
               </button>
 
               <div className="text-center mb-8">
@@ -215,15 +355,15 @@ const LoginPage: React.FC = () => {
                 </div>
                 <p className="font-medium text-foreground text-lg">{selectedUser.prenom} {selectedUser.nom}</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {locked ? '' : 'Entrez votre code PIN'}
+                  {locked ? '' : t('login.enterPin')}
                 </p>
               </div>
 
               {locked && (
                 <div className="text-center mb-6 p-4 rounded-xl bg-destructive/10 border border-destructive/20 animate-fade-in">
                   <Lock className="w-6 h-6 text-destructive mx-auto mb-2" />
-                  <p className="text-sm text-destructive font-medium">Compte bloqué</p>
-                  <p className="text-sm text-destructive/80 mt-1">Réessayez dans {formatLockTime(remainingSeconds)}</p>
+                  <p className="text-sm text-destructive font-medium">{t('login.locked')}</p>
+                  <p className="text-sm text-destructive/80 mt-1">{t('login.retryIn')} {formatLockTime(remainingSeconds)}</p>
                 </div>
               )}
 
@@ -244,7 +384,7 @@ const LoginPage: React.FC = () => {
                   </div>
 
                   {error && (
-                    <p className="text-center text-sm text-destructive mb-4 animate-fade-in">Code PIN incorrect</p>
+                    <p className="text-center text-sm text-destructive mb-4 animate-fade-in">{t('login.wrongPin')}</p>
                   )}
 
                   <div className="grid grid-cols-3 gap-grid max-w-[240px] mx-auto">

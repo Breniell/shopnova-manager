@@ -173,6 +173,26 @@ const ParametresPage: React.FC = () => {
               <label className="text-xs text-muted-foreground mb-1 block">Devise</label>
               <input type="text" value="FCFA" disabled className="nova-input w-full opacity-50" />
             </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-2 block">Langue de l'application</label>
+              <div className="flex gap-2">
+                {(['fr', 'en'] as const).map(lang => (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => setLocalShop({ ...localShop, langue: lang })}
+                    className={cn(
+                      'px-4 py-2 rounded-lg border text-sm font-medium transition-all',
+                      localShop.langue === lang
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border bg-muted text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {lang === 'fr' ? 'Français' : 'English'}
+                  </button>
+                ))}
+              </div>
+            </div>
             <button onClick={handleSaveShop} className="nova-btn-primary px-6 py-2.5">Enregistrer</button>
           </div>
         </NovaCard>

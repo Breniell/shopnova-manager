@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, Menu, ipcMain, crashReporter } from 'electron';
+import { app, BrowserWindow, shell, Menu, ipcMain, crashReporter, session } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -245,6 +245,14 @@ function buildMenu() {
 }
 
 app.whenReady().then(() => {
+  // Allow geolocation in the renderer (GPS via OS location services)
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
+    callback(permission === 'geolocation');
+  });
+  session.defaultSession.setPermissionCheckHandler((_wc, permission) => {
+    return permission === 'geolocation';
+  });
+
   buildMenu();
   createWindow();
 

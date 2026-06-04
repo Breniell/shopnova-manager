@@ -11,22 +11,23 @@ export interface ShopSettings {
   enteteRecu: string;
   piedPageRecu: string;
   devise: string;
+  langue: 'fr' | 'en';
 }
 
 export const defaultShopSettings: ShopSettings = {
-  nom: 'Ma Boutique',
-  adresse: '',
-  telephone: '',
-  email: '',
-  nui: '',
-  enteteRecu: 'Bienvenue !',
+  nom:          'Ma Boutique',
+  adresse:      '',
+  telephone:    '',
+  email:        '',
+  nui:          '',
+  enteteRecu:   'Bienvenue !',
   piedPageRecu: 'Merci pour votre achat. À bientôt !',
-  devise: 'FCFA',
+  devise:       'FCFA',
+  langue:       'fr',
 };
 
 interface SettingsState {
   shop: ShopSettings;
-  /** Internal: called by FirebaseProvider on startup */
   _setSettings: (settings: ShopSettings) => void;
   updateShop: (data: Partial<ShopSettings>) => void;
 }
@@ -34,7 +35,7 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>()((set, get) => ({
   shop: defaultShopSettings,
 
-  _setSettings: (settings) => set({ shop: settings }),
+  _setSettings: (settings) => set({ shop: { ...defaultShopSettings, ...settings } }),
 
   updateShop: (data) => {
     const updated = { ...get().shop, ...data };

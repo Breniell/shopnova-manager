@@ -7,10 +7,14 @@
  *   - Handle system-level integrations (external links, window state, auto-update)
  */
 
-const { app, BrowserWindow, shell, Menu, ipcMain } = require('electron');
-const path = require('path');
+import { app, BrowserWindow, shell, Menu, ipcMain } from 'electron';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const isDev = process.env.NODE_ENV === 'development';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ─── Auto-updater (production only) ──────────────────────────────────────────
 let autoUpdater = null;
@@ -60,13 +64,121 @@ function createWindow() {
   }
 
   // ── Show window once fully loaded ───────────────────────────────────────────
-  win.once('ready-to-show', () => {
+  let shown = false;
+  const showWindow = () => {
+    if (shown) return;
+    shown = true;
     win.show();
     win.focus();
     // Check for updates 5 s after display so startup isn't slowed
     if (autoUpdater) {
       setTimeout(() => setupAutoUpdater(win), 5000);
     }
+  };
+
+  win.once('ready-to-show', showWindow);
+
+  // Fallback: avoid a permanent black/invisible window if the renderer never
+  // reaches ready-to-show because dist/index.html failed to load.
+  setTimeout(showWindow, 4000);
+
+  win.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    console.log(`[Legwan renderer] console[${level}] ${message} (${sourceId}:${line})`);
+  });
+
+  win.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[Legwan] renderer process gone:', details);
+  });
+
+  win.webContents.on('crashed', () => {
+    console.error('[Legwan] renderer process crashed');
+  });
+
+  win.webContents.on('did-finish-load', async () => {
+    try {
+      const result = await win.webContents.executeJavaScript(`
+        ({
+          readyState: document.readyState,
+          hasRoot: !!document.getElementById('root'),
+          hash: location.hash,
+          title: document.title,
+          bodyLength: document.body?.textContent?.trim().length ?? 0,
+        })
+      `);
+      console.log('[Legwan] did-finish-load:', result);
+    } catch (err) {
+      console.error('[Legwan] did-finish-load executeJavaScript error:', err);
+    }
+  });
+
+  win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    if (errorCode === -3) return;
+
+    console.error(`[Legwan] did-fail-load: ${errorCode} ${errorDescription} - ${validatedURL}`);
+
+    const errorHtml = `
+      <!DOCTYPE html>
+      <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body {
+              margin: 0;
+              min-height: 100vh;
+              padding: 24px;
+              box-sizing: border-box;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              gap: 16px;
+              font-family: Arial, sans-serif;
+              color: #e0ddd8;
+              background: #0f0e0d;
+            }
+            h2 { margin: 0; color: #ff6b47; }
+            p {
+              max-width: 520px;
+              margin: 0;
+              color: #b9b3aa;
+              line-height: 1.6;
+              text-align: center;
+            }
+            code {
+              padding: 4px 8px;
+              border-radius: 6px;
+              background: #2a2825;
+              color: #fff4ee;
+              font-size: 13px;
+            }
+            button {
+              margin-top: 8px;
+              border: 0;
+              border-radius: 8px;
+              padding: 10px 24px;
+              background: #A93200;
+              color: white;
+              font-size: 14px;
+              cursor: pointer;
+            }
+            button:hover { background: #c23a00; }
+          </style>
+        </head>
+        <body>
+          <h2>Erreur de chargement</h2>
+          <p><strong>Code ${errorCode}</strong> : ${errorDescription}</p>
+          <p>
+            Cause probable : le dossier <code>dist/</code> est absent ou incomplet.
+            Lancez <code>npm run electron:dist:safe</code> pour reconstruire l'application.
+          </p>
+          <p style="font-size:12px">Chemin attendu : <code>${validatedURL}</code></p>
+          <button onclick="window.location.reload()">Reessayer</button>
+        </body>
+      </html>
+    `;
+
+    win.webContents.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(errorHtml)}`);
+    showWindow();
   });
 
   // ── Open external links (mailto:, https://) in the default browser ──────────
