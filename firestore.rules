@@ -35,8 +35,18 @@ service cloud.firestore {
     // Each boutique writes its own heartbeat entry.
     // Only the developer (identified by email) can list and read all entries.
     match /platform/registry/{boutiqueId} {
-      // Boutique writes its own entry only
-      allow write: if request.auth != null && request.auth.uid == boutiqueId;
+      // Boutique writes its own entry only, with data validation
+      allow write: if request.auth != null
+                   && request.auth.uid == boutiqueId
+                   && request.resource.data.boutiqueId == boutiqueId
+                   && request.resource.data.nom is string
+                   && request.resource.data.nom.size() <= 200
+                   && request.resource.data.adresse is string
+                   && request.resource.data.adresse.size() <= 500
+                   && request.resource.data.telephone is string
+                   && request.resource.data.telephone.size() <= 50
+                   && request.resource.data.version is string
+                   && request.resource.data.version.size() <= 20;
       // Developer reads any entry
       allow read: if request.auth != null
                   && request.auth.token.email != null
@@ -48,6 +58,12 @@ service cloud.firestore {
       allow list: if request.auth != null
                   && request.auth.token.email != null
                   && request.auth.token.email == 'breniellkouda@gmail.com';
+    }
+
+    // Security events (login attempts) — boutique writes, no external read
+    match /boutiques/{boutiqueId}/security/{document} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == boutiqueId;
     }
 
     // ── Deny everything else ─────────────────────────────────────────────────

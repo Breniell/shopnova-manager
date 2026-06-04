@@ -243,7 +243,18 @@ async function bootstrapFirebase(): Promise<void> {
 
   // 4. Populate Zustand stores
   if (settings)            useSettingsStore.getState()._setSettings(settings);
-  if (users.length)        useAuthStore.getState()._setUsers(users);
+  if (users.length) {
+    useAuthStore.getState()._setUsers(users);
+    // Security: validate that the persisted currentUser still exists in Firestore
+    // Prevents localStorage manipulation to bypass PIN authentication
+    const { currentUser, isAuthenticated } = useAuthStore.getState();
+    if (isAuthenticated && currentUser) {
+      const stillValid = users.some(u => u.id === currentUser.id);
+      if (!stillValid) {
+        useAuthStore.getState().logout();
+      }
+    }
+  }
   if (products.length)     useProductStore.getState()._setProducts(products);
   if (sales.length)        useSaleStore.getState()._setSales(sales);
   if (movements.length)    useStockStore.getState()._setMovements(movements);

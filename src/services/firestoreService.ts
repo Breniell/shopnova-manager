@@ -23,6 +23,8 @@ import {
   writeBatch,
   query,
   orderBy,
+  where,
+  limit,
   Timestamp,
   type DocumentData,
 } from 'firebase/firestore';
@@ -38,6 +40,30 @@ import type { Expense } from '@/stores/useExpenseStore';
 import type { CashSession, CashOut } from '@/stores/useCashSessionStore';
 import type { InventorySession } from '@/stores/useInventoryStore';
 import type { ClotureCaisse } from '@/stores/useCaisseStore';
+
+// ─── Login attempt tracking (anti-brute-force) ───────────────────────────────
+
+const pa = (bid: string) => `boutiques/${bid}/security/loginAttempts`;
+
+export interface LoginAttemptRecord {
+  count: number;
+  lockedUntil: number | null;
+}
+
+export async function fsGetLoginAttempts(bid: string, userId: string): Promise<LoginAttemptRecord | null> {
+  if (!isFirebaseConfigured) return null;
+  try {
+    const snap = await getDoc(doc(db, pa(bid)));
+    if (!snap.exists()) return null;
+    const data = snap.data() as Record<string, LoginAttemptRecord>;
+    return data[userId] ?? null;
+  } catch { return null; }
+}
+
+export async function fsSetLoginAttempts(bid: string, userId: string, record: LoginAttemptRecord): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  await setDoc(doc(db, pa(bid)), { [userId]: record }, { merge: true });
+}
 
 // ─── Guard ──────────────────────────────────────────────────────────────────
 // All public functions are no-ops when Firebase is not configured.
@@ -137,10 +163,21 @@ export async function fsDeleteProduct(bid: string, productId: string): Promise<v
 }
 
 // ─── Sales ───────────────────────────────────────────────────────────────────
+/**
+ * Loads sales from the last 90 days (scalability: avoids loading thousands of old records).
+ * Older sales are served from IndexedDB cache on subsequent opens.
+ */
 export async function fsLoadSales(bid: string): Promise<Sale[]> {
   if (!isFirebaseConfigured) return [];
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 90);
   const snap = await getDocs(
-    query(collection(db, p.sales(bid)), orderBy('date', 'desc'))
+    query(
+      collection(db, p.sales(bid)),
+      where('date', '>=', Timestamp.fromDate(cutoff)),
+      orderBy('date', 'desc'),
+      limit(2000)
+    )
   );
   return snap.docs.map(d => {
     const data = d.data();
