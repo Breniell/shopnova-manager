@@ -20,7 +20,7 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useExpenseStore } from '@/stores/useExpenseStore';
 import { useCashSessionStore } from '@/stores/useCashSessionStore';
 
-const APP_VERSION = '1.4.1';
+const APP_VERSION = '1.4.2';
 
 export interface RegistryLocation {
   lat: number;

@@ -1,7 +1,7 @@
 {
   "name": "legwan-manager",
   "private": true,
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Logiciel de gestion commerciale pour boutiques (POS, stocks, rapports)",
   "author": "Legwan <support@legwan.cm>",
   "main": "electron/launcher.cjs",

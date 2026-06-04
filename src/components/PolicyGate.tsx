@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 import { CheckCircle2, ScrollText, Shield, ChevronDown, UserPlus, KeyRound } from 'lucide-react';
 import { hashPin, generateSalt } from '@/lib/crypto';
 
-const POLICY_VERSION = '1.4.1';
+const POLICY_VERSION = '1.4.2';
 const STORAGE_KEY    = 'legwan-policy-accepted';
 const PENDING_ADMIN_KEY = 'legwan-pending-admin';
 
