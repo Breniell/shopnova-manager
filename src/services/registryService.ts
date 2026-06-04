@@ -94,7 +94,7 @@ export async function sendRegistryHeartbeat(isRecoveryEnabled: boolean): Promise
 
   try {
     const boutiqueId = getBoutiqueId();
-    const docRef = doc(db, `platform/registry/${boutiqueId}`);
+    const docRef = doc(db, `registry/${boutiqueId}`);
 
     const settings = useSettingsStore.getState().shop;
     const users = useAuthStore.getState().users;

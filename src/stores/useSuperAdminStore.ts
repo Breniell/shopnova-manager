@@ -105,7 +105,7 @@ export const useSuperAdminStore = create<SuperAdminState>((set, get) => ({
       if (!firebase) throw new Error('Firebase non configuré.');
 
       const snap = await getDocs(
-        collection(firebase.saDb, 'platform/registry')
+        collection(firebase.saDb, 'registry')
       );
 
       const entries: RegistryEntry[] = snap.docs.map(d => ({
