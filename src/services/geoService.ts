@@ -1,22 +1,23 @@
 /**
  * Legwan Geolocation Service
  *
- * Priority chain (most to least precise):
- *   1. Device GPS/WiFi via navigator.geolocation  — ~5m accuracy
- *   2. IP geolocation                             — city-level fallback
+ * Precision chain:
+ *   1. Device GPS/WiFi via navigator.geolocation  — ~5–50 m (best)
+ *   2. IP geolocation                             — city-level fallback (~1–5 km)
  *
- * Also provides reverse geocoding: (lat, lng) → street address string.
- * Used both for the platform registry heartbeat and for auto-filling
- * the boutique address in settings.
+ * getBestLocation()           — awaits the best single result (GPS wins if fast enough)
+ * detectAddressProgressively()— calls onUpdate twice: first with IP (instant),
+ *                               then upgrades to GPS if it arrives within the timeout.
+ * reverseGeocode()            — (lat, lng) → street address via OpenStreetMap Nominatim
  */
 
-export type LocationSource = 'gps' | 'ip';
+export type LocationSource    = 'gps' | 'ip';
 export type LocationPrecision = 'gps' | 'city';
 
 export interface GeoLocation {
   lat: number;
   lng: number;
-  accuracy?: number; // meters, GPS only
+  accuracy?: number;       // metres, GPS only
   source: LocationSource;
   precision: LocationPrecision;
   city?: string;
@@ -35,11 +36,11 @@ export interface AddressResult {
 
 // ─── GPS via browser geolocation API ─────────────────────────────────────────
 
-export function getGPSLocation(timeoutMs = 12_000): Promise<GeoLocation | null> {
+export function getGPSLocation(timeoutMs = 10_000): Promise<GeoLocation | null> {
   if (typeof navigator === 'undefined' || !navigator.geolocation) return Promise.resolve(null);
 
   return new Promise(resolve => {
-    const timer = setTimeout(() => resolve(null), timeoutMs + 500);
+    const timer = setTimeout(() => resolve(null), timeoutMs + 200);
 
     navigator.geolocation.getCurrentPosition(
       pos => {
@@ -60,7 +61,7 @@ export function getGPSLocation(timeoutMs = 12_000): Promise<GeoLocation | null> 
       {
         enableHighAccuracy: true,
         timeout: timeoutMs,
-        maximumAge: 5 * 60 * 1000, // cache 5 min
+        maximumAge: 5 * 60 * 1000,
       }
     );
   });
@@ -126,19 +127,75 @@ export async function getIPLocation(): Promise<GeoLocation | null> {
 }
 
 // ─── Best available location (GPS first, IP fallback) ────────────────────────
+//
+// Strategy: start both GPS and IP simultaneously.
+// - IP typically resolves in < 1 s → city-level result available immediately.
+// - After 2.5 s, if GPS hasn't replied yet, use the IP result so callers don't block.
+// - If GPS arrives within 10 s total, it replaces the IP result (more precise).
 
 export async function getBestLocation(): Promise<GeoLocation | null> {
-  const gps = await getGPSLocation();
-  if (gps) return gps;
-  return getIPLocation();
+  const ipPromise  = getIPLocation();
+  const gpsPromise = getGPSLocation(10_000);
+
+  // Delay the IP result by 2.5 s so GPS has a fair chance to win the race first.
+  const ipDelayed = new Promise<GeoLocation | null>(resolve =>
+    setTimeout(async () => resolve(await ipPromise), 2500)
+  );
+
+  const first = await Promise.race([gpsPromise, ipDelayed]);
+
+  // GPS was fast — return it directly.
+  if (first?.source === 'gps') return first;
+
+  // IP result arrived first.  Keep waiting up to 7.5 s more for GPS.
+  const gps = await Promise.race([
+    gpsPromise,
+    new Promise<null>(r => setTimeout(r, 7500)),
+  ]);
+
+  return gps ?? first;
+}
+
+// ─── Progressive address detection ───────────────────────────────────────────
+//
+// Calls onUpdate up to twice:
+//   1. ~1 s  : IP result (city-level)  — gives the user immediate feedback
+//   2. ~3–10 s: GPS result (street-level) — upgrades if the device has location access
+//
+// Usage:
+//   detectAddressProgressively(
+//     (addr, precision) => setAddress(addr),
+//     6000
+//   );
+
+export async function detectAddressProgressively(
+  onUpdate: (address: string, precision: LocationPrecision) => void,
+  totalTimeoutMs = 10_000
+): Promise<void> {
+  const gpsPromise = getGPSLocation(totalTimeoutMs);
+
+  // ── Step 1: IP address (fast, city-level) ────────────────────────────────
+  const ip = await getIPLocation();
+  if (ip) {
+    const addr = await getAddressFromCoords(ip.lat, ip.lng);
+    if (addr) onUpdate(addr, 'city');
+  }
+
+  // ── Step 2: GPS upgrade (precise, street-level) ──────────────────────────
+  const remaining = totalTimeoutMs - 2000; // budget after IP round-trip
+  const gps = await Promise.race([
+    gpsPromise,
+    new Promise<null>(r => setTimeout(r, Math.max(remaining, 0))),
+  ]);
+
+  if (gps) {
+    const addr = await getAddressFromCoords(gps.lat, gps.lng);
+    if (addr) onUpdate(addr, 'gps');
+  }
 }
 
 // ─── Reverse geocoding: (lat, lng) → address ─────────────────────────────────
 
-/**
- * Convert GPS coordinates to a human-readable address using OpenStreetMap Nominatim.
- * zoom=18 = house number level; zoom=16 = street level.
- */
 export async function reverseGeocode(lat: number, lng: number, zoom = 18): Promise<AddressResult | null> {
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=${zoom}&addressdetails=1`;
@@ -183,10 +240,6 @@ export async function reverseGeocode(lat: number, lng: number, zoom = 18): Promi
   }
 }
 
-/**
- * Build a concise single-line address string from GPS coordinates.
- * Returns something like "Rue de la Joie, Douala, Cameroun".
- */
 export async function getAddressFromCoords(lat: number, lng: number): Promise<string | null> {
   const result = await reverseGeocode(lat, lng);
   if (!result) return null;

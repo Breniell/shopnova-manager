@@ -2,35 +2,41 @@ import React from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
+import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/i18n';
+import type { SupportedLocale } from '@/i18n';
 import {
   LayoutDashboard, ShoppingCart, Package, Warehouse,
-  Receipt, BarChart3, Settings, LogOut, Calculator, Truck, Users, CreditCard, TrendingDown, ClipboardList, X
+  Receipt, BarChart3, Settings, LogOut, Calculator, Truck, Users, CreditCard, TrendingDown, ClipboardList, X, Languages,
 } from 'lucide-react';
 
-const navItems = [
-  { path: '/', label: 'Tableau de bord', icon: LayoutDashboard, roles: ['gérant', 'caissier'] as const },
-  { path: '/caisse', label: 'Point de vente', icon: ShoppingCart, roles: ['gérant', 'caissier'] as const },
-  { path: '/clients', label: 'Clients', icon: Users, roles: ['gérant', 'caissier'] as const },
-  { path: '/credit', label: 'Crédit & créances', icon: CreditCard, roles: ['gérant', 'caissier'] as const },
-  { path: '/produits', label: 'Produits', icon: Package, roles: ['gérant'] as const },
-  { path: '/stock', label: 'Stock', icon: Warehouse, roles: ['gérant'] as const },
-  { path: '/inventaire', label: 'Inventaire', icon: ClipboardList, roles: ['gérant'] as const },
-  { path: '/fournisseurs', label: 'Fournisseurs', icon: Truck, roles: ['gérant'] as const },
-  { path: '/ventes', label: 'Ventes', icon: Receipt, roles: ['gérant'] as const },
-  { path: '/depenses', label: 'Dépenses', icon: TrendingDown, roles: ['gérant'] as const },
-  { path: '/cloture', label: 'Clôture caisse', icon: Calculator, roles: ['gérant', 'caissier'] as const },
-  { path: '/rapports', label: 'Rapports', icon: BarChart3, roles: ['gérant'] as const },
-  { path: '/parametres', label: 'Paramètres', icon: Settings, roles: ['gérant'] as const },
+// Translation key mapped to icon + path + roles
+const NAV_ITEMS = [
+  { path: '/',            key: 'nav.dashboard',   icon: LayoutDashboard, roles: ['gérant', 'caissier'] as const },
+  { path: '/caisse',      key: 'nav.pos',          icon: ShoppingCart,    roles: ['gérant', 'caissier'] as const },
+  { path: '/clients',     key: 'nav.clients',      icon: Users,           roles: ['gérant', 'caissier'] as const },
+  { path: '/credit',      key: 'nav.credit',       icon: CreditCard,      roles: ['gérant', 'caissier'] as const },
+  { path: '/produits',    key: 'nav.produits',     icon: Package,         roles: ['gérant'] as const },
+  { path: '/stock',       key: 'nav.stock',        icon: Warehouse,       roles: ['gérant'] as const },
+  { path: '/inventaire',  key: 'nav.inventaire',   icon: ClipboardList,   roles: ['gérant'] as const },
+  { path: '/fournisseurs',key: 'nav.fournisseurs', icon: Truck,           roles: ['gérant'] as const },
+  { path: '/ventes',      key: 'nav.ventes',       icon: Receipt,         roles: ['gérant'] as const },
+  { path: '/depenses',    key: 'nav.depenses',     icon: TrendingDown,    roles: ['gérant'] as const },
+  { path: '/cloture',     key: 'nav.cloture',      icon: Calculator,      roles: ['gérant', 'caissier'] as const },
+  { path: '/rapports',    key: 'nav.rapports',     icon: BarChart3,       roles: ['gérant'] as const },
+  { path: '/parametres',  key: 'nav.parametres',   icon: Settings,        roles: ['gérant'] as const },
 ];
 
 export const Sidebar: React.FC = () => {
   const { currentUser, logout } = useAuthStore();
   const { sidebarOpen, toggleSidebar } = useUIStore();
+  const { updateShop, shop } = useSettingsStore();
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
+  const { t, locale } = useTranslation();
 
   const handleLogout = () => {
     logout();
@@ -41,11 +47,14 @@ export const Sidebar: React.FC = () => {
     if (isMobile) toggleSidebar();
   };
 
-  const filteredItems = navItems.filter(item => {
-    return currentUser && (item.roles as readonly string[]).includes(currentUser.role);
-  });
+  const switchLanguage = (l: SupportedLocale) => {
+    updateShop({ langue: l });
+    try { localStorage.setItem('legwan-locale', l); } catch {}
+  };
 
-  const isOpen = isMobile ? sidebarOpen : true;
+  const filteredItems = NAV_ITEMS.filter(item =>
+    currentUser && (item.roles as readonly string[]).includes(currentUser.role)
+  );
 
   return (
     <>
@@ -71,7 +80,9 @@ export const Sidebar: React.FC = () => {
             </div>
             <div>
               <h1 className="text-white font-semibold text-base tracking-tight">Legwan</h1>
-              <p className="text-[10px] text-slate-400 tracking-wider uppercase">La gestion, réinventée</p>
+              <p className="text-[10px] text-slate-400 tracking-wider uppercase">
+                {locale === 'en' ? 'Management, reinvented' : 'La gestion, réinventée'}
+              </p>
             </div>
           </div>
           {isMobile && (
@@ -101,18 +112,41 @@ export const Sidebar: React.FC = () => {
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full bg-primary" />
                 )}
                 <item.icon className="w-[18px] h-[18px]" />
-                <span>{item.label}</span>
+                <span>{t(item.key)}</span>
               </NavLink>
             );
           })}
         </nav>
 
+        {/* Language toggle */}
+        <div className="px-4 pb-2 pt-3 border-t border-white/10">
+          <div className="flex items-center gap-2">
+            <Languages className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <div className="flex gap-1 bg-white/10 rounded-lg p-0.5 flex-1">
+              {(['fr', 'en'] as SupportedLocale[]).map(l => (
+                <button
+                  key={l}
+                  onClick={() => switchLanguage(l)}
+                  className={cn(
+                    'flex-1 py-1 rounded-md text-xs font-semibold transition-all',
+                    shop.langue === l
+                      ? 'bg-white/20 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  )}
+                >
+                  {l === 'fr' ? 'FR' : 'EN'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* User section */}
         {currentUser && (
-          <div className="p-4 border-t border-border">
+          <div className="p-4 border-t border-white/10">
             <div className="flex items-center gap-grid">
               <div
-                className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-semibold text-white"
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-semibold text-white shrink-0"
                 style={{ backgroundColor: currentUser.color }}
               >
                 {currentUser.prenom[0]}{currentUser.nom[0]}
@@ -127,10 +161,14 @@ export const Sidebar: React.FC = () => {
                     ? 'bg-primary/20 text-primary'
                     : 'bg-secondary/20 text-secondary'
                 )}>
-                  {currentUser.role === 'gérant' ? 'Gérant' : 'Caissier'}
+                  {currentUser.role === 'gérant' ? t('common.gerant') : t('common.caissier')}
                 </span>
               </div>
-              <button onClick={handleLogout} aria-label="Se déconnecter" className="p-2 rounded-lg hover:bg-white/10 transition-colors text-slate-400 hover:text-red-400">
+              <button
+                onClick={handleLogout}
+                aria-label={t('nav.logout')}
+                className="p-2 rounded-lg hover:bg-white/10 transition-colors text-slate-400 hover:text-red-400"
+              >
                 <LogOut className="w-4 h-4" />
               </button>
             </div>

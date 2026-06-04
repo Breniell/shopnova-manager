@@ -355,7 +355,18 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
           {sections.map((section, i) => (
             <div key={i} className="nova-card p-5">
               <h2 className="text-sm font-semibold text-foreground mb-3">{section.title}</h2>
-              <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{section.content}</p>
+              <div className="text-sm text-muted-foreground leading-relaxed space-y-1.5">
+                {section.content.split('\n').map((line, j) => {
+                  if (line.startsWith('•')) return (
+                    <div key={j} className="flex items-start gap-2">
+                      <span className="text-primary mt-0.5 shrink-0">•</span>
+                      <span>{line.slice(1).trim()}</span>
+                    </div>
+                  );
+                  if (line === '') return <div key={j} className="h-1" />;
+                  return <p key={j}>{line}</p>;
+                })}
+              </div>
             </div>
           ))}
 

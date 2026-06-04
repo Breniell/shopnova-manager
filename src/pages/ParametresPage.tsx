@@ -3,8 +3,11 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useAuthStore, User } from '@/stores/useAuthStore';
 import { NovaCard } from '@/components/ui/NovaCard';
 import { cn } from '@/lib/utils';
-import { Store, Users, KeyRound, Trash2, Plus, X, Copy, Check, Cloud, Mail, Pencil } from 'lucide-react';
+import { Store, Users, KeyRound, Trash2, Plus, X, Copy, Check, Cloud, Mail, Pencil, MapPin, LocateFixed, Loader2, PenLine } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from '@/i18n';
+import type { LocationPrecision } from '@/services/geoService';
+import { detectAddressProgressively } from '@/services/geoService';
 import {
   getBoutiqueId,
   getBoutiqueCode,
@@ -18,6 +21,7 @@ import {
 const ParametresPage: React.FC = () => {
   const { shop, updateShop } = useSettingsStore();
   const { users, addUser, updateUserPin, updateUserInfo, deleteUser } = useAuthStore();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'boutique' | 'users'>('boutique');
   const [showUserModal, setShowUserModal] = useState(false);
   const [showPinModal, setShowPinModal] = useState<User | null>(null);
@@ -33,6 +37,11 @@ const ParametresPage: React.FC = () => {
   const [recoveryPassword, setRecoveryPassword] = useState('');
   const [recoveryPasswordConfirm, setRecoveryPasswordConfirm] = useState('');
   const [isRecoverySaving, setIsRecoverySaving] = useState(false);
+
+  // Address geo-detection
+  const [isDetectingAddress, setIsDetectingAddress] = useState(false);
+  const [addressPrecision, setAddressPrecision] = useState<LocationPrecision | null>(null);
+  const [showManualAddress, setShowManualAddress] = useState(false);
 
   const [localShop, setLocalShop] = useState(shop);
 
@@ -50,6 +59,34 @@ const ParametresPage: React.FC = () => {
       })
       .catch(() => setRecoveryStatus(null));
   }, []);
+
+  // Auto-detect address on first open if empty
+  useEffect(() => {
+    if (!localShop.adresse) {
+      runAddressDetection();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const runAddressDetection = async () => {
+    setIsDetectingAddress(true);
+    setAddressPrecision(null);
+    let found = false;
+
+    await detectAddressProgressively(
+      (addr, precision) => {
+        found = true;
+        setLocalShop(prev => ({ ...prev, adresse: addr }));
+        setAddressPrecision(precision);
+      },
+      10_000
+    );
+
+    setIsDetectingAddress(false);
+    if (!found) {
+      setShowManualAddress(true);
+      toast.error(t('settings.boutique.addressNotFound'));
+    }
+  };
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(boutiqueId).then(() => {
@@ -143,9 +180,68 @@ const ParametresPage: React.FC = () => {
               <label className="text-xs text-muted-foreground mb-1 block">Nom de la boutique</label>
               <input type="text" value={localShop.nom} onChange={e => setLocalShop({ ...localShop, nom: e.target.value })} className="nova-input w-full" />
             </div>
+            {/* Address — auto-detected, manual as fallback */}
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Adresse</label>
-              <input type="text" value={localShop.adresse} onChange={e => setLocalShop({ ...localShop, adresse: e.target.value })} className="nova-input w-full" />
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs text-muted-foreground">{t('settings.boutique.address')}</label>
+                <div className="flex items-center gap-2">
+                  {addressPrecision && !isDetectingAddress && (
+                    <span className={cn(
+                      'text-[10px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1',
+                      addressPrecision === 'gps'
+                        ? 'bg-secondary/15 text-secondary'
+                        : 'bg-amber-500/15 text-amber-500'
+                    )}>
+                      <LocateFixed className="w-2.5 h-2.5" />
+                      {addressPrecision === 'gps'
+                        ? t('settings.boutique.addressPrecisionGps')
+                        : t('settings.boutique.addressPrecisionCity')}
+                    </span>
+                  )}
+                  {!isDetectingAddress && (
+                    <button
+                      type="button"
+                      onClick={runAddressDetection}
+                      className="text-[10px] text-primary hover:underline flex items-center gap-1"
+                    >
+                      <MapPin className="w-3 h-3" />
+                      {localShop.adresse
+                        ? t('settings.boutique.addressRetry')
+                        : t('settings.boutique.addressDetect')}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowManualAddress(v => !v)}
+                    className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1"
+                  >
+                    <PenLine className="w-3 h-3" />
+                    {t('settings.boutique.addressManual')}
+                  </button>
+                </div>
+              </div>
+
+              {isDetectingAddress ? (
+                <div className="nova-input w-full flex items-center gap-2 text-muted-foreground text-sm">
+                  <Loader2 className="w-4 h-4 animate-spin shrink-0 text-primary" />
+                  {localShop.adresse
+                    ? <span className="truncate">{localShop.adresse}</span>
+                    : <span>{t('settings.boutique.addressDetecting')}</span>}
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  value={localShop.adresse}
+                  onChange={e => {
+                    setLocalShop({ ...localShop, adresse: e.target.value });
+                    setAddressPrecision(null);
+                  }}
+                  className="nova-input w-full"
+                  placeholder={showManualAddress ? '' : t('settings.boutique.addressDetect')}
+                  readOnly={!showManualAddress && !!localShop.adresse && !addressPrecision}
+                  onClick={() => { if (!showManualAddress) setShowManualAddress(true); }}
+                />
+              )}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -173,27 +269,9 @@ const ParametresPage: React.FC = () => {
               <label className="text-xs text-muted-foreground mb-1 block">Devise</label>
               <input type="text" value="FCFA" disabled className="nova-input w-full opacity-50" />
             </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-2 block">Langue de l'application</label>
-              <div className="flex gap-2">
-                {(['fr', 'en'] as const).map(lang => (
-                  <button
-                    key={lang}
-                    type="button"
-                    onClick={() => setLocalShop({ ...localShop, langue: lang })}
-                    className={cn(
-                      'px-4 py-2 rounded-lg border text-sm font-medium transition-all',
-                      localShop.langue === lang
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border bg-muted text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    {lang === 'fr' ? 'Français' : 'English'}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <button onClick={handleSaveShop} className="nova-btn-primary px-6 py-2.5">Enregistrer</button>
+            <button onClick={handleSaveShop} className="nova-btn-primary px-6 py-2.5">
+              {t('settings.boutique.save')}
+            </button>
           </div>
         </NovaCard>
 
