@@ -170,12 +170,14 @@ function createWindow() {
       return;
     }
     // Secret shortcut: Ctrl+Shift+Alt+A → Console super-admin
-    if (input.type === 'keyDown' && input.key === 'A' && input.control && input.shift && input.alt) {
+    // Use input.code (physical key, layout-independent) instead of input.key
+    // (which changes with Alt on AZERTY and other non-QWERTY keyboards).
+    if (input.type === 'keyDown' && input.code === 'KeyA' && input.control && input.shift && input.alt) {
       event.preventDefault();
       win.webContents.executeJavaScript("window.location.hash = '/superadmin'").catch(() => {});
     }
     // Secret shortcut: Ctrl+Shift+Alt+H → Retour accueil (depuis super-admin)
-    if (input.type === 'keyDown' && input.key === 'H' && input.control && input.shift && input.alt) {
+    if (input.type === 'keyDown' && input.code === 'KeyH' && input.control && input.shift && input.alt) {
       event.preventDefault();
       win.webContents.executeJavaScript("window.location.hash = '/login'").catch(() => {});
     }

@@ -49,6 +49,10 @@ win:
   icon: build/icon.ico
   requestedExecutionLevel: asInvoker
   signAndEditExecutable: false
+  # Consistent hyphenated naming so latest.yml URL matches the uploaded asset name.
+  # Without this, latest.yml references "Legwan-Setup-x.y.z.exe" but the file is
+  # "Legwan Setup x.y.z.exe" (with spaces), causing electron-updater to 404.
+  artifactName: "${productName}-Setup-${version}.${ext}"
 
 # ── NSIS installer wizard ──────────────────────────────────────────────────────
 nsis:

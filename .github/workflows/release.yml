@@ -74,8 +74,8 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }} - Legwan Complete POS
           files: |
-            release/Legwan Setup *.exe
-            release/Legwan Setup *.exe.blockmap
+            release/Legwan-Setup-*.exe
+            release/Legwan-Setup-*.exe.blockmap
             release/latest.yml
           draft: false
           prerelease: false
