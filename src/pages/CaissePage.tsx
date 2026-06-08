@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useProductStore, Product } from '@/stores/useProductStore';
 import { useSaleStore, PaymentMode, MobileOperator } from '@/stores/useSaleStore';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { useStockStore } from '@/stores/useStockStore';
 import { useCashSessionStore } from '@/stores/useCashSessionStore';
 import { usePaymentStore } from '@/stores/usePaymentStore';
 import type { Customer } from '@/stores/useCustomerStore';
@@ -30,8 +29,6 @@ const CaissePage: React.FC = () => {
   const { currentUser } = useAuthStore();
   const { getCurrentSession } = useCashSessionStore();
   const currentSession = getCurrentSession();
-  const { addMovement } = useStockStore();
-  const { updateStock } = useProductStore();
   const [search, setSearch] = useState('');
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('especes');
   const [amountReceived, setAmountReceived] = useState('');
@@ -204,23 +201,8 @@ const CaissePage: React.FC = () => {
         dueDate: paymentMode === 'credit' && dueDate ? dueDate : undefined,
       });
 
-      sale.items.forEach(item => {
-        const product = products.find(p => p.id === item.productId);
-        if (product) {
-          updateStock(item.productId, -item.quantity);
-          addMovement({
-            date: new Date(),
-            productId: item.productId,
-            productName: item.nom,
-            type: 'vente',
-            quantity: -item.quantity,
-            stockBefore: product.stock,
-            stockAfter: product.stock - item.quantity,
-            userId: currentUser.id,
-            userName: `${currentUser.prenom} ${currentUser.nom}`,
-          });
-        }
-      });
+      // Le stock et les mouvements sont décrémentés atomiquement dans
+      // completeSale (un seul batch Firestore vente + stock + mouvements).
 
       setIsProcessing(false);
       setIsDone(true);

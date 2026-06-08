@@ -149,6 +149,7 @@ const en: Translations = {
     acceptBtn: 'I accept and continue to Legwan',
     accepted:  'Accepted — Loading…',
     local:     'Your acceptance is stored locally on this device.',
+    geoConsent: 'I allow my shop\'s geographic location to be sent to the publisher, for support and service monitoring (optional, revocable anytime in Settings).',
     scrollDown:'Scroll down to read more',
     inForce:   'In effect since January 1, 2026',
     sections: {
@@ -159,7 +160,7 @@ const en: Translations = {
       s2:      'Legwan only records information necessary for your shop to function:\n\n• Administrator account: first name, last name, role (created at first installation)\n• Additional user accounts: name, role, PIN code (irreversibly hashed)\n• Shop information: name, address, phone\n• Products: description, price, stock\n• Sales and transactions\n• Stock movements\n• Suppliers and customers\n• Cash register sessions and closings\n\nNo banking or payment data is collected.',
 
       s3title: '3. Data usage',
-      s3:      'Your data is used exclusively to:\n\n• Run the software (sales, inventory, reports)\n• Sync your data between devices via Google servers (Firebase)\n• Allow the Legwan publisher to monitor service quality: anonymised aggregate statistics (number of sales, total revenue, number of products, app version) are sent to a central platform for maintenance and updates\n\nThese statistics contain no personal data (customer names, transaction details).\n\nLegwan does not sell your data or access it for commercial purposes. Your data belongs to you.',
+      s3:      'Your data is used to:\n\n• Run the software (sales, inventory, reports)\n• Sync your data between devices via Google servers (Firebase)\n• Allow the Legwan publisher to provide support, maintenance and service monitoring\n\nFor this purpose, the software sends to a central platform managed by the publisher:\n\n• Information identifying your shop: name, address and phone number\n• Your shop\'s geographic location (device GPS position, or approximate location from IP address when GPS is unavailable)\n• Activity statistics: number of sales, total revenue, number of products, users, customers, and app version\n\nNever transmitted: your customers\' names, the details of your transactions, or your PIN codes.\n\nLegwan does not sell your data or use it for advertising. Your data belongs to you.',
 
       s4title: '4. Security',
       s4:      'Your data is hosted on Firebase (Google Cloud), with encryption in transit and at rest. PIN codes are irreversibly hashed with a unique cryptographic salt per user. Each shop has its own isolated data space, inaccessible to other shops.',

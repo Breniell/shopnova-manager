@@ -20,6 +20,31 @@ import { auth, isFirebaseConfigured } from '@/lib/firebase';
 
 let _boutiqueId: string | null = null;
 const RECOVERY_EMAIL_KEY = 'legwan-recovery-email';
+const REGISTER_CODE_KEY = 'legwan-register-code';
+
+/**
+ * Code de caisse stable, propre à cette installation (cet appareil).
+ *
+ * Généré une seule fois au premier lancement et conservé localement. Il sert
+ * à préfixer les numéros de vente afin qu'ils restent uniques même lorsque
+ * plusieurs caisses d'une même boutique tournent en parallèle hors-ligne :
+ * deux appareils peuvent atteindre le compteur 42 sans collision, car leurs
+ * numéros diffèrent par ce préfixe (ex. LGW-2026-A1B2-00042 vs LGW-2026-C3D4-00042).
+ */
+export function getRegisterCode(): string {
+  try {
+    let code = localStorage.getItem(REGISTER_CODE_KEY);
+    if (!code) {
+      const bytes = new Uint8Array(2);
+      crypto.getRandomValues(bytes);
+      code = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+      localStorage.setItem(REGISTER_CODE_KEY, code);
+    }
+    return code;
+  } catch {
+    return 'XXXX';
+  }
+}
 
 export interface BoutiqueRecoveryStatus {
   boutiqueId: string;

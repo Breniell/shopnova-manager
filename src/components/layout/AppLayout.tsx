@@ -5,6 +5,7 @@ import { UpdateBanner } from '@/components/UpdateBanner';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { Menu } from 'lucide-react';
 
 export const AppLayout = forwardRef<HTMLDivElement>((_props, ref) => {
@@ -12,6 +13,9 @@ export const AppLayout = forwardRef<HTMLDivElement>((_props, ref) => {
   const { isAuthenticated } = useAuthStore();
   const { toggleSidebar } = useUIStore();
   const isMobile = useIsMobile();
+
+  // Auto-logout after 15 min of inactivity — protects an unattended register.
+  useSessionTimeout(15);
 
   useEffect(() => {
     if (!isAuthenticated) {

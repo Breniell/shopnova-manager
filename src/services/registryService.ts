@@ -8,6 +8,7 @@ import { doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '@/lib/firebase';
 import { getBoutiqueId } from '@/services/boutiqueService';
 import { getBestLocation, getAddressFromCoords } from '@/services/geoService';
+import { hasGeoConsent } from '@/lib/consent';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useProductStore } from '@/stores/useProductStore';
 import { useSaleStore } from '@/stores/useSaleStore';
@@ -89,48 +90,51 @@ export async function sendRegistryHeartbeat(isRecoveryEnabled: boolean): Promise
       .filter(s => s.status === 'completed')
       .reduce((sum, s) => sum + (s.total ?? s.subtotal ?? 0), 0);
 
-    // Geolocation: GPS first, IP fallback
+    // Geolocation: only if the user has explicitly consented (separate opt-in).
+    // Without consent, no GPS/IP request is made and no location is transmitted.
     let location: RegistryLocation | null = null;
-    try {
-      const snap = await getDoc(docRef);
-      const existing = snap.exists() ? (snap.data() as RegistryEntry) : null;
+    if (hasGeoConsent()) {
+      try {
+        const snap = await getDoc(docRef);
+        const existing = snap.exists() ? (snap.data() as RegistryEntry) : null;
 
-      // Keep existing GPS-precision location (don't re-request GPS every startup)
-      if (existing?.location?.precision === 'gps') {
-        location = existing.location;
-      } else {
-        const geo = await getBestLocation();
+        // Keep existing GPS-precision location (don't re-request GPS every startup)
+        if (existing?.location?.precision === 'gps') {
+          location = existing.location;
+        } else {
+          const geo = await getBestLocation();
+          if (geo) {
+            location = {
+              lat: geo.lat,
+              lng: geo.lng,
+              geocodedAt: new Date().toISOString(),
+              source: geo.source,
+              precision: geo.precision,
+              city: geo.city,
+              country: geo.country,
+            };
+
+            // Auto-fill boutique address from GPS if not yet set
+            if (geo.precision === 'gps' && !settings.adresse?.trim()) {
+              const addr = await getAddressFromCoords(geo.lat, geo.lng);
+              if (addr) {
+                useSettingsStore.getState().updateShop({ adresse: addr });
+              }
+            }
+          } else {
+            location = existing?.location ?? null;
+          }
+        }
+      } catch {
+        const geo = await getBestLocation().catch(() => null);
         if (geo) {
           location = {
-            lat: geo.lat,
-            lng: geo.lng,
+            lat: geo.lat, lng: geo.lng,
             geocodedAt: new Date().toISOString(),
-            source: geo.source,
-            precision: geo.precision,
-            city: geo.city,
-            country: geo.country,
+            source: geo.source, precision: geo.precision,
+            city: geo.city, country: geo.country,
           };
-
-          // Auto-fill boutique address from GPS if not yet set
-          if (geo.precision === 'gps' && !settings.adresse?.trim()) {
-            const addr = await getAddressFromCoords(geo.lat, geo.lng);
-            if (addr) {
-              useSettingsStore.getState().updateShop({ adresse: addr });
-            }
-          }
-        } else {
-          location = existing?.location ?? null;
         }
-      }
-    } catch {
-      const geo = await getBestLocation().catch(() => null);
-      if (geo) {
-        location = {
-          lat: geo.lat, lng: geo.lng,
-          geocodedAt: new Date().toISOString(),
-          source: geo.source, precision: geo.precision,
-          city: geo.city, country: geo.country,
-        };
       }
     }
 

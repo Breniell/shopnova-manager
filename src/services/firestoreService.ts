@@ -199,6 +199,77 @@ export async function fsUpdateSale(bid: string, saleId: string, data: Partial<Sa
   await updateDoc(doc(db, p.sale(bid, saleId)), data as DocumentData);
 }
 
+/**
+ * Commit atomique d'une vente et de ses conséquences sur le stock.
+ *
+ * La vente, la mise à jour du stock de chaque produit vendu et les mouvements
+ * de stock correspondants sont écrits dans un **unique writeBatch** : soit tout
+ * réussit, soit rien n'est écrit. Cela élimine le risque d'une vente enregistrée
+ * sans décrément de stock (ou l'inverse) en cas d'interruption.
+ *
+ * En mode hors-ligne, le SDK Firestore met le batch en file dans IndexedDB et
+ * le synchronise atomiquement au retour du réseau.
+ */
+export interface SaleCommitPayload {
+  sale: Sale;
+  products: Product[];          // produits avec leur stock DÉJÀ mis à jour
+  movements: StockMovement[];
+}
+
+export async function fsCommitSale(bid: string, payload: SaleCommitPayload): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  const batch = writeBatch(db);
+
+  const { id: saleId, ...saleData } = payload.sale;
+  batch.set(doc(db, p.sale(bid, saleId)), {
+    ...saleData,
+    date: toTimestamp(payload.sale.date),
+  });
+
+  for (const product of payload.products) {
+    batch.set(doc(db, p.product(bid, product.id)), product);
+  }
+
+  for (const movement of payload.movements) {
+    const { id: movId, ...movData } = movement;
+    batch.set(doc(db, p.movement(bid, movId)), {
+      ...movData,
+      date: toTimestamp(movement.date),
+    });
+  }
+
+  await batch.commit();
+}
+
+/**
+ * Commit atomique d'un règlement sur une vente à crédit.
+ *
+ * Le nouveau Payment et la mise à jour dénormalisée de la Sale (amountPaid,
+ * creditStatus) sont écrits dans un unique batch : on ne peut jamais avoir un
+ * règlement enregistré sans que la vente reflète le solde (ou l'inverse).
+ * `merge: true` sur la vente n'écrase que les champs fournis.
+ */
+export interface CreditPaymentCommitPayload {
+  payment: Payment;
+  saleId: string;
+  saleUpdate: Partial<Sale>;
+}
+
+export async function fsCommitCreditPayment(bid: string, payload: CreditPaymentCommitPayload): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  const batch = writeBatch(db);
+
+  const { id: payId, ...payData } = payload.payment;
+  batch.set(doc(db, p.payment(bid, payId)), {
+    ...payData,
+    date: toTimestamp(payload.payment.date),
+  });
+
+  batch.set(doc(db, p.sale(bid, payload.saleId)), payload.saleUpdate as DocumentData, { merge: true });
+
+  await batch.commit();
+}
+
 // ─── Stock movements ─────────────────────────────────────────────────────────
 export async function fsLoadMovements(bid: string): Promise<StockMovement[]> {
   if (!isFirebaseConfigured) return [];

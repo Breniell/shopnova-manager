@@ -152,6 +152,7 @@ const fr = {
     acceptBtn: 'J\'accepte et je continue vers Legwan',
     accepted:  'Accepté — Chargement…',
     local:     'Votre acceptation est enregistrée localement sur cet appareil.',
+    geoConsent: 'J\'autorise l\'envoi de la position géographique de ma boutique à l\'éditeur, pour le support et le suivi du service (facultatif, révocable à tout moment dans les Paramètres).',
     scrollDown:'Faites défiler pour lire la suite',
     inForce:   'En vigueur depuis le 1er janvier 2026',
     sections: {
@@ -162,7 +163,7 @@ const fr = {
       s2:      'Legwan enregistre uniquement les informations nécessaires au fonctionnement de votre boutique :\n\n• Compte administrateur : prénom, nom, rôle (créé lors de la première installation)\n• Comptes utilisateurs : nom, rôle, code PIN (haché de manière irréversible)\n• Informations de la boutique : nom, adresse, téléphone\n• Produits : désignation, prix, stock\n• Ventes et transactions\n• Mouvements de stock\n• Fournisseurs et clients\n• Sessions et clôtures de caisse\n\nAucune donnée bancaire ni de paiement n\'est collectée.',
 
       s3title: '3. Utilisation des données',
-      s3:      'Vos données servent exclusivement à :\n\n• Faire fonctionner le logiciel (ventes, stocks, rapports)\n• Synchroniser vos données entre appareils via les serveurs de Google (Firebase)\n• Permettre à l\'éditeur de Legwan de surveiller la qualité du service : des statistiques agrégées et anonymisées (nombre de ventes, chiffre d\'affaires total, nombre de produits, version de l\'application) sont envoyées à une plateforme centralisée à des fins de maintenance et de mises à jour\n\nCes statistiques ne contiennent aucune donnée personnelle (noms de clients, détails de transactions).\n\nLegwan ne vend pas vos données et n\'y accède pas à des fins commerciales. Vos données vous appartiennent.',
+      s3:      'Vos données servent à :\n\n• Faire fonctionner le logiciel (ventes, stocks, rapports)\n• Synchroniser vos données entre appareils via les serveurs de Google (Firebase)\n• Permettre à l\'éditeur de Legwan d\'assurer le support, la maintenance et le suivi du service\n\nÀ cette fin, le logiciel transmet à une plateforme centralisée gérée par l\'éditeur :\n\n• Des informations d\'identification de votre boutique : nom, adresse et numéro de téléphone\n• La localisation géographique de votre boutique (position GPS de l\'appareil, ou localisation approximative par adresse IP si le GPS n\'est pas disponible)\n• Des statistiques d\'activité : nombre de ventes, chiffre d\'affaires total, nombre de produits, d\'utilisateurs, de clients et version de l\'application\n\nNe sont jamais transmis : les noms de vos clients, le détail de vos transactions, ni vos codes PIN.\n\nLegwan ne vend pas vos données et ne les utilise pas à des fins publicitaires. Vos données vous appartiennent.',
 
       s4title: '4. Sécurité',
       s4:      'Vos données sont hébergées sur Firebase (Google Cloud), avec chiffrement en transit et au repos. Les codes PIN sont hachés de manière irréversible avec un sel cryptographique unique par utilisateur. Chaque boutique dispose de son propre espace de données isolé, inaccessible aux autres boutiques.',

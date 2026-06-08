@@ -3,7 +3,9 @@
  *
  * Route: /superadmin (hidden — not linked from sidebar)
  * Auth: email/password via secondary Firebase app (saAuth)
- * Access: kyliankk22@gmail.com uniquement
+ * Access: breniellkouda@gmail.com uniquement
+ *         (source de vérité : firestore.rules + SUPERADMIN_EMAIL dans useSuperAdminStore.ts —
+ *          les deux DOIVENT rester identiques)
  */
 import React, { useEffect, useState } from 'react';
 import { useSuperAdminStore } from '@/stores/useSuperAdminStore';

@@ -97,7 +97,7 @@ export const useAuthStore = create<AuthState>()(
           // Reset attempt counter in both local and Firestore
           const reset = { count: 0, lockedUntil: null };
           set(s => ({ loginAttempts: { ...s.loginAttempts, [userId]: reset } }));
-          try { fsSetLoginAttempts(getBoutiqueId(), userId, reset).catch(() => {}); } catch {}
+          try { fsSetLoginAttempts(getBoutiqueId(), userId, reset).catch(() => {}); } catch { /* hors-ligne : ignore */ }
 
           // Migrate legacy hash to PBKDF2 silently on successful login
           let finalUser = user;
@@ -106,7 +106,7 @@ export const useAuthStore = create<AuthState>()(
             const newHash = await hashPinPbkdf2(pin, newSalt);
             finalUser = { ...user, pin: newHash, salt: newSalt, hashAlgo: 'pbkdf2' };
             set(s => ({ users: s.users.map(u => u.id === userId ? finalUser : u) }));
-            try { fsSaveUser(getBoutiqueId(), finalUser).catch(() => {}); } catch {}
+            try { fsSaveUser(getBoutiqueId(), finalUser).catch(() => {}); } catch { /* hors-ligne : ignore */ }
           }
 
           set({ currentUser: finalUser, isAuthenticated: true });
@@ -121,7 +121,7 @@ export const useAuthStore = create<AuthState>()(
         const newAttempts = { count: newCount, lockedUntil };
 
         set(s => ({ loginAttempts: { ...s.loginAttempts, [userId]: newAttempts } }));
-        try { fsSetLoginAttempts(getBoutiqueId(), userId, newAttempts).catch(() => {}); } catch {}
+        try { fsSetLoginAttempts(getBoutiqueId(), userId, newAttempts).catch(() => {}); } catch { /* hors-ligne : ignore */ }
 
         if (lockedUntil) {
           return { success: false, locked: true, remainingSeconds: Math.ceil(LOCK_DURATION_MS / 1000) };
@@ -137,7 +137,7 @@ export const useAuthStore = create<AuthState>()(
         const hashedPin = await hashPinPbkdf2(userData.pin, salt);
         const newUser: User = { ...userData, id, pin: hashedPin, salt, hashAlgo: 'pbkdf2' };
         set(s => ({ users: [...s.users, newUser] }));
-        try { fsSaveUser(getBoutiqueId(), newUser).catch(() => {}); } catch {}
+        try { fsSaveUser(getBoutiqueId(), newUser).catch(() => {}); } catch { /* hors-ligne : ignore */ }
       },
 
       updateUserPin: async (userId, newPin) => {
@@ -148,21 +148,21 @@ export const useAuthStore = create<AuthState>()(
         );
         set({ users: updated });
         const user = updated.find(u => u.id === userId);
-        if (user) try { fsSaveUser(getBoutiqueId(), user).catch(() => {}); } catch {}
+        if (user) try { fsSaveUser(getBoutiqueId(), user).catch(() => {}); } catch { /* hors-ligne : ignore */ }
       },
 
       updateUserInfo: (userId, info) => {
         const updated = get().users.map(u => u.id === userId ? { ...u, ...info } : u);
         set({ users: updated });
         const user = updated.find(u => u.id === userId);
-        if (user) try { fsSaveUser(getBoutiqueId(), user).catch(() => {}); } catch {}
+        if (user) try { fsSaveUser(getBoutiqueId(), user).catch(() => {}); } catch { /* hors-ligne : ignore */ }
         const current = get().currentUser;
         if (current?.id === userId) set({ currentUser: { ...current, ...info } });
       },
 
       deleteUser: (userId) => {
         set(s => ({ users: s.users.filter(u => u.id !== userId) }));
-        try { fsDeleteUser(getBoutiqueId(), userId).catch(() => {}); } catch {}
+        try { fsDeleteUser(getBoutiqueId(), userId).catch(() => {}); } catch { /* hors-ligne : ignore */ }
       },
     }),
     {

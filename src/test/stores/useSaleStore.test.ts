@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useSaleStore } from '@/stores/useSaleStore';
+import { useProductStore } from '@/stores/useProductStore';
+import { useStockStore } from '@/stores/useStockStore';
 
 const INITIAL_STATE = useSaleStore.getState();
 
@@ -151,7 +153,7 @@ describe('useSaleStore — completeSale', () => {
       userName: 'Test User',
     });
     expect(sale.id).toMatch(/^s\d+[a-z0-9]+$/);
-    expect(sale.saleNumber).toMatch(/^LGW-\d{4}-\d{5}$/);
+    expect(sale.saleNumber).toMatch(/^LGW-\d{4}-[A-Z0-9]{4}-\d{5}$/);
   });
 
   it('captures cart items in the sale', () => {
@@ -263,5 +265,76 @@ describe('useSaleStore — refundSale', () => {
     refundSale(target.id, 'test', 'u1', 'Manager');
     const updatedOther = useSaleStore.getState().sales.find(s => s.id === other.id)!;
     expect(updatedOther.status).toBe('completed');
+  });
+});
+
+// ─── completeSale — décrément de stock atomique (v1.4.3) ──────────────────────
+describe('useSaleStore — completeSale (stock atomique)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useStockStore.setState({ movements: [] });
+    useProductStore.setState({
+      products: [
+        {
+          id: 'p1', nom: 'Bière Castel', categorie: 'Boissons', codeBarre: '111',
+          prixAchat: 400, prixVente: 600, stock: 10, seuilAlerte: 5,
+        },
+        {
+          id: 'p2', nom: 'Coca', categorie: 'Boissons', codeBarre: '222',
+          prixAchat: 300, prixVente: 500, stock: 4, seuilAlerte: 2,
+        },
+      ],
+    });
+    const { addToCart, updateCartQuantity } = useSaleStore.getState();
+    addToCart({ productId: 'p1', nom: 'Bière Castel', prixVente: 600 });
+    updateCartQuantity('p1', 3);
+    addToCart({ productId: 'p2', nom: 'Coca', prixVente: 500 });
+    updateCartQuantity('p2', 1);
+  });
+
+  it('décrémente le stock de chaque produit vendu', () => {
+    useSaleStore.getState().completeSale({
+      paymentMode: 'especes', amountReceived: 5000, changeGiven: 0,
+      userId: 'u1', userName: 'Test',
+    });
+    const products = useProductStore.getState().products;
+    expect(products.find(p => p.id === 'p1')!.stock).toBe(7); // 10 - 3
+    expect(products.find(p => p.id === 'p2')!.stock).toBe(3); // 4 - 1
+  });
+
+  it('enregistre un mouvement de stock "vente" par produit avec stockBefore/After corrects', () => {
+    useSaleStore.getState().completeSale({
+      paymentMode: 'especes', amountReceived: 5000, changeGiven: 0,
+      userId: 'u1', userName: 'Test',
+    });
+    const movements = useStockStore.getState().movements;
+    const m1 = movements.find(m => m.productId === 'p1')!;
+    expect(m1.type).toBe('vente');
+    expect(m1.quantity).toBe(-3);
+    expect(m1.stockBefore).toBe(10);
+    expect(m1.stockAfter).toBe(7);
+    expect(movements.filter(m => m.type === 'vente')).toHaveLength(2);
+  });
+
+  it('le numéro de vente porte un préfixe de code-caisse (unicité multi-caisses)', () => {
+    const sale = useSaleStore.getState().completeSale({
+      paymentMode: 'especes', amountReceived: 5000, changeGiven: 0,
+      userId: 'u1', userName: 'Test',
+    });
+    // Format : LGW-AAAA-XXXX-NNNNN (XXXX = code caisse)
+    const parts = sale.saleNumber.split('-');
+    expect(parts).toHaveLength(4);
+    expect(parts[2]).toMatch(/^[A-Z0-9]{4}$/);
+  });
+
+  it('ne crée aucun mouvement pour un produit absent du catalogue mais enregistre la vente', () => {
+    useSaleStore.getState().clearCart();
+    useSaleStore.getState().addToCart({ productId: 'inconnu', nom: 'Fantôme', prixVente: 100 });
+    const sale = useSaleStore.getState().completeSale({
+      paymentMode: 'especes', amountReceived: 100, changeGiven: 0,
+      userId: 'u1', userName: 'Test',
+    });
+    expect(sale.items).toHaveLength(1);
+    expect(useStockStore.getState().movements).toHaveLength(0);
   });
 });

@@ -1,3 +1,4 @@
+import { Suspense, lazy } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -6,22 +7,27 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { FirebaseProvider } from "@/components/FirebaseProvider";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { PolicyGate } from "@/components/PolicyGate";
-import LoginPage from "./pages/LoginPage";
-import DashboardPage from "./pages/DashboardPage";
-import CaissePage from "./pages/CaissePage";
-import ProduitsPage from "./pages/ProduitsPage";
-import StockPage from "./pages/StockPage";
-import VentesPage from "./pages/VentesPage";
-import RapportsPage from "./pages/RapportsPage";
-import ParametresPage from "./pages/ParametresPage";
-import ClotureCaissePage from "./pages/ClotureCaissePage";
-import FournisseursPage from "./pages/FournisseursPage";
-import ClientsPage from "./pages/ClientsPage";
-import DepensesPage from "./pages/DepensesPage";
-import OuvertureSessionPage from "./pages/OuvertureSessionPage";
-import InventairePage from "./pages/InventairePage";
-import CreditPage from "./pages/CreditPage";
-import SuperAdminPage from "./pages/superadmin/SuperAdminPage";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+
+// Pages are code-split: each route loads its own chunk on demand, keeping the
+// initial bundle small. Heavy, rarely-visited pages (e.g. the super-admin
+// console, which pulls in Leaflet) no longer weigh on first paint.
+const LoginPage            = lazy(() => import("./pages/LoginPage"));
+const DashboardPage        = lazy(() => import("./pages/DashboardPage"));
+const CaissePage           = lazy(() => import("./pages/CaissePage"));
+const ProduitsPage         = lazy(() => import("./pages/ProduitsPage"));
+const StockPage            = lazy(() => import("./pages/StockPage"));
+const VentesPage           = lazy(() => import("./pages/VentesPage"));
+const RapportsPage         = lazy(() => import("./pages/RapportsPage"));
+const ParametresPage       = lazy(() => import("./pages/ParametresPage"));
+const ClotureCaissePage    = lazy(() => import("./pages/ClotureCaissePage"));
+const FournisseursPage     = lazy(() => import("./pages/FournisseursPage"));
+const ClientsPage          = lazy(() => import("./pages/ClientsPage"));
+const DepensesPage         = lazy(() => import("./pages/DepensesPage"));
+const OuvertureSessionPage = lazy(() => import("./pages/OuvertureSessionPage"));
+const InventairePage       = lazy(() => import("./pages/InventairePage"));
+const CreditPage           = lazy(() => import("./pages/CreditPage"));
+const SuperAdminPage       = lazy(() => import("./pages/superadmin/SuperAdminPage"));
 
 const queryClient = new QueryClient();
 
@@ -32,6 +38,7 @@ const App = () => (
       <TooltipProvider>
         <Sonner position="top-right" theme="dark" />
       <HashRouter>
+        <Suspense fallback={<LoadingSpinner />}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route element={<AppLayout />}>
@@ -54,6 +61,7 @@ const App = () => (
           <Route path="/superadmin" element={<SuperAdminPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
+        </Suspense>
       </HashRouter>
       </TooltipProvider>
     </QueryClientProvider>

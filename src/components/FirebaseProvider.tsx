@@ -101,7 +101,15 @@ async function buildDefaultUsers(): Promise<User[]> {
     }
   }
 
-  // Fallback: seeded demo accounts (dev / local mode only)
+  // Fallback: seeded demo accounts — DEV / LOCAL MODE ONLY.
+  // In production (Firebase configured), the real admin always comes from
+  // PENDING_ADMIN_KEY set by PolicyGate at first install. We must never seed
+  // accounts with hardcoded, well-known PINs into a real boutique — that would
+  // be a standing backdoor (e.g. a "gérant" account with PIN 1234).
+  if (isFirebaseConfigured) {
+    return [];
+  }
+
   const [pinMarie, pinPaul, pinFatou] = await Promise.all([
     hashPin('1234'),
     hashPin('5678'),
@@ -308,4 +316,3 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   if (!ready) return <SplashScreen />;
   return <>{children}</>;
 };
-

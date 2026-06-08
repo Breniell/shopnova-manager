@@ -1,8 +1,13 @@
 import { create } from 'zustand';
-import { getBoutiqueId } from '@/services/boutiqueService';
-import { fsSaveSale, fsUpdateSale, fsSaveSaleCounter } from '@/services/firestoreService';
+import { getBoutiqueId, getRegisterCode } from '@/services/boutiqueService';
+import { fsUpdateSale, fsCommitSale, fsCommitCreditPayment, fsSaveSaleCounter } from '@/services/firestoreService';
 import { usePaymentStore } from '@/stores/usePaymentStore';
+import type { Payment } from '@/stores/usePaymentStore';
 import { useCashSessionStore } from '@/stores/useCashSessionStore';
+import { useProductStore } from '@/stores/useProductStore';
+import { useStockStore } from '@/stores/useStockStore';
+import type { Product } from '@/stores/useProductStore';
+import type { StockMovement } from '@/stores/useStockStore';
 
 export type SaleStatus = 'completed' | 'refunded';
 export type PaymentMode = 'especes' | 'mobile_money' | 'credit';
@@ -119,14 +124,47 @@ interface SaleState {
   ) => Sale;
 }
 
+// ─── Compteur de ventes local, propre à cette caisse ──────────────────────────
+// Chaque caisse conserve sa propre séquence (le préfixe de code-caisse dans le
+// saleNumber garantit l'unicité globale). Persister localement permet de
+// reprendre la séquence après un redémarrage, sans dépendre d'un compteur
+// partagé que plusieurs caisses écraseraient.
+function counterKey(): string {
+  return `legwan-sale-counter-${getRegisterCode()}`;
+}
+
+function loadLocalCounter(): number {
+  try {
+    const raw = localStorage.getItem(counterKey());
+    const n = raw ? parseInt(raw, 10) : 0;
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function persistLocalCounter(value: number): void {
+  try {
+    localStorage.setItem(counterKey(), String(value));
+  } catch {
+    /* localStorage indisponible */
+  }
+}
+
 export const useSaleStore = create<SaleState>()((set, get) => ({
   sales: [],
   cart: [],
   discount: 0,
-  saleCounter: 0,
+  saleCounter: loadLocalCounter(),
 
   _setSales: (sales) => set({ sales }),
-  _setSaleCounter: (counter) => set({ saleCounter: counter }),
+  _setSaleCounter: (counter) => set(s => {
+    // On adopte la valeur (ex. issue de Firestore au démarrage) sans jamais
+    // régresser sous la séquence locale déjà atteinte par cette caisse.
+    const next = Math.max(counter, s.saleCounter, loadLocalCounter());
+    persistLocalCounter(next);
+    return { saleCounter: next };
+  }),
 
   addToCart: (item) => {
     const existing = get().cart.find(c => c.productId === item.productId);
@@ -258,11 +296,12 @@ export const useSaleStore = create<SaleState>()((set, get) => ({
 
     const newCreditStatus: CreditStatus = remaining === 0 ? 'paid' : 'partial';
 
-    // 1. Créer le Payment d'abord (source de vérité), puis mettre à jour la Sale.
-    //    Ordre important : si on inversait, on pourrait avoir une Sale 'paid'
-    //    sans Payment correspondant en cas de crash entre les deux écritures.
+    // Construit le Payment (source de vérité) et la mise à jour dénormalisée
+    // de la Sale, puis applique les deux en mémoire et les persiste dans un
+    // unique batch atomique — impossible d'avoir l'un sans l'autre.
     const activeSessionId = useCashSessionStore.getState().currentSessionId ?? undefined;
-    usePaymentStore.getState().addPayment({
+    const newPayment: Payment = {
+      id: 'pay' + Date.now() + Math.random().toString(36).slice(2, 7),
       saleId,
       customerId: sale.customerId!,
       date: new Date(),
@@ -274,19 +313,22 @@ export const useSaleStore = create<SaleState>()((set, get) => ({
       userName: payment.userName,
       notes: payment.notes,
       cashSessionId: activeSessionId,
-    });
+    };
 
-    // 2. Puis mettre à jour les champs dénormalisés sur la Sale
     const update = {
       amountPaid: newAmountPaid,
       creditStatus: newCreditStatus,
     };
-    set(state => ({
-      sales: state.sales.map(s => s.id === saleId ? { ...s, ...update } : s),
+
+    // Mise à jour en mémoire (optimiste) des deux stores.
+    usePaymentStore.setState(s => ({ payments: [newPayment, ...s.payments] }));
+    set(s => ({
+      sales: s.sales.map(x => x.id === saleId ? { ...x, ...update } : x),
     }));
 
+    // Persistance atomique : Payment + MAJ vente dans un seul batch.
     const bid = getBoutiqueId();
-    fsUpdateSale(bid, saleId, update).catch(console.error);
+    fsCommitCreditPayment(bid, { payment: newPayment, saleId, saleUpdate: update }).catch(console.error);
   },
 
   completeSale: (saleData) => {
@@ -298,15 +340,20 @@ export const useSaleStore = create<SaleState>()((set, get) => ({
     const state = get();
     const newCounter = state.saleCounter + 1;
     const isCredit = saleData.paymentMode === 'credit';
+    const registerCode = getRegisterCode();
 
     // Rattache la vente à la session de caisse active s'il y en a une.
     const activeSessionId = useCashSessionStore.getState().currentSessionId ?? undefined;
 
+    const items = [...state.cart];
+
     const sale: Sale = {
       id: 's' + Date.now() + Math.random().toString(36).slice(2, 7),
-      saleNumber: `LGW-${new Date().getFullYear()}-${String(newCounter).padStart(5, '0')}`,
+      // Numéro préfixé par le code-caisse → unique même avec plusieurs caisses
+      // hors-ligne en parallèle (ex. LGW-2026-A1B2-00042).
+      saleNumber: `LGW-${new Date().getFullYear()}-${registerCode}-${String(newCounter).padStart(5, '0')}`,
       date: new Date(),
-      items: [...state.cart],
+      items,
       subtotal: state.getCartSubtotal(),
       discount: state.discount,
       total: state.getCartTotal(),
@@ -316,10 +363,49 @@ export const useSaleStore = create<SaleState>()((set, get) => ({
       creditStatus: isCredit ? 'pending' : undefined,
       amountPaid: isCredit ? 0 : undefined,
     };
-    set(state => ({ sales: [sale, ...state.sales], cart: [], discount: 0, saleCounter: newCounter }));
+
+    // ── Conséquences sur le stock, calculées ici pour un commit ATOMIQUE ──────
+    // La vente, les nouveaux stocks et les mouvements forment un tout : ils sont
+    // appliqués ensemble en mémoire puis écrits dans un unique batch Firestore.
+    const products = useProductStore.getState().products;
+    const updatedProducts: Product[] = [];
+    const movements: StockMovement[] = [];
+    const movDate = new Date();
+    for (const item of items) {
+      const product = products.find(p => p.id === item.productId);
+      if (!product) continue; // produit inconnu → vente enregistrée sans ligne de stock
+      const stockBefore = product.stock;
+      const stockAfter = stockBefore - item.quantity;
+      updatedProducts.push({ ...product, stock: stockAfter });
+      movements.push({
+        id: 'm' + Date.now() + Math.random().toString(36).slice(2, 7),
+        date: movDate,
+        productId: item.productId,
+        productName: item.nom,
+        type: 'vente',
+        quantity: -item.quantity,
+        stockBefore,
+        stockAfter,
+        userId: sale.userId,
+        userName: sale.userName,
+      });
+    }
+
+    // ── Mise à jour en mémoire (optimiste — l'UI réagit immédiatement) ────────
+    set(s => ({ sales: [sale, ...s.sales], cart: [], discount: 0, saleCounter: newCounter }));
+    if (updatedProducts.length) {
+      const byId = new Map(updatedProducts.map(p => [p.id, p]));
+      useProductStore.setState(s => ({ products: s.products.map(p => byId.get(p.id) ?? p) }));
+    }
+    if (movements.length) {
+      useStockStore.setState(s => ({ movements: [...movements, ...s.movements] }));
+    }
+    persistLocalCounter(newCounter);
+
+    // ── Persistance atomique : vente + stocks + mouvements en un seul batch ───
     const bid = getBoutiqueId();
-    fsSaveSale(bid, sale).catch(console.error);
-    fsSaveSaleCounter(bid, newCounter).catch(console.error);
+    fsCommitSale(bid, { sale, products: updatedProducts, movements }).catch(console.error);
+    fsSaveSaleCounter(bid, newCounter).catch(() => {});
     return sale;
   },
 }));

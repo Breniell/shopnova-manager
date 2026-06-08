@@ -49,7 +49,7 @@ export const Sidebar: React.FC = () => {
 
   const switchLanguage = (l: SupportedLocale) => {
     updateShop({ langue: l });
-    try { localStorage.setItem('legwan-locale', l); } catch {}
+    try { localStorage.setItem('legwan-locale', l); } catch { /* ignore */ }
   };
 
   const filteredItems = NAV_ITEMS.filter(item =>

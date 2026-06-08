@@ -10,6 +10,8 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { CheckCircle2, ScrollText, Shield, ChevronDown, UserPlus, KeyRound } from 'lucide-react';
 import { hashPin, generateSalt } from '@/lib/crypto';
+import { setGeoConsent } from '@/lib/consent';
+import { useSettingsStore } from '@/stores/useSettingsStore';
 import fr from '@/i18n/fr';
 import en from '@/i18n/en';
 import type { Translations } from '@/i18n/fr';
@@ -26,13 +28,13 @@ function detectLocale(): SupportedLocale {
   try {
     const stored = localStorage.getItem(LOCALE_KEY);
     if (stored === 'en' || stored === 'fr') return stored as SupportedLocale;
-  } catch {}
+  } catch { /* localStorage indisponible */ }
   const lang = (typeof navigator !== 'undefined' ? navigator.language : '').slice(0, 2).toLowerCase();
   return lang === 'en' ? 'en' : 'fr';
 }
 
 function saveLocale(l: SupportedLocale) {
-  try { localStorage.setItem(LOCALE_KEY, l); } catch {}
+  try { localStorage.setItem(LOCALE_KEY, l); } catch { /* ignore */ }
 }
 
 const dicts: Record<SupportedLocale, Translations> = { fr, en };
@@ -100,6 +102,7 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
   const [scrolledToBottom, setScrolledToBottom] = useState(false);
   const [sigName, setSigName]   = useState('');
   const [checked, setChecked]   = useState(false);
+  const [geoConsent, setGeoConsentState] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -149,11 +152,12 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
   const handlePolicyAccept = () => {
     if (!canSubmitPolicy) return;
     setSubmitted(true);
+    // Persist the explicit geolocation consent choice (opt-in, defaults to off)
+    setGeoConsent(geoConsent);
     // Save locale to settings store
     try {
-      const { useSettingsStore } = require('@/stores/useSettingsStore');
       useSettingsStore.getState().updateShop({ langue: locale });
-    } catch {}
+    } catch { /* localStorage indisponible */ }
     saveLocale(locale);
 
     if (isNewInstall()) {
@@ -422,6 +426,20 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
               <span className="text-sm text-muted-foreground">
                 {T.checkLabel}{' '}<strong className="text-foreground">{T.checkBold}</strong>{' '}({T.version} {POLICY_VERSION}).
               </span>
+            </label>
+          )}
+
+          {scrolledToBottom && (
+            <label className="flex items-start gap-3 cursor-pointer">
+              <div
+                className={cn('w-5 h-5 rounded border-2 shrink-0 mt-0.5 flex items-center justify-center transition-all',
+                  geoConsent ? 'bg-primary border-primary' : 'bg-transparent border-border hover:border-primary/50')}
+                onClick={() => setGeoConsentState(c => !c)}
+                role="checkbox" aria-checked={geoConsent} tabIndex={0}
+                onKeyDown={e => e.key === ' ' && setGeoConsentState(c => !c)}>
+                {geoConsent && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+              </div>
+              <span className="text-sm text-muted-foreground">{T.geoConsent}</span>
             </label>
           )}
 
