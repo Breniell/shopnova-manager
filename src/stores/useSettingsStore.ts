@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { getBoutiqueId } from '@/services/boutiqueService';
 import { fsSaveSettings } from '@/services/firestoreService';
+import type { SupportedLocale } from '@/i18n/types';
 
 export interface ShopSettings {
   nom: string;
@@ -11,7 +12,7 @@ export interface ShopSettings {
   enteteRecu: string;
   piedPageRecu: string;
   devise: string;
-  langue: 'fr' | 'en';
+  langue: SupportedLocale;
 }
 
 export const defaultShopSettings: ShopSettings = {

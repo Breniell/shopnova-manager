@@ -15,6 +15,7 @@ const fr = {
     rapports:    'Rapports',
     parametres:  'Paramètres',
     logout:      'Déconnexion',
+    tagline:     'La gestion, réinventée',
   },
 
   // Login
@@ -109,6 +110,13 @@ const fr = {
       label: 'Langue de l\'application',
       fr:    'Français',
       en:    'English',
+      es:    'Español',
+      pt:    'Português',
+      de:    'Deutsch',
+      tr:    'Türkçe',
+      ar:    'العربية',
+      ja:    '日本語',
+      zh:    '中文',
     },
     code: {
       label: 'Code boutique',
@@ -192,4 +200,7 @@ const fr = {
 } as const;
 
 export default fr;
-export type Translations = typeof fr;
+
+// Relaxes literal types to `string` so other locales can use any string value.
+type DeepString<T> = { [K in keyof T]: T[K] extends string ? string : DeepString<T[K]> };
+export type Translations = DeepString<typeof fr>;

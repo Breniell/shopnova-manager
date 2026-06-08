@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils';
 import { Store, Users, KeyRound, Trash2, Plus, X, Copy, Check, Cloud, Mail, Pencil, MapPin, LocateFixed, Loader2, PenLine } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n';
+import { ALL_LOCALES, LOCALE_LABELS } from '@/i18n/types';
+import type { SupportedLocale } from '@/i18n/types';
 import type { LocationPrecision } from '@/services/geoService';
 import { detectAddressProgressively } from '@/services/geoService';
 import { hasGeoConsent, setGeoConsent } from '@/lib/consent';
@@ -276,11 +278,12 @@ const ParametresPage: React.FC = () => {
               <label className="text-xs text-muted-foreground mb-1 block">{t('settings.boutique.language')}</label>
               <select
                 value={localShop.langue}
-                onChange={e => setLocalShop({ ...localShop, langue: e.target.value as 'fr' | 'en' })}
+                onChange={e => setLocalShop({ ...localShop, langue: e.target.value as SupportedLocale })}
                 className="nova-input w-full"
               >
-                <option value="fr">{t('settings.language.fr')}</option>
-                <option value="en">{t('settings.language.en')}</option>
+                {ALL_LOCALES.map(l => (
+                  <option key={l} value={l}>{LOCALE_LABELS[l]}</option>
+                ))}
               </select>
             </div>
             <button onClick={handleSaveShop} className="nova-btn-primary px-6 py-2.5">

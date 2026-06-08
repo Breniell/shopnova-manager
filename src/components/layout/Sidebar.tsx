@@ -6,7 +6,8 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/i18n';
-import type { SupportedLocale } from '@/i18n';
+import type { SupportedLocale } from '@/i18n/types';
+import { ALL_LOCALES, LOCALE_LABELS } from '@/i18n/types';
 import {
   LayoutDashboard, ShoppingCart, Package, Warehouse,
   Receipt, BarChart3, Settings, LogOut, Calculator, Truck, Users, CreditCard, TrendingDown, ClipboardList, X, Languages,
@@ -36,7 +37,7 @@ export const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
-  const { t, locale } = useTranslation();
+  const { t } = useTranslation();
 
   const handleLogout = () => {
     logout();
@@ -81,7 +82,7 @@ export const Sidebar: React.FC = () => {
             <div>
               <h1 className="text-white font-semibold text-base tracking-tight">Legwan</h1>
               <p className="text-[10px] text-slate-400 tracking-wider uppercase">
-                {locale === 'en' ? 'Management, reinvented' : 'La gestion, réinventée'}
+                {t('nav.tagline')}
               </p>
             </div>
           </div>
@@ -118,26 +119,21 @@ export const Sidebar: React.FC = () => {
           })}
         </nav>
 
-        {/* Language toggle */}
+        {/* Language selector */}
         <div className="px-4 pb-2 pt-3 border-t border-white/10">
           <div className="flex items-center gap-2">
             <Languages className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <div className="flex gap-1 bg-white/10 rounded-lg p-0.5 flex-1">
-              {(['fr', 'en'] as SupportedLocale[]).map(l => (
-                <button
-                  key={l}
-                  onClick={() => switchLanguage(l)}
-                  className={cn(
-                    'flex-1 py-1 rounded-md text-xs font-semibold transition-all',
-                    shop.langue === l
-                      ? 'bg-white/20 text-white'
-                      : 'text-slate-400 hover:text-white'
-                  )}
-                >
-                  {l === 'fr' ? 'FR' : 'EN'}
-                </button>
+            <select
+              value={shop.langue}
+              onChange={e => switchLanguage(e.target.value as SupportedLocale)}
+              className="flex-1 bg-white/10 text-white text-xs rounded-lg px-2 py-1.5 border border-white/10 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+            >
+              {ALL_LOCALES.map(l => (
+                <option key={l} value={l} className="bg-slate-900 text-white">
+                  {LOCALE_LABELS[l]}
+                </option>
               ))}
-            </div>
+            </select>
           </div>
         </div>
 

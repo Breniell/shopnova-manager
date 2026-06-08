@@ -19,7 +19,7 @@ import { useExpenseStore } from '@/stores/useExpenseStore';
 import { useCashSessionStore } from '@/stores/useCashSessionStore';
 import type { LocationSource, LocationPrecision } from '@/services/geoService';
 
-const APP_VERSION = '1.4.4';
+const APP_VERSION = '1.4.5';
 
 export type { LocationSource, LocationPrecision };
 

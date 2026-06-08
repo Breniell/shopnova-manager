@@ -16,6 +16,7 @@ const en: Translations = {
     rapports:    'Reports',
     parametres:  'Settings',
     logout:      'Log out',
+    tagline:     'Management, reinvented',
   },
 
   login: {
@@ -108,6 +109,13 @@ const en: Translations = {
       label: 'App language',
       fr:    'Français',
       en:    'English',
+      es:    'Español',
+      pt:    'Português',
+      de:    'Deutsch',
+      tr:    'Türkçe',
+      ar:    'العربية',
+      ja:    '日本語',
+      zh:    '中文',
     },
     code: {
       label: 'Shop code',

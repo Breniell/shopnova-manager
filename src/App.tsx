@@ -1,4 +1,6 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect } from "react";
+import { useSettingsStore } from "@/stores/useSettingsStore";
+import { isRtlLocale } from "@/i18n";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -31,7 +33,18 @@ const SuperAdminPage       = lazy(() => import("./pages/superadmin/SuperAdminPag
 
 const queryClient = new QueryClient();
 
+function RtlSync() {
+  const langue = useSettingsStore(state => state.shop.langue);
+  useEffect(() => {
+    document.documentElement.dir = isRtlLocale(langue) ? 'rtl' : 'ltr';
+    document.documentElement.lang = langue;
+  }, [langue]);
+  return null;
+}
+
 const App = () => (
+  <>
+  <RtlSync />
   <PolicyGate>
   <FirebaseProvider>
     <QueryClientProvider client={queryClient}>
@@ -67,6 +80,7 @@ const App = () => (
     </QueryClientProvider>
   </FirebaseProvider>
   </PolicyGate>
+  </>
 );
 
 export default App;

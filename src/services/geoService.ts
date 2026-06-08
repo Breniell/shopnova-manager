@@ -200,7 +200,7 @@ export async function reverseGeocode(lat: number, lng: number, zoom = 18): Promi
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=${zoom}&addressdetails=1`;
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'Legwan/1.4.4 (support@legwan.cm)' },
+      headers: { 'User-Agent': 'Legwan/1.4.5 (support@legwan.cm)' },
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return null;

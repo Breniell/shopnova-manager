@@ -12,10 +12,10 @@ import { CheckCircle2, ScrollText, Shield, ChevronDown, UserPlus, KeyRound } fro
 import { hashPin, generateSalt } from '@/lib/crypto';
 import { setGeoConsent } from '@/lib/consent';
 import { useSettingsStore } from '@/stores/useSettingsStore';
-import fr from '@/i18n/fr';
-import en from '@/i18n/en';
+import { fr, en, es, pt, de, tr, ar, ja, zh } from '@/i18n';
 import type { Translations } from '@/i18n/fr';
-import type { SupportedLocale } from '@/i18n/index';
+import { ALL_LOCALES, LOCALE_LABELS } from '@/i18n/types';
+import type { SupportedLocale } from '@/i18n/types';
 
 const POLICY_VERSION    = '1.4.2';
 const STORAGE_KEY       = 'legwan-policy-accepted';
@@ -26,18 +26,18 @@ const LOCALE_KEY        = 'legwan-locale';
 
 function detectLocale(): SupportedLocale {
   try {
-    const stored = localStorage.getItem(LOCALE_KEY);
-    if (stored === 'en' || stored === 'fr') return stored as SupportedLocale;
+    const stored = localStorage.getItem(LOCALE_KEY) as SupportedLocale | null;
+    if (stored && ALL_LOCALES.includes(stored)) return stored;
   } catch { /* localStorage indisponible */ }
-  const lang = (typeof navigator !== 'undefined' ? navigator.language : '').slice(0, 2).toLowerCase();
-  return lang === 'en' ? 'en' : 'fr';
+  const lang = (typeof navigator !== 'undefined' ? navigator.language : '').slice(0, 2).toLowerCase() as SupportedLocale;
+  return ALL_LOCALES.includes(lang) ? lang : 'fr';
 }
 
 function saveLocale(l: SupportedLocale) {
   try { localStorage.setItem(LOCALE_KEY, l); } catch { /* ignore */ }
 }
 
-const dicts: Record<SupportedLocale, Translations> = { fr, en };
+const dicts: Record<SupportedLocale, Translations> = { fr, en, es, pt, de, tr, ar, ja, zh };
 
 // ─── Policy acceptance ────────────────────────────────────────────────────────
 
@@ -319,16 +319,16 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
           <p className="text-xs text-muted-foreground">{T.version} {POLICY_VERSION} · {T.readHint}</p>
         </div>
         <div className="ml-auto flex items-center gap-3">
-          {/* Language switcher */}
-          <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
-            {(['fr', 'en'] as SupportedLocale[]).map(l => (
-              <button key={l} onClick={() => switchLocale(l)}
-                className={cn('px-2.5 py-1 rounded-md text-xs font-semibold transition-all',
-                  locale === l ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
-                {l.toUpperCase()}
-              </button>
+          {/* Language selector */}
+          <select
+            value={locale}
+            onChange={e => switchLocale(e.target.value as SupportedLocale)}
+            className="bg-muted text-foreground text-xs rounded-lg px-2 py-1.5 border border-border focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+          >
+            {ALL_LOCALES.map(l => (
+              <option key={l} value={l}>{LOCALE_LABELS[l]}</option>
             ))}
-          </div>
+          </select>
           <svg viewBox="0 0 80 80" className="w-8 h-8" fill="none">
             <path d="M 54,14 A 22,22 0 1,0 54,60 L 54,42 L 40,42" stroke="#A93200" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
             <line x1="20" y1="13" x2="20" y2="60" stroke="#A93200" strokeWidth="5" strokeLinecap="round"/>

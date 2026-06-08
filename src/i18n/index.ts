@@ -1,21 +1,25 @@
 /**
- * Lightweight i18n for Legwan.
- * Supports: French (fr), English (en).
- * Language stored in settings store — persisted via Firestore.
- *
- * Usage:
- *   const { t } = useTranslation();
- *   t('nav.dashboard')  // → 'Tableau de bord' or 'Dashboard'
- *   t('common.save')    // → 'Enregistrer' or 'Save'
+ * Legwan i18n — 9 locales: fr, en, es, pt, de, tr, ar, ja, zh.
+ * Language is stored in useSettingsStore.shop.langue (persisted to Firestore).
+ * Arabic uses RTL — the document dir is set in App.tsx via useRtl().
  */
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import fr from './fr';
 import en from './en';
+import es from './es';
+import pt from './pt';
+import de from './de';
+import tr from './tr';
+import ar from './ar';
+import ja from './ja';
+import zh from './zh';
 import type { Translations } from './fr';
+import { RTL_LOCALES } from './types';
 
-export type SupportedLocale = 'fr' | 'en';
+export type { SupportedLocale } from './types';
+export { ALL_LOCALES, RTL_LOCALES, LOCALE_LABELS } from './types';
 
-const translations: Record<SupportedLocale, Translations> = { fr, en };
+const translations: Record<string, Translations> = { fr, en, es, pt, de, tr, ar, ja, zh };
 
 /** Resolve a dot-path like 'nav.dashboard' into a nested value */
 function resolve(obj: unknown, path: string): string {
@@ -30,8 +34,8 @@ function resolve(obj: unknown, path: string): string {
 
 /** React hook — returns a translation function for the current locale (reactive) */
 export function useTranslation() {
-  const locale: SupportedLocale =
-    (useSettingsStore(state => state.shop.langue) as SupportedLocale) ?? 'fr';
+  const locale: string =
+    useSettingsStore(state => state.shop.langue) ?? 'fr';
 
   const t = (key: string): string => {
     const dict = translations[locale] ?? translations.fr;
@@ -42,9 +46,14 @@ export function useTranslation() {
 }
 
 /** Static translation (outside React — for non-hook contexts) */
-export function translate(key: string, locale?: SupportedLocale): string {
-  const l = locale ?? (useSettingsStore.getState().shop.langue as SupportedLocale) ?? 'fr';
+export function translate(key: string, locale?: string): string {
+  const l = locale ?? useSettingsStore.getState().shop.langue ?? 'fr';
   return resolve(translations[l] ?? translations.fr, key);
 }
 
-export { fr, en };
+/** Whether the current locale is RTL */
+export function isRtlLocale(locale: string): boolean {
+  return RTL_LOCALES.has(locale as never);
+}
+
+export { fr, en, es, pt, de, tr, ar, ja, zh };
