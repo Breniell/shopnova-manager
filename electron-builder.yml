@@ -57,7 +57,9 @@ win:
 # ── NSIS installer wizard ──────────────────────────────────────────────────────
 nsis:
   oneClick: false
-  allowElevation: true
+  # Keep false: UAC elevation restarts the installer process causing windows
+  # to flash open/close multiple times. Per-user install needs no elevation.
+  allowElevation: false
   allowToChangeInstallationDirectory: true
   perMachine: false
 

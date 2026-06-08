@@ -6,20 +6,9 @@ const isDev = process.env.NODE_ENV === 'development';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Prevent Electron renderer crashes related to GPU/network service on Windows.
+// Allow cross-origin requests from the renderer (needed for file:// + Firebase SDKs).
 app.commandLine.appendSwitch('remote-allow-origins', '*');
-app.commandLine.appendSwitch('disable-gpu');
-app.commandLine.appendSwitch('disable-features', 'NetworkService,NetworkServiceInProcess');
 
-// Disable hardware acceleration early to reduce GPU-related renderer crashes.
-// Some launch paths may import this file after `app` is already ready
-// (for example when using a small CommonJS launcher). Guard the call
-// so it doesn't throw if it's too late.
-try {
-  if (!app.isReady()) app.disableHardwareAcceleration();
-} catch (e) {
-  console.warn('Skipping disableHardwareAcceleration:', e && e.message);
-}
 
 // Start the crash reporter to collect renderer minidumps locally for diagnosis
 try {

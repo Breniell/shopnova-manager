@@ -157,22 +157,22 @@ const fr = {
     inForce:   'En vigueur depuis le 1er janvier 2026',
     sections: {
       s1title: '1. Présentation',
-      s1:      'Legwan est un logiciel de gestion de boutique (caisse, stocks, rapports) destiné aux commerçants d\'Afrique subsaharienne. En installant et en utilisant ce logiciel, vous acceptez les conditions décrites dans la présente politique.',
+      s1:      'Legwan est un logiciel de gestion de boutique (caisse, stocks, rapports) conçu pour les commerçants. Il est édité par Legwan (contact : support@legwan.cm). En installant et en utilisant ce logiciel, vous acceptez les conditions décrites dans la présente politique de confidentialité.',
 
-      s2title: '2. Données enregistrées',
-      s2:      'Legwan enregistre uniquement les informations nécessaires au fonctionnement de votre boutique :\n\n• Compte administrateur : prénom, nom, rôle (créé lors de la première installation)\n• Comptes utilisateurs : nom, rôle, code PIN (haché de manière irréversible)\n• Informations de la boutique : nom, adresse, téléphone\n• Produits : désignation, prix, stock\n• Ventes et transactions\n• Mouvements de stock\n• Fournisseurs et clients\n• Sessions et clôtures de caisse\n\nAucune donnée bancaire ni de paiement n\'est collectée.',
+      s2title: '2. Données enregistrées localement',
+      s2:      'Legwan enregistre uniquement les informations nécessaires au fonctionnement de votre boutique :\n\n• Compte gérant : prénom, nom, code PIN (chiffré, non lisible)\n• Comptes utilisateurs : nom, rôle, code PIN (chiffré, non lisible)\n• Informations de la boutique : nom, adresse, numéro de téléphone\n• Catalogue produits : désignation, prix de vente, stock disponible\n• Ventes et transactions enregistrées\n• Mouvements de stock (entrées et sorties)\n• Fournisseurs et clients\n• Sessions et clôtures de caisse\n\nAucune donnée bancaire ou de paiement n\'est collectée.',
 
-      s3title: '3. Utilisation des données',
-      s3:      'Vos données servent à :\n\n• Faire fonctionner le logiciel (ventes, stocks, rapports)\n• Synchroniser vos données entre appareils via les serveurs de Google (Firebase)\n• Permettre à l\'éditeur de Legwan d\'assurer le support, la maintenance et le suivi du service\n\nÀ cette fin, le logiciel transmet à une plateforme centralisée gérée par l\'éditeur :\n\n• Des informations d\'identification de votre boutique : nom, adresse et numéro de téléphone\n• La localisation géographique de votre boutique (position GPS de l\'appareil, ou localisation approximative par adresse IP si le GPS n\'est pas disponible)\n• Des statistiques d\'activité : nombre de ventes, chiffre d\'affaires total, nombre de produits, d\'utilisateurs, de clients et version de l\'application\n\nNe sont jamais transmis : les noms de vos clients, le détail de vos transactions, ni vos codes PIN.\n\nLegwan ne vend pas vos données et ne les utilise pas à des fins publicitaires. Vos données vous appartiennent.',
+      s3title: '3. Données transmises à l\'éditeur',
+      s3:      'Pour assurer le support, la maintenance et le suivi du service, le logiciel transmet automatiquement à une plateforme centralisée gérée par l\'éditeur :\n\n• Informations d\'identification de votre boutique : nom, adresse et numéro de téléphone\n• Version du logiciel installée\n• Statistiques d\'activité agrégées : nombre de ventes, chiffre d\'affaires total, nombre de produits, d\'utilisateurs, de clients, de fournisseurs\n• Si vous y consentez expressément : la localisation géographique de votre boutique (position GPS ou approximation par adresse IP)\n\nNe sont jamais transmis : les noms de vos clients, le détail de vos transactions, vos codes PIN ou toute donnée financière individuelle.\n\nLegwan ne vend pas vos données et ne les utilise pas à des fins publicitaires ou commerciales. Vos données vous appartiennent.',
 
-      s4title: '4. Sécurité',
-      s4:      'Vos données sont hébergées sur Firebase (Google Cloud), avec chiffrement en transit et au repos. Les codes PIN sont hachés de manière irréversible avec un sel cryptographique unique par utilisateur. Chaque boutique dispose de son propre espace de données isolé, inaccessible aux autres boutiques.',
+      s4title: '4. Sécurité de vos données',
+      s4:      'Vos données sont hébergées sur Firebase (Google Cloud), avec chiffrement des communications (TLS) et chiffrement au repos. Les codes PIN sont hachés de manière irréversible à l\'aide d\'un algorithme cryptographique sécurisé (PBKDF2) avec un sel unique par utilisateur — ils ne peuvent jamais être retrouvés en clair. Chaque boutique dispose de son propre espace de données isolé, inaccessible aux autres boutiques.',
 
       s5title: '5. Vos droits',
-      s5:      'Vous pouvez à tout moment :\n\n• Consulter vos données depuis le logiciel\n• Modifier vos informations dans les paramètres\n• Exporter vos données (CSV, PDF)\n• Demander la suppression de vos données\n\nPour toute demande : support@legwan.cm',
+      s5:      'Conformément à la réglementation applicable, vous disposez à tout moment des droits suivants :\n\n• Consulter vos données directement depuis le logiciel\n• Modifier vos informations dans les paramètres de la boutique\n• Exporter vos données au format CSV ou PDF\n• Demander la suppression complète de vos données\n• Révoquer votre consentement à la géolocalisation dans les Paramètres\n\nPour exercer ces droits ou pour toute question : support@legwan.cm',
 
       s6title: '6. Évolution de cette politique',
-      s6:      'Cette politique peut évoluer. En cas de modification importante, vous serez invité à l\'accepter à nouveau lors de l\'ouverture du logiciel.',
+      s6:      'Cette politique peut évoluer pour s\'adapter aux évolutions du logiciel ou de la réglementation. En cas de modification importante, vous serez invité à lire et à accepter la nouvelle version lors de l\'ouverture du logiciel. La date de mise en vigueur et le numéro de version sont indiqués en bas de cette page.',
     },
     admin: {
       title:   'Créez votre compte administrateur',
