@@ -27,11 +27,11 @@ jobs:
       - name: Verify version matches tag
         shell: pwsh
         run: |
-          $tag = $env:GITHUB_REF_NAME          # e.g. v1.4.2
-          $pkgVersion = (Get-Content package.json | ConvertFrom-Json).version  # e.g. 1.4.2
+          $tag = $env:GITHUB_REF_NAME
+          $pkgVersion = (Get-Content package.json | ConvertFrom-Json).version
           $expected = "v$pkgVersion"
           if ($tag -ne $expected) {
-            Write-Error "Tag '$tag' does not match package.json version '$expected'. Bump the version before tagging."
+            Write-Error "Tag '$tag' does not match package.json version '$expected'."
             exit 1
           }
           Write-Host "Version check passed: $tag"
@@ -42,19 +42,20 @@ jobs:
       - name: Create .env from secrets
         shell: pwsh
         run: |
-          @"
-          VITE_FIREBASE_API_KEY=$($env:VITE_FIREBASE_API_KEY)
-          VITE_FIREBASE_AUTH_DOMAIN=$($env:VITE_FIREBASE_AUTH_DOMAIN)
-          VITE_FIREBASE_PROJECT_ID=$($env:VITE_FIREBASE_PROJECT_ID)
-          VITE_FIREBASE_STORAGE_BUCKET=$($env:VITE_FIREBASE_STORAGE_BUCKET)
-          VITE_FIREBASE_MESSAGING_SENDER_ID=$($env:VITE_FIREBASE_MESSAGING_SENDER_ID)
-          VITE_FIREBASE_APP_ID=$($env:VITE_FIREBASE_APP_ID)
-          "@ | Out-File -FilePath .env -Encoding utf8
+          $content = @(
+            "VITE_FIREBASE_API_KEY=$env:VITE_FIREBASE_API_KEY",
+            "VITE_FIREBASE_AUTH_DOMAIN=$env:VITE_FIREBASE_AUTH_DOMAIN",
+            "VITE_FIREBASE_PROJECT_ID=$env:VITE_FIREBASE_PROJECT_ID",
+            "VITE_FIREBASE_STORAGE_BUCKET=$env:VITE_FIREBASE_STORAGE_BUCKET",
+            "VITE_FIREBASE_MESSAGING_SENDER_ID=$env:VITE_FIREBASE_MESSAGING_SENDER_ID",
+            "VITE_FIREBASE_APP_ID=$env:VITE_FIREBASE_APP_ID"
+          )
+          $content | Out-File -FilePath .env -Encoding utf8NoBOM
           if (-not $env:VITE_FIREBASE_API_KEY) {
-            Write-Error "Secret VITE_FIREBASE_API_KEY manquant. Ajoutez les secrets Firebase dans Settings > Secrets and variables > Actions."
+            Write-Error "Secret VITE_FIREBASE_API_KEY manquant."
             exit 1
           }
-          Write-Host ".env généré depuis les secrets."
+          Write-Host ".env generated from secrets."
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
@@ -63,10 +64,24 @@ jobs:
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
 
-      - name: Build Electron + create installer
-        run: npm run electron:dist:safe
+      - name: Cache electron-builder binaries
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~\AppData\Local\electron-builder\Cache
+            ~\AppData\Local\electron\Cache
+          key: ${{ runner.os }}-electron-builder-cache-v1
+
+      - name: Build Vite (electron mode)
+        run: npm run electron:build
+
+      - name: Package Windows installer
+        shell: pwsh
+        run: npx electron-builder --win nsis --x64
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false   # code-signing disabled — no cert yet
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          WIN_CSC_LINK: ""
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
