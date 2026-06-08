@@ -70,7 +70,29 @@ jobs:
           path: |
             ~\AppData\Local\electron-builder\Cache
             ~\AppData\Local\electron\Cache
-          key: ${{ runner.os }}-electron-builder-cache-v1
+          key: ${{ runner.os }}-electron-builder-cache-v2
+
+      - name: Prepare rcedit (winCodeSign) for afterPack hook
+        shell: pwsh
+        run: |
+          $cacheRoot = "$env:LOCALAPPDATA\electron-builder\Cache\winCodeSign"
+          $destDir   = "$cacheRoot\winCodeSign-2.6.0"
+          if (Test-Path "$destDir\rcedit-x64.exe") {
+            Write-Host "winCodeSign cache hit — skipping download"
+          } else {
+            New-Item -ItemType Directory -Force $destDir | Out-Null
+            $archive = "$cacheRoot\winCodeSign-2.6.0.7z"
+            Write-Host "Downloading winCodeSign-2.6.0..."
+            $ProgressPreference = 'SilentlyContinue'
+            Invoke-WebRequest -Uri "https://github.com/electron-userland/electron-builder-binaries/releases/download/winCodeSign-2.6.0/winCodeSign-2.6.0.7z" -OutFile $archive
+            $sevenZip = "$(Get-Location)\node_modules\7zip-bin\win\x64\7za.exe"
+            & $sevenZip x -bd -y "$archive" "-o$destDir"
+            if (-not (Test-Path "$destDir\rcedit-x64.exe")) {
+              Write-Error "rcedit-x64.exe not found after extraction — check 7za output above"
+              exit 1
+            }
+            Write-Host "winCodeSign ready"
+          }
 
       - name: Build Vite (electron mode)
         run: npm run electron:build
