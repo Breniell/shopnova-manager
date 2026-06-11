@@ -31,14 +31,15 @@ import {
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { toast } from 'sonner';
+import { useTranslation } from '@/i18n';
 
 type Period = 'today' | 'week' | 'month' | 'all';
 
 interface FormState {
-  date: string;                         // ISO date (YYYY-MM-DD)
+  date: string;
   categorie: ExpenseCategory;
   description: string;
-  montant: string;                      // string pour l'input
+  montant: string;
   paymentMode: ExpensePaymentMode;
   beneficiaire: string;
   reference: string;
@@ -57,6 +58,7 @@ const emptyForm: FormState = {
 };
 
 const DepensesPage: React.FC = () => {
+  const { t } = useTranslation();
   const { expenses, addExpense, updateExpense, deleteExpense } = useExpenseStore();
   const { currentUser } = useAuthStore();
   const { getCurrentSession, addCashOut } = useCashSessionStore();
@@ -69,7 +71,6 @@ const DepensesPage: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
 
-  // ── Périodes ─────────────────────────────────────────────────────────────
   const now = new Date();
   const { periodStart, previousPeriodStart, previousPeriodEnd } = useMemo(() => {
     const start = new Date(now);
@@ -89,7 +90,6 @@ const DepensesPage: React.FC = () => {
       prevStart = new Date(start); prevStart.setMonth(prevStart.getMonth() - 1);
       prevEnd = new Date(start);
     } else {
-      // 'all'
       start.setFullYear(1970);
       prevStart = new Date(1970, 0, 1);
       prevEnd = new Date(1970, 0, 1);
@@ -98,7 +98,6 @@ const DepensesPage: React.FC = () => {
     return { periodStart: start, previousPeriodStart: prevStart, previousPeriodEnd: prevEnd };
   }, [period]);
 
-  // ── Stats ────────────────────────────────────────────────────────────────
   const periodExpenses = useMemo(
     () => expenses.filter(e => new Date(e.date) >= periodStart && new Date(e.date) <= now),
     [expenses, periodStart, now]
@@ -119,7 +118,6 @@ const DepensesPage: React.FC = () => {
     ? Math.round(((totalPeriod - previousTotal) / previousTotal) * 100)
     : (totalPeriod > 0 ? 100 : 0);
 
-  /** Répartition par catégorie sur la période. */
   const byCategory = useMemo(() => {
     const map = new Map<ExpenseCategory, number>();
     periodExpenses.forEach(e => {
@@ -135,10 +133,8 @@ const DepensesPage: React.FC = () => {
 
   const topCategory = byCategory[0] ?? null;
 
-  // ── Liste filtrée ────────────────────────────────────────────────────────
   const filteredExpenses = useMemo(() => {
     let list = periodExpenses;
-
     if (categoryFilter !== 'all') {
       list = list.filter(e => e.categorie === categoryFilter);
     }
@@ -153,7 +149,6 @@ const DepensesPage: React.FC = () => {
     return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [periodExpenses, categoryFilter, search]);
 
-  // ── Actions ──────────────────────────────────────────────────────────────
   const openAdd = () => {
     setEditing(null);
     setForm(emptyForm);
@@ -178,7 +173,6 @@ const DepensesPage: React.FC = () => {
   const handleSubmit = () => {
     if (!currentUser) return;
 
-    // Validation Zod
     const montant = Number(form.montant);
     const result = expenseSchema.safeParse({
       categorie: form.categorie,
@@ -192,7 +186,7 @@ const DepensesPage: React.FC = () => {
 
     if (!result.success) {
       const firstError = result.error.issues[0];
-      toast.error(firstError?.message ?? 'Validation échouée');
+      toast.error(firstError?.message ?? t('depenses.validationFailed'));
       return;
     }
 
@@ -212,18 +206,11 @@ const DepensesPage: React.FC = () => {
     try {
       if (editing) {
         updateExpense(editing.id, data);
-        toast.success('Dépense mise à jour');
-        // Note : on ne crée pas de CashOut pour les éditions — trop complexe à
-        // garder cohérent (on devrait supprimer l'ancien CashOut, créer un nouveau,
-        // gérer le changement de mode de paiement, etc.). À industrialiser plus tard.
+        toast.success(t('depenses.updated'));
       } else {
         const expense = addExpense(data);
-        toast.success('Dépense enregistrée');
+        toast.success(t('depenses.saved'));
 
-        // Liaison automatique avec une sortie de caisse si :
-        //   1. Mode de paiement = espèces
-        //   2. Une session de caisse est active
-        // → résout la limite documentée en v1.1.3 (dépenses ↔ clôture)
         if (expense.paymentMode === 'especes') {
           const session = getCurrentSession();
           if (session) {
@@ -239,9 +226,8 @@ const DepensesPage: React.FC = () => {
                 userId: expense.userId,
                 userName: expense.userName,
               });
-              toast.info(`Sortie de caisse de ${expense.montant.toLocaleString('fr-FR')} FCFA enregistrée sur la session active.`);
+              toast.info(t('depenses.cashOutRecorded').replace('{n}', expense.montant.toLocaleString('fr-FR')));
             } catch (err) {
-              // Si le CashOut échoue, la dépense reste créée (résilience)
               console.warn('Échec de la création du CashOut lié à la dépense:', err);
             }
           }
@@ -249,23 +235,27 @@ const DepensesPage: React.FC = () => {
       }
       setShowModal(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erreur');
+      toast.error(err instanceof Error ? err.message : t('common.error'));
     }
   };
 
   const handleDelete = () => {
     if (!deleteTarget) return;
     deleteExpense(deleteTarget.id);
-    toast.success('Dépense supprimée');
+    toast.success(t('depenses.deleted'));
     setDeleteTarget(null);
   };
 
   const handleExport = () => {
     if (filteredExpenses.length === 0) {
-      toast.error('Rien à exporter');
+      toast.error(t('depenses.nothingToExport'));
       return;
     }
-    const headers = ['Date', 'Catégorie', 'Description', 'Bénéficiaire', 'Référence', 'Mode de paiement', 'Montant (FCFA)', 'Saisi par', 'Notes'];
+    const headers = [
+      t('depenses.csvColDate'), t('depenses.csvColCategory'), t('depenses.csvColDescription'),
+      t('depenses.csvColBeneficiary'), t('depenses.csvColReference'), t('depenses.csvColPayment'),
+      t('depenses.csvColAmount'), t('depenses.csvColUser'), t('depenses.csvColNotes'),
+    ];
     const rows = filteredExpenses.map(e => [
       formatDateShort(new Date(e.date)),
       getCategoryMeta(e.categorie).label,
@@ -278,22 +268,33 @@ const DepensesPage: React.FC = () => {
       e.notes ?? '',
     ]);
     exportCSV(`depenses-${new Date().toISOString().slice(0, 10)}`, headers, rows);
-    toast.success('Export CSV généré');
+    toast.success(t('depenses.csvExported'));
   };
 
-  // ── Périodes labels ──────────────────────────────────────────────────────
-  const periodLabel = period === 'today' ? "aujourd'hui"
-    : period === 'week' ? 'cette semaine'
-    : period === 'month' ? 'ce mois'
-    : 'toutes périodes';
+  const periodLabels: Record<Period, string> = {
+    today: t('depenses.periodToday'),
+    week:  t('depenses.periodWeek'),
+    month: t('depenses.periodMonth'),
+    all:   t('depenses.periodAll'),
+  };
+
+  const periodLabel = periodLabels[period];
+
+  const periodBtnLabels: Record<Period, string> = {
+    today: t('depenses.btnToday'),
+    week:  t('depenses.btnWeek'),
+    month: t('depenses.btnMonth'),
+    all:   t('depenses.btnAll'),
+  };
+
+  const n = filteredExpenses.length;
+  const totalFooter = (n > 1 ? t('depenses.totalFooterPlural') : t('depenses.totalFooter')).replace('{n}', String(n));
 
   return (
     <div className="p-4 lg:p-8 animate-fade-in">
-      {/* En-tête */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-grid">
-        <h1 className="text-headline-lg nova-heading text-foreground">Dépenses</h1>
+        <h1 className="text-headline-lg nova-heading text-foreground">{t('depenses.title')}</h1>
         <div className="flex flex-wrap items-center gap-grid">
-          {/* Sélecteur période */}
           <div className="flex gap-1 bg-muted rounded-lg p-1">
             {(['today', 'week', 'month', 'all'] as Period[]).map(p => (
               <button
@@ -304,20 +305,20 @@ const DepensesPage: React.FC = () => {
                   period === p ? 'bg-card text-foreground' : 'text-muted-foreground'
                 )}
               >
-                {p === 'today' ? 'Jour' : p === 'week' ? 'Semaine' : p === 'month' ? 'Mois' : 'Tout'}
+                {periodBtnLabels[p]}
               </button>
             ))}
           </div>
           <button
             onClick={handleExport}
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted text-muted-foreground hover:text-foreground transition-colors text-sm"
-            title="Exporter en CSV"
+            title={t('depenses.exportTitle')}
           >
             <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Exporter</span>
+            <span className="hidden sm:inline">{t('depenses.exportBtn')}</span>
           </button>
           <button onClick={openAdd} className="nova-btn-primary flex items-center gap-2 px-5 py-2.5">
-            <Plus className="w-4 h-4" /> Nouvelle dépense
+            <Plus className="w-4 h-4" /> {t('depenses.addBtn')}
           </button>
         </div>
       </div>
@@ -330,7 +331,7 @@ const DepensesPage: React.FC = () => {
               <TrendingDown className="w-5 h-5 text-red-400" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">Total {periodLabel}</p>
+              <p className="text-xs text-muted-foreground">{t('depenses.totalPeriod').replace('{period}', periodLabel)}</p>
               <p className="text-base font-bold text-foreground tabular-nums">{formatFCFA(totalPeriod)}</p>
             </div>
           </div>
@@ -341,7 +342,7 @@ const DepensesPage: React.FC = () => {
               <BarChart3 className="w-5 h-5 text-amber-400" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">Plus grosse catégorie</p>
+              <p className="text-xs text-muted-foreground">{t('depenses.biggestCategory')}</p>
               <p className="text-sm font-bold text-foreground truncate">
                 {topCategory ? topCategory.label : '—'}
               </p>
@@ -359,7 +360,7 @@ const DepensesPage: React.FC = () => {
               <FileText className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Nombre de dépenses</p>
+              <p className="text-xs text-muted-foreground">{t('depenses.expenseCount')}</p>
               <p className="text-xl font-bold text-foreground tabular-nums">{periodExpenses.length}</p>
             </div>
           </div>
@@ -370,7 +371,7 @@ const DepensesPage: React.FC = () => {
               <Calendar className="w-5 h-5 text-muted-foreground" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">vs période préc.</p>
+              <p className="text-xs text-muted-foreground">{t('depenses.vsPrev')}</p>
               {period === 'all' ? (
                 <p className="text-sm font-bold text-muted-foreground">—</p>
               ) : (
@@ -386,13 +387,12 @@ const DepensesPage: React.FC = () => {
         </NovaCard>
       </div>
 
-      {/* Graphique + Filtres + Tableau */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Camembert */}
-        <NovaCard accent title="Répartition par catégorie" className="lg:col-span-2">
+        <NovaCard accent title={t('depenses.byCategory')} className="lg:col-span-2">
           {byCategory.length === 0 ? (
             <div className="h-64 flex items-center justify-center">
-              <p className="text-sm text-muted-foreground">Aucune dépense sur la période</p>
+              <p className="text-sm text-muted-foreground">{t('depenses.noExpenseChart')}</p>
             </div>
           ) : (
             <div className="h-64">
@@ -436,9 +436,7 @@ const DepensesPage: React.FC = () => {
           )}
         </NovaCard>
 
-        {/* Tableau */}
         <div className="lg:col-span-3 space-y-4">
-          {/* Filtres */}
           <div className="flex flex-col sm:flex-row gap-grid">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -447,7 +445,7 @@ const DepensesPage: React.FC = () => {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="nova-input w-full pl-10"
-                placeholder="Description, bénéficiaire, référence..."
+                placeholder={t('depenses.searchPlaceholder')}
               />
             </div>
             <select
@@ -455,7 +453,7 @@ const DepensesPage: React.FC = () => {
               onChange={e => setCategoryFilter(e.target.value as 'all' | ExpenseCategory)}
               className="nova-input min-w-[180px]"
             >
-              <option value="all">Toutes les catégories</option>
+              <option value="all">{t('depenses.allCategories')}</option>
               {EXPENSE_CATEGORIES.map(c => (
                 <option key={c.value} value={c.value}>{c.label}</option>
               ))}
@@ -466,11 +464,11 @@ const DepensesPage: React.FC = () => {
             {filteredExpenses.length === 0 ? (
               <EmptyState
                 icon={<TrendingDown className="w-12 h-12" />}
-                title="Aucune dépense"
+                title={t('depenses.noExpense')}
                 description={
                   search || categoryFilter !== 'all'
-                    ? 'Aucun résultat pour ces filtres.'
-                    : 'Enregistrez vos dépenses pour suivre votre bénéfice net.'
+                    ? t('depenses.noResult')
+                    : t('depenses.noExpenseDesc')
                 }
               />
             ) : (
@@ -478,12 +476,12 @@ const DepensesPage: React.FC = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="nova-table-header">
-                      <th className="text-left p-3 text-xs">Date</th>
-                      <th className="text-left p-3 text-xs">Catégorie</th>
-                      <th className="text-left p-3 text-xs">Description</th>
-                      <th className="text-right p-3 text-xs">Montant</th>
-                      <th className="text-left p-3 text-xs hidden md:table-cell">Mode</th>
-                      <th className="text-right p-3 text-xs">Actions</th>
+                      <th className="text-left p-3 text-xs">{t('depenses.colDate')}</th>
+                      <th className="text-left p-3 text-xs">{t('depenses.colCategory')}</th>
+                      <th className="text-left p-3 text-xs">{t('depenses.colDescription')}</th>
+                      <th className="text-right p-3 text-xs">{t('depenses.colAmount')}</th>
+                      <th className="text-left p-3 text-xs hidden md:table-cell">{t('depenses.colMode')}</th>
+                      <th className="text-right p-3 text-xs">{t('depenses.colActions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -525,14 +523,14 @@ const DepensesPage: React.FC = () => {
                             <div className="flex justify-end gap-1">
                               <button
                                 onClick={() => openEdit(e)}
-                                aria-label="Modifier"
+                                aria-label={t('depenses.save')}
                                 className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                               >
                                 <Edit className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => setDeleteTarget(e)}
-                                aria-label="Supprimer"
+                                aria-label={t('depenses.delete')}
                                 className="p-1.5 rounded-lg hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -546,7 +544,7 @@ const DepensesPage: React.FC = () => {
                   <tfoot>
                     <tr className="border-t-2 border-border bg-muted/20">
                       <td colSpan={3} className="p-3 text-sm font-semibold text-foreground">
-                        Total ({filteredExpenses.length} dépense{filteredExpenses.length > 1 ? 's' : ''})
+                        {totalFooter}
                       </td>
                       <td className="p-3 text-base text-right font-bold text-foreground tabular-nums">
                         {formatFCFA(filteredExpenses.reduce((s, e) => s + e.montant, 0))}
@@ -559,15 +557,13 @@ const DepensesPage: React.FC = () => {
             )}
           </NovaCard>
 
-          {/* Note d'info sur la clôture */}
           <p className="text-[11px] text-muted-foreground italic px-1">
-            ℹ Les dépenses payées en espèces génèrent automatiquement une sortie de caisse
-            si une session est ouverte (déduite du total attendu à la clôture).
+            {t('depenses.cashSessionNote')}
           </p>
         </div>
       </div>
 
-      {/* ── Modal Ajout / Édition ──────────────────────────────────────────── */}
+      {/* ── Modal Ajout / Édition ── */}
       {showModal && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -579,7 +575,7 @@ const DepensesPage: React.FC = () => {
           >
             <div className="flex items-center justify-between mb-6">
               <h2 className="nova-heading text-lg text-foreground">
-                {editing ? 'Modifier la dépense' : 'Nouvelle dépense'}
+                {editing ? t('depenses.editTitle') : t('depenses.addTitle')}
               </h2>
               <button onClick={() => setShowModal(false)} className="p-2 rounded-lg hover:bg-muted">
                 <X className="w-5 h-5 text-muted-foreground" />
@@ -588,7 +584,7 @@ const DepensesPage: React.FC = () => {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Date *</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t('depenses.labelDate')}</label>
                   <input
                     type="date"
                     value={form.date}
@@ -598,7 +594,7 @@ const DepensesPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Catégorie *</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t('depenses.labelCategory')}</label>
                   <select
                     value={form.categorie}
                     onChange={ev => setForm({ ...form, categorie: ev.target.value as ExpenseCategory })}
@@ -611,7 +607,7 @@ const DepensesPage: React.FC = () => {
                 </div>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Description *</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('depenses.labelDescription')}</label>
                 <input
                   type="text"
                   value={form.description}
@@ -624,7 +620,7 @@ const DepensesPage: React.FC = () => {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Montant (FCFA) *</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t('depenses.labelAmount')}</label>
                   <input
                     type="number"
                     min="0"
@@ -636,7 +632,7 @@ const DepensesPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Mode de paiement *</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t('depenses.labelPaymentMode')}</label>
                   <select
                     value={form.paymentMode}
                     onChange={ev => setForm({ ...form, paymentMode: ev.target.value as ExpensePaymentMode })}
@@ -649,7 +645,7 @@ const DepensesPage: React.FC = () => {
                 </div>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Bénéficiaire</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('depenses.labelBeneficiary')}</label>
                 <input
                   type="text"
                   value={form.beneficiaire}
@@ -660,18 +656,18 @@ const DepensesPage: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Référence</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('depenses.labelReference')}</label>
                 <input
                   type="text"
                   value={form.reference}
                   onChange={ev => setForm({ ...form, reference: ev.target.value })}
                   className="nova-input w-full py-2"
-                  placeholder="N° facture, réf MoMo, n° chèque..."
+                  placeholder={t('depenses.referencePlaceholder')}
                   maxLength={50}
                 />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Notes</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('depenses.labelNotes')}</label>
                 <textarea
                   value={form.notes}
                   onChange={ev => setForm({ ...form, notes: ev.target.value })}
@@ -685,17 +681,17 @@ const DepensesPage: React.FC = () => {
                 onClick={() => setShowModal(false)}
                 className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors"
               >
-                Annuler
+                {t('depenses.cancel')}
               </button>
               <button onClick={handleSubmit} className="flex-1 nova-btn-primary py-2.5">
-                {editing ? 'Enregistrer' : 'Ajouter'}
+                {editing ? t('depenses.save') : t('depenses.add')}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Modal Suppression ──────────────────────────────────────────────── */}
+      {/* ── Modal Suppression ── */}
       {deleteTarget && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -705,26 +701,26 @@ const DepensesPage: React.FC = () => {
             className="nova-card p-6 w-full max-w-[400px] animate-scale-in"
             onClick={ev => ev.stopPropagation()}
           >
-            <h3 className="nova-heading text-lg text-foreground mb-2">Supprimer cette dépense ?</h3>
+            <h3 className="nova-heading text-lg text-foreground mb-2">{t('depenses.deleteTitle')}</h3>
             <p className="text-sm text-muted-foreground mb-6">
               <strong className="text-foreground">{deleteTarget.description}</strong>
               <br />
               {formatFCFA(deleteTarget.montant)} — {formatDateShort(new Date(deleteTarget.date))}
               <br />
-              Cette action est irréversible.
+              {t('depenses.deleteIrreversible')}
             </p>
             <div className="flex gap-grid">
               <button
                 onClick={() => setDeleteTarget(null)}
                 className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors"
               >
-                Annuler
+                {t('depenses.cancel')}
               </button>
               <button
                 onClick={handleDelete}
                 className="flex-1 py-2.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
               >
-                Supprimer
+                {t('depenses.delete')}
               </button>
             </div>
           </div>

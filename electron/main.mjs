@@ -6,6 +6,8 @@ const isDev = process.env.NODE_ENV === 'development';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// NSIS installer (electron-builder) does not send Squirrel events — no handling needed.
+
 // Allow cross-origin requests from the renderer (needed for file:// + Firebase SDKs).
 app.commandLine.appendSwitch('remote-allow-origins', '*');
 
@@ -56,7 +58,7 @@ function createWindow() {
     icon: path.join(__dirname, '../build/icon.ico'),
     title: 'Legwan',
     show: false,
-    backgroundColor: '#0f0e0d',
+    backgroundColor: '#f8f8f6',
     titleBarStyle: 'default',
   });
 
@@ -127,7 +129,28 @@ function createWindow() {
 
     console.error(`[Legwan] did-fail-load: ${errorCode} ${errorDescription} - ${validatedURL}`);
 
-    const errorHtml = `...`;
+    const errorHtml = `<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><title>Legwan — Erreur</title>
+<style>
+  body{margin:0;background:#f8f8f6;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}
+  .box{text-align:center;max-width:400px;padding:32px}
+  svg{margin-bottom:16px}
+  h2{margin:0 0 8px;font-size:1.25rem;color:#1c1c1a}
+  p{margin:0 0 24px;font-size:0.875rem;color:#888;word-break:break-all}
+  button{background:#A93200;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:0.9rem;cursor:pointer}
+</style></head>
+<body><div class="box">
+  <svg width="56" height="56" viewBox="0 0 80 80" fill="none">
+    <rect width="80" height="80" rx="18" fill="#A93200"/>
+    <path d="M 54,14 A 22,22 0 1,0 54,60 L 54,42 L 40,42" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="20" y1="13" x2="20" y2="60" stroke="white" stroke-width="5" stroke-linecap="round"/>
+    <line x1="20" y1="60" x2="34" y2="60" stroke="white" stroke-width="5" stroke-linecap="round"/>
+  </svg>
+  <h2>Impossible de charger Legwan</h2>
+  <p>Code&nbsp;${errorCode}&nbsp;·&nbsp;${errorDescription}</p>
+  <button onclick="window.location.reload()">Réessayer</button>
+</div></body></html>`;
     win.webContents.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(errorHtml)}`);
     showWindow();
   });

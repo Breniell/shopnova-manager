@@ -14,6 +14,7 @@ import { useSaleStore, type Sale } from '@/stores/useSaleStore';
 import { usePaymentStore } from '@/stores/usePaymentStore';
 import { useCustomerStore } from '@/stores/useCustomerStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useTranslation } from '@/i18n';
 import { NovaCard } from '@/components/ui/NovaCard';
 import { StatCard } from '@/components/ui/StatCard';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -34,6 +35,7 @@ const CreditPage: React.FC = () => {
   const { payments } = usePaymentStore();
   const { customers, getCustomerById } = useCustomerStore();
   const { currentUser } = useAuthStore();
+  const { t } = useTranslation();
 
   const [activeTab, setActiveTab] = useState<'clients' | 'sales' | 'payments'>('clients');
   const [search, setSearch] = useState('');
@@ -134,11 +136,11 @@ const CreditPage: React.FC = () => {
     if (!paymentTarget || !currentUser) return;
     const amount = parseInt(payForm.amount, 10);
     if (!Number.isFinite(amount) || amount <= 0) {
-      toast.error('Montant invalide');
+      toast.error(t('credit.invalidAmount'));
       return;
     }
     if (payForm.channel === 'mobile_money' && !payForm.mobileReference.trim()) {
-      toast.error('Référence Mobile Money requise');
+      toast.error(t('credit.mobileRefRequired'));
       return;
     }
     try {
@@ -151,10 +153,10 @@ const CreditPage: React.FC = () => {
         userName: `${currentUser.prenom} ${currentUser.nom}`,
         notes: payForm.notes.trim() || undefined,
       });
-      toast.success(`Règlement de ${formatFCFA(amount)} enregistré`);
+      toast.success(t('credit.paymentSaved').replace('{n}', formatFCFA(amount)));
       setPaymentTarget(null);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erreur lors de l\'encaissement');
+      toast.error(err instanceof Error ? err.message : t('credit.paymentError'));
     }
   };
 
@@ -174,7 +176,7 @@ const CreditPage: React.FC = () => {
 
   return (
     <div className="p-4 lg:p-8 animate-fade-in">
-      <h1 className="text-headline-lg nova-heading text-foreground mb-6">Crédit & créances</h1>
+      <h1 className="text-headline-lg nova-heading text-foreground mb-6">{t('credit.title')}</h1>
 
       {/* KPI */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-grid mb-6">
@@ -184,7 +186,7 @@ const CreditPage: React.FC = () => {
               <TrendingDown className="w-5 h-5 text-red-400" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">Encours total</p>
+              <p className="text-xs text-muted-foreground">{t('credit.kpiOutstanding')}</p>
               <p className="text-base font-bold text-foreground tabular-nums">{formatFCFA(totalOutstanding)}</p>
             </div>
           </div>
@@ -195,7 +197,7 @@ const CreditPage: React.FC = () => {
               <Users className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Clients débiteurs</p>
+              <p className="text-xs text-muted-foreground">{t('credit.kpiDebtors')}</p>
               <p className="text-xl font-bold text-foreground tabular-nums">{clientStats.length}</p>
             </div>
           </div>
@@ -206,7 +208,7 @@ const CreditPage: React.FC = () => {
               <Receipt className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Ventes ouvertes</p>
+              <p className="text-xs text-muted-foreground">{t('credit.kpiOpenSales')}</p>
               <p className="text-xl font-bold text-foreground tabular-nums">{openSales.length}</p>
             </div>
           </div>
@@ -217,7 +219,7 @@ const CreditPage: React.FC = () => {
               <Wallet className="w-5 h-5 text-secondary" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">Encaissé aujourd'hui</p>
+              <p className="text-xs text-muted-foreground">{t('credit.kpiTodayReceived')}</p>
               <p className="text-base font-bold text-foreground tabular-nums">{formatFCFA(totalReceivedToday)}</p>
             </div>
           </div>
@@ -229,17 +231,17 @@ const CreditPage: React.FC = () => {
         <button onClick={() => setActiveTab('clients')}
           className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2',
             activeTab === 'clients' ? 'bg-card text-foreground' : 'text-muted-foreground')}>
-          <Users className="w-4 h-4" /> Par client
+          <Users className="w-4 h-4" /> {t('credit.tabClients')}
         </button>
         <button onClick={() => setActiveTab('sales')}
           className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2',
             activeTab === 'sales' ? 'bg-card text-foreground' : 'text-muted-foreground')}>
-          <Receipt className="w-4 h-4" /> Par vente
+          <Receipt className="w-4 h-4" /> {t('credit.tabSales')}
         </button>
         <button onClick={() => setActiveTab('payments')}
           className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2',
             activeTab === 'payments' ? 'bg-card text-foreground' : 'text-muted-foreground')}>
-          <History className="w-4 h-4" /> Règlements
+          <History className="w-4 h-4" /> {t('credit.tabPayments')}
         </button>
       </div>
 
@@ -249,7 +251,7 @@ const CreditPage: React.FC = () => {
         <input
           type="text" value={search} onChange={e => setSearch(e.target.value)}
           className="nova-input w-full pl-10"
-          placeholder={activeTab === 'payments' ? 'Rechercher un client...' : 'Rechercher (client, n° vente)...'}
+          placeholder={activeTab === 'payments' ? t('credit.searchPayments') : t('credit.searchOther')}
         />
       </div>
 
@@ -258,8 +260,8 @@ const CreditPage: React.FC = () => {
         filteredClients.length === 0 ? (
           <EmptyState
             icon={<CreditCard className="w-12 h-12" />}
-            title="Aucune créance ouverte"
-            description="Les clients avec un crédit non soldé apparaîtront ici."
+            title={t('credit.noCreance')}
+            description={t('credit.noCreanceDesc')}
           />
         ) : (
           <div className="space-y-3">
@@ -282,8 +284,10 @@ const CreditPage: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-foreground truncate">{cs.customerName}</p>
                       <p className="text-xs text-muted-foreground">
-                        {cs.nbOpen} vente{cs.nbOpen > 1 ? 's' : ''} ouverte{cs.nbOpen > 1 ? 's' : ''}
-                        {oldestDays > 0 && ` • Plus ancienne : ${oldestDays}j`}
+                        {cs.nbOpen > 1
+                          ? t('credit.openSalesPlural').replace('{n}', String(cs.nbOpen))
+                          : t('credit.openSalesSingular').replace('{n}', String(cs.nbOpen))}
+                        {oldestDays > 0 && ` ${t('credit.oldestLabel').replace('{n}', String(oldestDays))}`}
                       </p>
                     </div>
                     <div className="text-right shrink-0">
@@ -308,13 +312,13 @@ const CreditPage: React.FC = () => {
                                 <p className="text-sm font-medium text-foreground">{sale.saleNumber}</p>
                                 <AgeBadge sale={sale} />
                                 {sale.creditStatus === 'partial' && (
-                                  <span className="text-[10px] bg-amber-500/15 text-amber-400 px-1.5 py-0.5 rounded">Partiel</span>
+                                  <span className="text-[10px] bg-amber-500/15 text-amber-400 px-1.5 py-0.5 rounded">{t('credit.partialBadge')}</span>
                                 )}
                               </div>
                               <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
                                 <span>{formatDateShort(new Date(sale.date))}</span>
-                                {sale.dueDate && <span>Échéance : {new Date(sale.dueDate).toLocaleDateString('fr-FR')}</span>}
-                                {(sale.amountPaid ?? 0) > 0 && <span>Payé : {formatFCFA(sale.amountPaid ?? 0)}</span>}
+                                {sale.dueDate && <span>{t('credit.dueDate').replace('{date}', new Date(sale.dueDate).toLocaleDateString())}</span>}
+                                {(sale.amountPaid ?? 0) > 0 && <span>{t('credit.saleAmountPaid').replace('{n}', formatFCFA(sale.amountPaid ?? 0))}</span>}
                               </div>
                             </div>
                             <div className="text-right shrink-0">
@@ -325,7 +329,7 @@ const CreditPage: React.FC = () => {
                               onClick={() => openPayModal(sale)}
                               className="nova-btn-primary text-xs px-3 py-1.5 shrink-0"
                             >
-                              Encaisser
+                              {t('credit.collectBtn')}
                             </button>
                           </div>
                         );
@@ -344,8 +348,8 @@ const CreditPage: React.FC = () => {
         filteredOpenSales.length === 0 ? (
           <EmptyState
             icon={<Receipt className="w-12 h-12" />}
-            title="Aucune vente à crédit ouverte"
-            description="Les ventes à crédit non soldées apparaîtront ici."
+            title={t('credit.noOpenSale')}
+            description={t('credit.noOpenSaleDesc')}
           />
         ) : (
           <NovaCard accent className="!p-0 overflow-hidden">
@@ -353,15 +357,15 @@ const CreditPage: React.FC = () => {
               <table className="w-full">
                 <thead>
                   <tr className="nova-table-header">
-                    <th className="text-left p-3">N°</th>
-                    <th className="text-left p-3">Date</th>
-                    <th className="text-left p-3">Client</th>
-                    <th className="text-right p-3">Total</th>
-                    <th className="text-right p-3">Payé</th>
-                    <th className="text-right p-3">Restant</th>
-                    <th className="text-center p-3">Statut</th>
-                    <th className="text-center p-3">Âge</th>
-                    <th className="text-center p-3">Action</th>
+                    <th className="text-left p-3">{t('credit.colNum')}</th>
+                    <th className="text-left p-3">{t('credit.colDate')}</th>
+                    <th className="text-left p-3">{t('credit.colClient')}</th>
+                    <th className="text-right p-3">{t('credit.colTotal')}</th>
+                    <th className="text-right p-3">{t('credit.colPaid')}</th>
+                    <th className="text-right p-3">{t('credit.colRemaining')}</th>
+                    <th className="text-center p-3">{t('credit.colStatus')}</th>
+                    <th className="text-center p-3">{t('credit.colAge')}</th>
+                    <th className="text-center p-3">{t('credit.colAction')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -379,7 +383,7 @@ const CreditPage: React.FC = () => {
                           <span className={cn('text-[10px] px-2 py-0.5 rounded',
                             sale.creditStatus === 'partial' ? 'bg-amber-500/15 text-amber-400' : 'bg-red-500/15 text-red-400'
                           )}>
-                            {sale.creditStatus === 'partial' ? 'Partiel' : 'En attente'}
+                            {sale.creditStatus === 'partial' ? t('credit.partialBadge') : t('credit.pendingBadge')}
                           </span>
                         </td>
                         <td className="p-3 text-center"><AgeBadge sale={sale} /></td>
@@ -388,7 +392,7 @@ const CreditPage: React.FC = () => {
                             onClick={() => openPayModal(sale)}
                             className="nova-btn-primary text-xs px-3 py-1"
                           >
-                            Encaisser
+                            {t('credit.collectBtn')}
                           </button>
                         </td>
                       </tr>
@@ -406,8 +410,8 @@ const CreditPage: React.FC = () => {
         filteredPayments.length === 0 ? (
           <EmptyState
             icon={<History className="w-12 h-12" />}
-            title="Aucun règlement enregistré"
-            description="Les règlements reçus apparaîtront ici."
+            title={t('credit.noPayment')}
+            description={t('credit.noPaymentDesc')}
           />
         ) : (
           <NovaCard accent className="!p-0 overflow-hidden">
@@ -415,12 +419,12 @@ const CreditPage: React.FC = () => {
               <table className="w-full">
                 <thead>
                   <tr className="nova-table-header">
-                    <th className="text-left p-3">Date</th>
-                    <th className="text-left p-3">Client</th>
-                    <th className="text-left p-3">Vente</th>
-                    <th className="text-right p-3">Montant</th>
-                    <th className="text-left p-3">Mode</th>
-                    <th className="text-left p-3">Caissier</th>
+                    <th className="text-left p-3">{t('credit.colDate')}</th>
+                    <th className="text-left p-3">{t('credit.colClient')}</th>
+                    <th className="text-left p-3">{t('credit.colSale')}</th>
+                    <th className="text-right p-3">{t('credit.colTotal')}</th>
+                    <th className="text-left p-3">{t('credit.colPayMode')}</th>
+                    <th className="text-left p-3">{t('credit.colCashier')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -431,12 +435,12 @@ const CreditPage: React.FC = () => {
                       <tr key={p.id} className="border-t border-border hover:bg-muted/30 transition-colors">
                         <td className="p-3 text-sm text-muted-foreground">{formatDateShort(new Date(p.date))}</td>
                         <td className="p-3 text-sm text-foreground">
-                          {customer ? `${customer.prenom} ${customer.nom}` : '(client supprimé)'}
+                          {customer ? `${customer.prenom} ${customer.nom}` : t('credit.deletedClient')}
                         </td>
                         <td className="p-3 text-sm text-muted-foreground">{sale?.saleNumber ?? '—'}</td>
                         <td className="p-3 text-sm text-right text-secondary font-medium tabular-nums">{formatFCFA(p.amount)}</td>
                         <td className="p-3 text-sm text-muted-foreground">
-                          {p.channel === 'especes' ? '💵 Espèces' : `📱 ${p.mobileOperator?.toUpperCase() ?? 'Mobile'}`}
+                          {p.channel === 'especes' ? t('credit.cashChannel') : `📱 ${p.mobileOperator?.toUpperCase() ?? 'Mobile'}`}
                         </td>
                         <td className="p-3 text-sm text-muted-foreground">{p.userName}</td>
                       </tr>
@@ -460,7 +464,7 @@ const CreditPage: React.FC = () => {
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-5">
-              <h3 className="nova-heading text-lg text-foreground">Encaisser un règlement</h3>
+              <h3 className="nova-heading text-lg text-foreground">{t('credit.collectModalTitle')}</h3>
               <button onClick={() => setPaymentTarget(null)} className="p-1.5 rounded-lg hover:bg-muted">
                 <X className="w-4 h-4 text-muted-foreground" />
               </button>
@@ -469,23 +473,23 @@ const CreditPage: React.FC = () => {
             {/* Récap */}
             <div className="p-3 rounded-lg bg-muted/40 space-y-1 mb-4 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Vente</span>
+                <span className="text-muted-foreground">{t('credit.recapSale')}</span>
                 <span className="text-foreground font-medium">{paymentTarget.saleNumber}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Client</span>
+                <span className="text-muted-foreground">{t('credit.recapClient')}</span>
                 <span className="text-foreground">{paymentTarget.customerName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Total vente</span>
+                <span className="text-muted-foreground">{t('credit.recapTotal')}</span>
                 <span className="text-foreground tabular-nums">{formatFCFA(paymentTarget.total)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Déjà payé</span>
+                <span className="text-muted-foreground">{t('credit.recapPaid')}</span>
                 <span className="text-secondary tabular-nums">{formatFCFA(paymentTarget.amountPaid ?? 0)}</span>
               </div>
               <div className="flex justify-between pt-1 border-t border-border">
-                <span className="text-foreground font-semibold">Restant dû</span>
+                <span className="text-foreground font-semibold">{t('credit.recapRemaining')}</span>
                 <span className="text-red-400 font-bold tabular-nums">
                   {formatFCFA(getRemainingBalance(paymentTarget, payments))}
                 </span>
@@ -494,7 +498,7 @@ const CreditPage: React.FC = () => {
 
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Montant encaissé *</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('credit.labelAmount')}</label>
                 <input
                   type="number" value={payForm.amount}
                   onChange={e => setPayForm({ ...payForm, amount: e.target.value })}
@@ -504,26 +508,26 @@ const CreditPage: React.FC = () => {
                   max={getRemainingBalance(paymentTarget, payments)}
                 />
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Maximum : {formatFCFA(getRemainingBalance(paymentTarget, payments))}
+                  {t('credit.maxAmount').replace('{n}', formatFCFA(getRemainingBalance(paymentTarget, payments)))}
                 </p>
               </div>
 
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Mode de paiement *</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('credit.labelPayMode')}</label>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setPayForm({ ...payForm, channel: 'especes' })}
                     className={cn('flex-1 py-2 rounded-lg text-xs font-medium border transition-all',
                       payForm.channel === 'especes' ? 'bg-primary/15 border-primary text-primary' : 'bg-muted border-border text-muted-foreground')}
                   >
-                    💵 Espèces
+                    {t('credit.cashChannel')}
                   </button>
                   <button
                     onClick={() => setPayForm({ ...payForm, channel: 'mobile_money' })}
                     className={cn('flex-1 py-2 rounded-lg text-xs font-medium border transition-all',
                       payForm.channel === 'mobile_money' ? 'bg-primary/15 border-primary text-primary' : 'bg-muted border-border text-muted-foreground')}
                   >
-                    📱 Mobile Money
+                    {t('credit.mobileChannel')}
                   </button>
                 </div>
               </div>
@@ -531,7 +535,7 @@ const CreditPage: React.FC = () => {
               {payForm.channel === 'mobile_money' && (
                 <>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Opérateur</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t('credit.labelOperator')}</label>
                     <div className="flex gap-2">
                       <button
                         onClick={() => setPayForm({ ...payForm, mobileOperator: 'mtn' })}
@@ -550,7 +554,7 @@ const CreditPage: React.FC = () => {
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Référence transaction *</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t('credit.labelReference')}</label>
                     <input
                       type="text" value={payForm.mobileReference}
                       onChange={e => setPayForm({ ...payForm, mobileReference: e.target.value })}
@@ -561,7 +565,7 @@ const CreditPage: React.FC = () => {
               )}
 
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Notes (optionnel)</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('credit.labelNotes')}</label>
                 <textarea
                   value={payForm.notes}
                   onChange={e => setPayForm({ ...payForm, notes: e.target.value })}
@@ -575,10 +579,10 @@ const CreditPage: React.FC = () => {
                 onClick={() => setPaymentTarget(null)}
                 className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors"
               >
-                Annuler
+                {t('credit.cancel')}
               </button>
               <button onClick={handleApplyPayment} className="flex-1 nova-btn-primary py-2.5">
-                Valider l'encaissement
+                {t('credit.validate')}
               </button>
             </div>
           </div>

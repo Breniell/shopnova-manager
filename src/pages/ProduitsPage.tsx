@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useProductStore, Product, Category } from '@/stores/useProductStore';
 import { useSaleStore } from '@/stores/useSaleStore';
+import { useTranslation } from '@/i18n';
 import { formatPrice, formatFCFA, formatDate, formatTime } from '@/utils/formatters';
 
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -13,6 +14,7 @@ import { toast } from 'sonner';
 const ProduitsPage: React.FC = () => {
   const { products, categories, addProduct, updateProduct, deleteProduct } = useProductStore();
   const { cart } = useSaleStore();
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState<string>('');
   const [stockFilter, setStockFilter] = useState<string>('');
@@ -51,7 +53,7 @@ const ProduitsPage: React.FC = () => {
 
   const handleSubmit = () => {
     if (!form.nom || !form.prixAchat || !form.prixVente) {
-      toast.error('Veuillez remplir tous les champs obligatoires');
+      toast.error(t('produits.requiredFields'));
       return;
     }
     const prixAchatNum = parseInt(form.prixAchat, 10) || 0;
@@ -59,18 +61,17 @@ const ProduitsPage: React.FC = () => {
     const prixCibleNum = form.prixCible ? parseInt(form.prixCible, 10) : undefined;
     const prixPlancherNum = form.prixPlancher ? parseInt(form.prixPlancher, 10) : undefined;
 
-    // Validation des invariants du prix négociable
     if (form.negociable) {
       if (prixPlancherNum !== undefined && prixPlancherNum < prixAchatNum) {
-        toast.error('Plancher < prix d\'achat : vente à perte impossible');
+        toast.error(t('produits.floorBelowCost'));
         return;
       }
       if (prixCibleNum !== undefined && prixPlancherNum !== undefined && prixCibleNum < prixPlancherNum) {
-        toast.error('Le prix cible doit être ≥ au plancher');
+        toast.error(t('produits.targetBelowFloor'));
         return;
       }
       if (prixCibleNum !== undefined && prixCibleNum > prixVenteNum) {
-        toast.error('Le prix cible doit être ≤ au prix affiché');
+        toast.error(t('produits.targetAboveSale'));
         return;
       }
     }
@@ -86,10 +87,10 @@ const ProduitsPage: React.FC = () => {
     };
     if (editingProduct) {
       updateProduct(editingProduct.id, data);
-      toast.success('Produit mis à jour');
+      toast.success(t('produits.updated'));
     } else {
       addProduct(data);
-      toast.success('Produit ajouté');
+      toast.success(t('produits.added'));
     }
     setShowModal(false);
   };
@@ -98,12 +99,12 @@ const ProduitsPage: React.FC = () => {
     if (!deleteTarget) return;
     const inCart = cart.find(c => c.productId === deleteTarget.id);
     if (inCart) {
-      toast.error("Ce produit est dans le panier. Videz le panier d'abord.");
+      toast.error(t('produits.inCartError'));
       setDeleteTarget(null);
       return;
     }
     deleteProduct(deleteTarget.id);
-    toast.success('Produit supprimé');
+    toast.success(t('produits.deleted'));
     setDeleteTarget(null);
   };
 
@@ -120,9 +121,9 @@ const ProduitsPage: React.FC = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
-        <h1 className="text-headline-lg nova-heading text-foreground">Produits</h1>
+        <h1 className="text-headline-lg nova-heading text-foreground">{t('produits.title')}</h1>
         <button onClick={openAdd} className="nova-btn-primary flex items-center gap-2 px-5 py-2.5 shrink-0">
-          <Plus className="w-4 h-4" /> Ajouter un produit
+          <Plus className="w-4 h-4" /> {t('produits.addBtn')}
         </button>
       </div>
 
@@ -130,38 +131,38 @@ const ProduitsPage: React.FC = () => {
       <div className="flex flex-wrap gap-2 mb-6">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="nova-input w-full pl-10" placeholder="Rechercher..." />
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="nova-input w-full pl-10" placeholder={t('produits.searchPlaceholder')} />
         </div>
         <select value={catFilter} onChange={e => setCatFilter(e.target.value)} className="nova-input min-w-[140px]">
-          <option value="">Toutes catégories</option>
+          <option value="">{t('produits.allCategories')}</option>
           {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
         <select value={stockFilter} onChange={e => setStockFilter(e.target.value)} className="nova-input min-w-[130px]">
-          <option value="">Tous les stocks</option>
-          <option value="ok">En stock</option>
-          <option value="low">Stock faible</option>
-          <option value="out">Rupture</option>
+          <option value="">{t('produits.allStock')}</option>
+          <option value="ok">{t('produits.stockOk')}</option>
+          <option value="low">{t('produits.stockLow')}</option>
+          <option value="out">{t('produits.stockOut')}</option>
         </select>
       </div>
 
       {/* Table */}
       {filtered.length === 0 ? (
-        <EmptyState icon={<Package className="w-12 h-12" />} title="Aucun produit trouvé" description="Modifiez vos filtres ou ajoutez un nouveau produit" />
+        <EmptyState icon={<Package className="w-12 h-12" />} title={t('produits.noProduct')} description={t('produits.noProductDesc')} />
       ) : (
         <div className="nova-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[700px]">
               <thead>
                 <tr className="nova-table-header">
-                  <th className="text-left p-3">#</th>
-                  <th className="text-left p-3">Produit</th>
-                  <th className="text-left p-3 hidden md:table-cell">Code-barres</th>
-                  <th className="text-right p-3 hidden sm:table-cell">P. Achat</th>
-                  <th className="text-right p-3">P. Vente</th>
-                  <th className="text-right p-3 hidden sm:table-cell">Marge</th>
-                  <th className="text-right p-3">Stock</th>
-                  <th className="text-right p-3 hidden md:table-cell">Seuil</th>
-                  <th className="text-right p-3">Actions</th>
+                  <th className="text-left p-3">{t('produits.colNum')}</th>
+                  <th className="text-left p-3">{t('produits.colProduct')}</th>
+                  <th className="text-left p-3 hidden md:table-cell">{t('produits.colBarcode')}</th>
+                  <th className="text-right p-3 hidden sm:table-cell">{t('produits.colPurchasePrice')}</th>
+                  <th className="text-right p-3">{t('produits.colSalePrice')}</th>
+                  <th className="text-right p-3 hidden sm:table-cell">{t('produits.colMargin')}</th>
+                  <th className="text-right p-3">{t('produits.colStock')}</th>
+                  <th className="text-right p-3 hidden md:table-cell">{t('produits.colThreshold')}</th>
+                  <th className="text-right p-3">{t('produits.colActions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -186,7 +187,7 @@ const ProduitsPage: React.FC = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="p-3 text-sm font-mono text-muted-foreground cursor-pointer hover:text-foreground hidden md:table-cell" onClick={() => { navigator.clipboard.writeText(p.codeBarre); toast.success('Copié !'); }}>
+                      <td className="p-3 text-sm font-mono text-muted-foreground cursor-pointer hover:text-foreground hidden md:table-cell" onClick={() => { navigator.clipboard.writeText(p.codeBarre); toast.success(t('produits.copied')); }}>
                         {p.codeBarre}
                       </td>
                       <td className="p-3 text-sm text-right text-muted-foreground tabular-nums hidden sm:table-cell">{formatFCFA(p.prixAchat)}</td>
@@ -225,7 +226,7 @@ const ProduitsPage: React.FC = () => {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
           <div className="nova-card w-full max-w-[520px] max-h-[90vh] overflow-y-auto p-5 lg:p-6 animate-scale-in" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="nova-heading text-lg text-foreground">{editingProduct ? 'Modifier le produit' : 'Ajouter un produit'}</h2>
+              <h2 className="nova-heading text-lg text-foreground">{editingProduct ? t('produits.editTitle') : t('produits.addTitle')}</h2>
               <button onClick={() => setShowModal(false)} className="p-2 rounded-lg hover:bg-muted transition-colors">
                 <X className="w-5 h-5 text-muted-foreground" />
               </button>
@@ -233,35 +234,35 @@ const ProduitsPage: React.FC = () => {
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Nom du produit *</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('produits.labelName')}</label>
                 <input type="text" value={form.nom} onChange={e => setForm({ ...form, nom: e.target.value })} className="nova-input w-full" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Catégorie</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('produits.labelCategory')}</label>
                 <select value={form.categorie} onChange={e => setForm({ ...form, categorie: e.target.value as Category })} className="nova-input w-full">
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Code-barres</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('produits.labelBarcode')}</label>
                 <div className="flex gap-2">
                   <input type="text" value={form.codeBarre} onChange={e => setForm({ ...form, codeBarre: e.target.value })} className="nova-input flex-1" placeholder="EAN-13" />
-                  <button onClick={() => setForm({ ...form, codeBarre: generateEAN13() })} className="nova-btn-primary px-3 text-sm shrink-0">Générer</button>
+                  <button onClick={() => setForm({ ...form, codeBarre: generateEAN13() })} className="nova-btn-primary px-3 text-sm shrink-0">{t('produits.generate')}</button>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Prix d'achat FCFA *</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t('produits.labelPurchasePrice')}</label>
                   <input type="number" value={form.prixAchat} onChange={e => setForm({ ...form, prixAchat: e.target.value })} className="nova-input w-full" />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Prix de vente FCFA *</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t('produits.labelSalePrice')}</label>
                   <input type="number" value={form.prixVente} onChange={e => setForm({ ...form, prixVente: e.target.value })} className="nova-input w-full" />
                 </div>
               </div>
               {form.prixAchat && form.prixVente && (
                 <div className={cn('text-sm font-medium', marge >= 20 ? 'text-emerald-400' : marge >= 10 ? 'text-amber-400' : 'text-red-400')}>
-                  Marge: {formatFCFA((parseInt(form.prixVente, 10) || 0) - (parseInt(form.prixAchat, 10) || 0))} ({marge.toFixed(1)}%)
+                  {t('produits.colMargin')}: {formatFCFA((parseInt(form.prixVente, 10) || 0) - (parseInt(form.prixAchat, 10) || 0))} ({marge.toFixed(1)}%)
                 </div>
               )}
 
@@ -274,16 +275,16 @@ const ProduitsPage: React.FC = () => {
                     onChange={e => setForm({ ...form, negociable: e.target.checked })}
                     className="w-4 h-4 rounded"
                   />
-                  Prix négociable à la caisse
+                  {t('produits.negotiableLabel')}
                 </label>
                 <p className="text-[11px] text-muted-foreground mt-1 ml-6">
-                  Le caissier pourra modifier le prix entre le plancher et le prix affiché.
+                  {t('produits.negotiableHint')}
                 </p>
 
                 {form.negociable && (
                   <div className="mt-3 grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Prix plancher</label>
+                      <label className="text-xs text-muted-foreground mb-1 block">{t('produits.labelFloorPrice')}</label>
                       <input
                         type="number" min="0"
                         value={form.prixPlancher}
@@ -292,11 +293,11 @@ const ProduitsPage: React.FC = () => {
                         placeholder={form.prixAchat || '0'}
                       />
                       <p className="text-[10px] text-muted-foreground mt-0.5">
-                        Min absolu (vide → prix d'achat)
+                        {t('produits.floorPriceHint')}
                       </p>
                     </div>
                     <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Prix cible</label>
+                      <label className="text-xs text-muted-foreground mb-1 block">{t('produits.labelTargetPrice')}</label>
                       <input
                         type="number" min="0"
                         value={form.prixCible}
@@ -305,7 +306,7 @@ const ProduitsPage: React.FC = () => {
                         placeholder={form.prixVente || '0'}
                       />
                       <p className="text-[10px] text-muted-foreground mt-0.5">
-                        Cible idéale (vide → prix affiché)
+                        {t('produits.targetPriceHint')}
                       </p>
                     </div>
                   </div>
@@ -314,23 +315,23 @@ const ProduitsPage: React.FC = () => {
 
               {!editingProduct && (
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Stock initial</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t('produits.labelInitialStock')}</label>
                   <input type="number" value={form.stock} onChange={e => setForm({ ...form, stock: e.target.value })} className="nova-input w-full" />
                 </div>
               )}
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Seuil d'alerte stock</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('produits.labelThreshold')}</label>
                 <input type="number" value={form.seuilAlerte} onChange={e => setForm({ ...form, seuilAlerte: e.target.value })} className="nova-input w-full" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Description</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('produits.labelDescription')}</label>
                 <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="nova-input w-full h-20 resize-none" />
               </div>
             </div>
 
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowModal(false)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors">Annuler</button>
-              <button onClick={handleSubmit} className="flex-1 nova-btn-primary py-2.5">{editingProduct ? 'Enregistrer' : 'Ajouter'}</button>
+              <button onClick={() => setShowModal(false)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors">{t('produits.cancel')}</button>
+              <button onClick={handleSubmit} className="flex-1 nova-btn-primary py-2.5">{editingProduct ? t('produits.save') : t('produits.add')}</button>
             </div>
           </div>
         </div>
@@ -340,13 +341,13 @@ const ProduitsPage: React.FC = () => {
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setDeleteTarget(null)}>
           <div className="nova-card p-5 lg:p-6 w-full max-w-[400px] animate-scale-in" onClick={e => e.stopPropagation()}>
-            <h3 className="nova-heading text-lg text-foreground mb-2">Supprimer le produit ?</h3>
+            <h3 className="nova-heading text-lg text-foreground mb-2">{t('produits.deleteTitle')}</h3>
             <p className="text-sm text-muted-foreground mb-6">
-              Êtes-vous sûr de vouloir supprimer <strong className="text-foreground">{deleteTarget.nom}</strong> ? Cette action est irréversible.
+              {t('produits.deleteDesc').replace('{name}', deleteTarget.nom)}
             </p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteTarget(null)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors">Annuler</button>
-              <button onClick={handleDelete} className="flex-1 py-2.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors">Supprimer</button>
+              <button onClick={() => setDeleteTarget(null)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors">{t('produits.cancel')}</button>
+              <button onClick={handleDelete} className="flex-1 py-2.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors">{t('produits.delete')}</button>
             </div>
           </div>
         </div>

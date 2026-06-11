@@ -87,7 +87,7 @@ export const Sidebar: React.FC = () => {
             </div>
           </div>
           {isMobile && (
-            <button onClick={toggleSidebar} className="p-2 rounded-lg hover:bg-white/10 transition-colors" aria-label="Fermer le menu">
+            <button onClick={toggleSidebar} className="p-2 rounded-lg hover:bg-white/10 transition-colors" aria-label={t('common.closeMenu')}>
               <X className="w-5 h-5 text-slate-400" />
             </button>
           )}

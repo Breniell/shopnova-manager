@@ -17,6 +17,7 @@ import {
 import { formatFCFA } from '@/utils/formatters';
 import { cn } from '@/lib/utils';
 import { X, AlertTriangle, CheckCircle2, ShieldAlert, Info } from 'lucide-react';
+import { useTranslation } from '@/i18n';
 
 interface PriceEditorProps {
   open: boolean;
@@ -34,6 +35,7 @@ interface PriceEditorProps {
 export const PriceEditor: React.FC<PriceEditorProps> = ({
   open, product, currentPrice, onApply, onClose,
 }) => {
+  const { t } = useTranslation();
   const [priceInput, setPriceInput] = useState(String(currentPrice));
 
   // Reset à l'ouverture
@@ -63,27 +65,27 @@ export const PriceEditor: React.FC<PriceEditorProps> = ({
   const statusUI = !check ? null
     : check.status === 'ok' && check.level === 'normal' ? {
         icon: <CheckCircle2 className="w-4 h-4" />,
-        text: 'Prix normal',
+        text: t('priceEditor.statusNormal'),
         color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
       }
     : check.status === 'ok' && check.level === 'below_target' ? {
         icon: <AlertTriangle className="w-4 h-4" />,
-        text: 'Sous le prix cible — marge réduite',
+        text: t('priceEditor.statusBelowTarget'),
         color: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
       }
     : check.status === 'blocked' && check.reason === 'below_floor' ? {
         icon: <ShieldAlert className="w-4 h-4" />,
-        text: `Sous le plancher (${formatFCFA(floor)}) — autorisation gérant requise`,
+        text: t('priceEditor.statusBelowFloor').replace('{floor}', formatFCFA(floor)),
         color: 'bg-destructive/15 text-destructive border-destructive/30',
       }
     : check.status === 'blocked' && check.reason === 'above_display' ? {
         icon: <ShieldAlert className="w-4 h-4" />,
-        text: `Au-dessus du prix affiché (${formatFCFA(check.display)})`,
+        text: t('priceEditor.statusAboveDisplay').replace('{display}', formatFCFA(check.display)),
         color: 'bg-destructive/15 text-destructive border-destructive/30',
       }
     : {
         icon: <ShieldAlert className="w-4 h-4" />,
-        text: 'Ce produit n\'est pas négociable',
+        text: t('priceEditor.statusNotNegotiable'),
         color: 'bg-destructive/15 text-destructive border-destructive/30',
       };
 
@@ -105,11 +107,11 @@ export const PriceEditor: React.FC<PriceEditorProps> = ({
         onClick={ev => ev.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
-          <h3 className="nova-heading text-base text-foreground">Négocier le prix</h3>
+          <h3 className="nova-heading text-base text-foreground">{t('priceEditor.title')}</h3>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-muted"
-            aria-label="Fermer"
+            aria-label={t('priceEditor.close')}
           >
             <X className="w-4 h-4 text-muted-foreground" />
           </button>
@@ -124,15 +126,15 @@ export const PriceEditor: React.FC<PriceEditorProps> = ({
         {/* Rappel des seuils */}
         <div className="grid grid-cols-3 gap-2 mb-4">
           <div className="p-2 rounded-lg bg-muted/40 text-center">
-            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Plancher</p>
+            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{t('priceEditor.floorLabel')}</p>
             <p className="text-xs font-semibold text-destructive tabular-nums">{formatFCFA(floor)}</p>
           </div>
           <div className="p-2 rounded-lg bg-muted/40 text-center">
-            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Cible</p>
+            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{t('priceEditor.targetLabel')}</p>
             <p className="text-xs font-semibold text-amber-400 tabular-nums">{formatFCFA(target)}</p>
           </div>
           <div className="p-2 rounded-lg bg-muted/40 text-center">
-            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Affiché</p>
+            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{t('priceEditor.displayLabel')}</p>
             <p className="text-xs font-semibold text-emerald-400 tabular-nums">{formatFCFA(product.prixVente)}</p>
           </div>
         </div>
@@ -140,7 +142,7 @@ export const PriceEditor: React.FC<PriceEditorProps> = ({
         {/* Input */}
         <div className="mb-3">
           <label className="text-xs text-muted-foreground mb-1 block">
-            Nouveau prix unitaire (FCFA)
+            {t('priceEditor.newPriceLabel')}
           </label>
           <input
             type="number"
@@ -166,7 +168,7 @@ export const PriceEditor: React.FC<PriceEditorProps> = ({
 
         {/* Marge en temps réel */}
         <div className="flex items-center justify-between text-xs mb-4 px-1">
-          <span className="text-muted-foreground">Marge brute estimée</span>
+          <span className="text-muted-foreground">{t('priceEditor.marginLabel')}</span>
           <span className={cn(
             'font-semibold tabular-nums',
             margin < 0 ? 'text-destructive'
@@ -181,10 +183,7 @@ export const PriceEditor: React.FC<PriceEditorProps> = ({
         {requiresOverride && (
           <div className="mb-4 p-2.5 rounded-lg bg-muted/50 text-[11px] text-muted-foreground flex gap-2">
             <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-            <span>
-              La validation va demander le PIN d'un gérant pour autoriser cette
-              vente en dessous du plancher.
-            </span>
+            <span>{t('priceEditor.authNote')}</span>
           </div>
         )}
 
@@ -193,7 +192,7 @@ export const PriceEditor: React.FC<PriceEditorProps> = ({
             onClick={onClose}
             className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors text-sm"
           >
-            Annuler
+            {t('priceEditor.cancel')}
           </button>
           <button
             onClick={handleApply}
@@ -205,7 +204,7 @@ export const PriceEditor: React.FC<PriceEditorProps> = ({
                 : 'bg-muted text-muted-foreground cursor-not-allowed'
             )}
           >
-            {requiresOverride ? 'Demander autorisation' : 'Appliquer'}
+            {requiresOverride ? t('priceEditor.requestAuth') : t('priceEditor.apply')}
           </button>
         </div>
       </div>

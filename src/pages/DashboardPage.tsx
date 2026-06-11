@@ -12,8 +12,10 @@ import { productImages } from '@/assets/productImages';
 import { DollarSign, ShoppingCart, AlertTriangle, Package, Plus, ArrowRight } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, CartesianGrid } from 'recharts';
 import { formatPrice, formatFCFA, formatTime } from '@/utils/formatters';
+import { useTranslation } from '@/i18n';
 
 const DashboardPage: React.FC = () => {
+  const { t } = useTranslation();
   const { products } = useProductStore();
   const { sales } = useSaleStore();
   const navigate = useNavigate();
@@ -95,9 +97,9 @@ const DashboardPage: React.FC = () => {
             icon={<DollarSign className="w-4 h-4 text-primary" />}
             iconBg="bg-primary/20"
             value={formatFCFA(todayRevenue)}
-            label="Chiffre d'affaires du jour"
+            label={t('dashboard.revenue')}
             trend={revenueTrend !== null ? {
-              value: `${Number(revenueTrend) >= 0 ? '+' : ''}${revenueTrend}% vs hier`,
+              value: `${Number(revenueTrend) >= 0 ? '+' : ''}${revenueTrend}% ${t('dashboard.vsYesterday')}`,
               positive: Number(revenueTrend) >= 0
             } : undefined}
           />
@@ -105,9 +107,9 @@ const DashboardPage: React.FC = () => {
             icon={<ShoppingCart className="w-4 h-4 text-secondary" />}
             iconBg="bg-secondary/20"
             value={String(todaySales.length)}
-            label="Ventes aujourd'hui"
+            label={t('dashboard.salesToday')}
             trend={salesTrend !== null ? {
-              value: `${Number(salesTrend) >= 0 ? '+' : ''}${salesTrend}% vs hier`,
+              value: `${Number(salesTrend) >= 0 ? '+' : ''}${salesTrend}% ${t('dashboard.vsYesterday')}`,
               positive: Number(salesTrend) >= 0
             } : undefined}
           />
@@ -115,19 +117,19 @@ const DashboardPage: React.FC = () => {
             icon={<AlertTriangle className="w-4 h-4 text-destructive" />}
             iconBg="bg-destructive/20"
             value={String(outOfStock.length)}
-            label="Produits en rupture"
+            label={t('dashboard.outOfStock')}
           />
           <StatCard
             icon={<Package className="w-4 h-4 text-amber-400" />}
             iconBg="bg-amber-500/20"
             value={formatFCFA(totalStockValue)}
-            label="Valeur du stock total"
+            label={t('dashboard.stockValue')}
           />
         </div>
 
         {/* Charts row */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          <NovaCard accent title="Ventes des 7 derniers jours" className="col-span-1 lg:col-span-3">
+          <NovaCard accent title={t('dashboard.last7days')} className="col-span-1 lg:col-span-3">
             <div className="h-[180px] sm:h-[220px] lg:h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={last7Days}>
@@ -142,7 +144,7 @@ const DashboardPage: React.FC = () => {
                   <YAxis stroke="#8B8FA8" fontSize={12} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
                   <Tooltip
                     contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5ddd8', borderRadius: '8px', color: '#1a1c1c' }}
-                    formatter={(value: number) => [formatFCFA(value), 'Total']}
+                    formatter={(value: number) => [formatFCFA(value), t('dashboard.totalLabel')]}
                   />
                   <Area type="monotone" dataKey="total" stroke="#A93200" strokeWidth={2} fill="url(#areaGrad)" />
                 </AreaChart>
@@ -150,7 +152,7 @@ const DashboardPage: React.FC = () => {
             </div>
           </NovaCard>
 
-          <NovaCard accent title="Top 5 produits vendus" className="col-span-1 lg:col-span-2">
+          <NovaCard accent title={t('dashboard.top5')} className="col-span-1 lg:col-span-2">
             <div className="h-[180px] sm:h-[220px] lg:h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={top5} layout="vertical">
@@ -165,7 +167,7 @@ const DashboardPage: React.FC = () => {
                   <YAxis type="category" dataKey="nom" stroke="#8B8FA8" fontSize={11} width={120} tick={{ fill: '#8B8FA8' }} />
                   <Tooltip
                     contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5ddd8', borderRadius: '8px', color: '#1a1c1c' }}
-                    formatter={(value: number) => [`${value} unités`, 'Vendus']}
+                    formatter={(value: number) => [`${value} ${t('dashboard.units')}`, t('dashboard.soldLabel')]}
                   />
                   <Bar dataKey="qty" fill="url(#barGrad)" radius={[0, 4, 4, 0]} />
                 </BarChart>
@@ -176,9 +178,9 @@ const DashboardPage: React.FC = () => {
 
         {/* Bottom row */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          <NovaCard accent title="Alertes stock" className="col-span-1 lg:col-span-3">
+          <NovaCard accent title={t('dashboard.stockAlerts')} className="col-span-1 lg:col-span-3">
             {alertProducts.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">Aucune alerte</p>
+              <p className="text-sm text-muted-foreground py-4 text-center">{t('dashboard.noAlert')}</p>
             ) : (
               <div className="space-y-2">
                 {alertProducts.map(p => (
@@ -198,7 +200,7 @@ const DashboardPage: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-xs tabular-nums text-destructive whitespace-nowrap">{p.stock}/{p.seuilAlerte}</span>
-                      <button className="text-xs nova-btn-primary px-2.5 py-1.5 hidden sm:block" onClick={() => navigate('/stock')}>Commander</button>
+                      <button className="text-xs nova-btn-primary px-2.5 py-1.5 hidden sm:block" onClick={() => navigate('/stock')}>{t('dashboard.order')}</button>
                     </div>
                   </div>
                 ))}
@@ -206,9 +208,9 @@ const DashboardPage: React.FC = () => {
             )}
           </NovaCard>
 
-          <NovaCard accent title="Dernières ventes" className="col-span-1 lg:col-span-2">
+          <NovaCard accent title={t('dashboard.lastSales')} className="col-span-1 lg:col-span-2">
             {lastSales.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">Aucune vente</p>
+              <p className="text-sm text-muted-foreground py-4 text-center">{t('dashboard.noSale')}</p>
             ) : (
               <div className="space-y-2">
                 {lastSales.map(s => (
@@ -232,13 +234,13 @@ const DashboardPage: React.FC = () => {
         <div className="fixed left-1/2 -translate-x-1/2 lg:ml-[120px] flex flex-wrap justify-center gap-2 z-20 px-4"
           style={{ bottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
           <button onClick={() => navigate('/caisse')} className="nova-btn-primary flex items-center gap-2 px-5 lg:px-6 py-3 rounded-full text-sm font-medium shadow-lg">
-            <Plus className="w-4 h-4" /> Nouvelle vente
+            <Plus className="w-4 h-4" /> {t('dashboard.newSale')}
           </button>
           <button onClick={() => navigate('/produits')} className="hidden lg:flex nova-btn-primary items-center gap-2 px-6 py-3 rounded-full text-sm font-medium shadow-lg">
-            <Package className="w-4 h-4" /> Ajouter produit
+            <Package className="w-4 h-4" /> {t('dashboard.addProduct')}
           </button>
           <button onClick={() => navigate('/stock')} className="hidden lg:flex nova-btn-primary items-center gap-2 px-6 py-3 rounded-full text-sm font-medium shadow-lg">
-            <ArrowRight className="w-4 h-4" /> Entrée stock
+            <ArrowRight className="w-4 h-4" /> {t('dashboard.stockEntry')}
           </button>
         </div>
       </div>

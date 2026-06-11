@@ -10,10 +10,12 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, 
 import { exportCSV, exportPDF } from '@/lib/export';
 import { toast } from 'sonner';
 import { formatPrice } from '@/utils/formatters';
+import { useTranslation } from '@/i18n';
 
 type Period = 'today' | 'week' | 'month';
 
 const RapportsPage: React.FC = () => {
+  const { t } = useTranslation();
   const { sales } = useSaleStore();
   const { products } = useProductStore();
   const { expenses } = useExpenseStore();
@@ -68,41 +70,47 @@ const RapportsPage: React.FC = () => {
 
   // Payment distribution (no credit)
   const paymentDist = [
-    { name: 'Espèces', value: periodSales.filter(s => s.paymentMode === 'especes').reduce((sum, s) => sum + s.total, 0), color: '#2B6954' },
-    { name: 'Mobile Money', value: periodSales.filter(s => s.paymentMode === 'mobile_money').reduce((sum, s) => sum + s.total, 0), color: '#A93200' },
+    { name: t('rapports.labelCash'), value: periodSales.filter(s => s.paymentMode === 'especes').reduce((sum, s) => sum + s.total, 0), color: '#2B6954' },
+    { name: t('rapports.labelMobile'), value: periodSales.filter(s => s.paymentMode === 'mobile_money').reduce((sum, s) => sum + s.total, 0), color: '#A93200' },
   ].filter(d => d.value > 0);
 
   // Critical stock
   const criticalProducts = products.filter(p => getStockStatus(p.stock, p.seuilAlerte) !== 'healthy')
     .map(p => ({ ...p, recommended: Math.max(0, p.seuilAlerte * 3 - p.stock) }));
 
+  const periodLabels: Record<Period, string> = {
+    today: t('rapports.periodToday'),
+    week:  t('rapports.periodWeek'),
+    month: t('rapports.periodMonth'),
+  };
+
+  const csvHeaders = [t('rapports.colNum'), t('rapports.colProduct'), t('rapports.colQty'), t('rapports.colRevenue'), t('rapports.colPercent')];
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
-        <h1 className="text-headline-lg nova-heading text-foreground">Rapports</h1>
+        <h1 className="text-headline-lg nova-heading text-foreground">{t('rapports.title')}</h1>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex gap-1">
             <button onClick={() => {
-              const headers = ['#', 'Produit', 'Quantité', 'Revenu', '% du total'];
               const rows = top10.map((p, i) => [String(i + 1), p.nom, String(p.qty), formatPrice(p.revenue), totalRevenue > 0 ? (p.revenue / totalRevenue * 100).toFixed(1) + '%' : '0%']);
-              exportCSV('rapport-ventes', headers, rows);
-              toast.success('Export CSV téléchargé');
+              exportCSV('rapport-ventes', csvHeaders, rows);
+              toast.success(t('ventes.exportCsvDone'));
             }} className="nova-btn-secondary flex items-center gap-2 px-3 py-2 text-sm">
               <Download className="w-4 h-4" /> CSV
             </button>
             <button onClick={() => {
-              const headers = ['#', 'Produit', 'Quantité', 'Revenu', '% du total'];
               const rows = top10.map((p, i) => [String(i + 1), p.nom, String(p.qty), formatPrice(p.revenue), totalRevenue > 0 ? (p.revenue / totalRevenue * 100).toFixed(1) + '%' : '0%']);
-              const summary = [`<strong>${formatPrice(totalRevenue)}</strong>Revenu total`, `<strong>${periodSales.length}</strong>Ventes`, `<strong>${formatPrice(avgCart)}</strong>Panier moyen`, `<strong>${margin.toFixed(1)}%</strong>Marge`];
-              exportPDF('Rapport des ventes — Legwan', headers, rows, summary);
+              const summary = [`<strong>${formatPrice(totalRevenue)}</strong>${t('rapports.pdfRevenue')}`, `<strong>${periodSales.length}</strong>${t('rapports.pdfSales')}`, `<strong>${formatPrice(avgCart)}</strong>${t('rapports.pdfAvgCart')}`, `<strong>${margin.toFixed(1)}%</strong>${t('rapports.pdfMargin')}`];
+              exportPDF(t('rapports.pdfTitle'), csvHeaders, rows, summary);
             }} className="nova-btn-secondary flex items-center gap-2 px-3 py-2 text-sm">
               <Download className="w-4 h-4" /> PDF
             </button>
           </div>
         <div className="flex gap-1 bg-muted rounded-lg p-1">
-          {([['today', "Aujourd'hui"], ['week', 'Cette semaine'], ['month', 'Ce mois']] as const).map(([k, label]) => (
+          {(['today', 'week', 'month'] as Period[]).map((k) => (
             <button key={k} onClick={() => setPeriod(k)} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all', period === k ? 'bg-card text-foreground ' : 'text-muted-foreground hover:text-foreground')}>
-              {label}
+              {periodLabels[k]}
             </button>
           ))}
         </div>
@@ -111,21 +119,21 @@ const RapportsPage: React.FC = () => {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4 mb-6">
-        <StatCard icon={<DollarSign className="w-4 h-4 text-primary" />} iconBg="bg-primary/20" value={formatPrice(totalRevenue)} label="Chiffre d'affaires" />
-        <StatCard icon={<ShoppingCart className="w-4 h-4 text-secondary" />} iconBg="bg-secondary/20" value={String(periodSales.length)} label="Nombre de ventes" />
-        <StatCard icon={<TrendingUp className="w-4 h-4 text-amber-400" />} iconBg="bg-amber-500/20" value={formatPrice(avgCart)} label="Panier moyen" />
-        <StatCard icon={<TrendingDown className="w-4 h-4 text-red-400" />} iconBg="bg-red-500/20" value={formatPrice(totalExpenses)} label="Dépenses" />
+        <StatCard icon={<DollarSign className="w-4 h-4 text-primary" />} iconBg="bg-primary/20" value={formatPrice(totalRevenue)} label={t('rapports.statRevenue')} />
+        <StatCard icon={<ShoppingCart className="w-4 h-4 text-secondary" />} iconBg="bg-secondary/20" value={String(periodSales.length)} label={t('rapports.statSales')} />
+        <StatCard icon={<TrendingUp className="w-4 h-4 text-amber-400" />} iconBg="bg-amber-500/20" value={formatPrice(avgCart)} label={t('rapports.statAvgCart')} />
+        <StatCard icon={<TrendingDown className="w-4 h-4 text-red-400" />} iconBg="bg-red-500/20" value={formatPrice(totalExpenses)} label={t('rapports.statExpenses')} />
         <StatCard
           icon={<Wallet className={cn('w-4 h-4', beneficeNet < 0 ? 'text-destructive' : 'text-emerald-400')} />}
           iconBg={beneficeNet < 0 ? 'bg-destructive/20' : 'bg-emerald-500/20'}
           value={formatPrice(beneficeNet)}
-          label={`Bénéfice net (${beneficeNetMargin.toFixed(1)}%)`}
+          label={`${t('rapports.statBenefice')} (${beneficeNetMargin.toFixed(1)}%)`}
         />
-        <StatCard icon={<Percent className="w-4 h-4 text-emerald-400" />} iconBg="bg-emerald-500/20" value={`${margin.toFixed(1)}%`} label="Marge brute" />
+        <StatCard icon={<Percent className="w-4 h-4 text-emerald-400" />} iconBg="bg-emerald-500/20" value={`${margin.toFixed(1)}%`} label={t('rapports.statMargin')} />
       </div>
 
       {/* Chart */}
-      <NovaCard accent title="Évolution des ventes" className="mb-6">
+      <NovaCard accent title={t('rapports.salesEvolution')} className="mb-6">
         <div className="h-[280px]">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData}>
@@ -138,7 +146,7 @@ const RapportsPage: React.FC = () => {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
               <XAxis dataKey="name" stroke="#8B8FA8" fontSize={11} />
               <YAxis stroke="#8B8FA8" fontSize={11} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-              <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5ddd8', borderRadius: '8px', color: '#1a1c1c' }} formatter={(value: number) => [formatPrice(value), 'Total']} />
+              <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5ddd8', borderRadius: '8px', color: '#1a1c1c' }} formatter={(value: number) => [formatPrice(value), t('dashboard.totalLabel')]} />
               <Area type="monotone" dataKey="total" stroke="#A93200" strokeWidth={2} fill="url(#rapportGrad)" />
             </AreaChart>
           </ResponsiveContainer>
@@ -147,14 +155,14 @@ const RapportsPage: React.FC = () => {
 
       {/* Top products + Payment pie */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-6">
-        <NovaCard accent title="Top 10 produits" className="col-span-1 lg:col-span-3">
+        <NovaCard accent title={t('rapports.top10')} className="col-span-1 lg:col-span-3">
           <div className="overflow-x-auto"><table className="w-full">
             <thead>
               <tr className="nova-table-header">
-                <th className="text-left p-2">#</th>
-                <th className="text-left p-2">Produit</th>
-                <th className="text-right p-2">Qté</th>
-                <th className="text-right p-2">Revenu</th>
+                <th className="text-left p-2">{t('rapports.colNum')}</th>
+                <th className="text-left p-2">{t('rapports.colProduct')}</th>
+                <th className="text-right p-2">{t('rapports.colQtyShort')}</th>
+                <th className="text-right p-2">{t('rapports.colRevenue')}</th>
                 <th className="text-right p-2">%</th>
               </tr>
             </thead>
@@ -172,7 +180,7 @@ const RapportsPage: React.FC = () => {
           </table></div>
         </NovaCard>
 
-        <NovaCard accent title="Répartition par paiement" className="col-span-1 lg:col-span-2">
+        <NovaCard accent title={t('rapports.paymentDist')} className="col-span-1 lg:col-span-2">
           <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -196,17 +204,17 @@ const RapportsPage: React.FC = () => {
       </div>
 
       {/* Critical stock */}
-      <NovaCard accent title="Stock critique — Commandes recommandées">
+      <NovaCard accent title={t('rapports.criticalStock')}>
         {criticalProducts.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">Aucun produit en stock critique</p>
+          <p className="text-sm text-muted-foreground py-4 text-center">{t('rapports.noAlert')}</p>
         ) : (
           <div className="overflow-x-auto"><table className="w-full">
             <thead>
               <tr className="nova-table-header">
-                <th className="text-left p-2">Produit</th>
-                <th className="text-right p-2">Stock actuel</th>
-                <th className="text-right p-2">Seuil</th>
-                <th className="text-right p-2">Qté recommandée</th>
+                <th className="text-left p-2">{t('rapports.colProduct')}</th>
+                <th className="text-right p-2">{t('rapports.colCurrentStock')}</th>
+                <th className="text-right p-2">{t('rapports.colThreshold')}</th>
+                <th className="text-right p-2">{t('rapports.colRecommended')}</th>
               </tr>
             </thead>
             <tbody>

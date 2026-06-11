@@ -26,8 +26,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/i18n';
 
 const ClientsPage: React.FC = () => {
+  const { t } = useTranslation();
   const { customers, addCustomer, updateCustomer, archiveCustomer, unarchiveCustomer, deleteCustomer } = useCustomerStore();
   const { sales } = useSaleStore();
   const { currentUser } = useAuthStore();
@@ -106,18 +108,18 @@ const ClientsPage: React.FC = () => {
 
   const handleSubmit = () => {
     if (!form.prenom.trim() || !form.nom.trim() || !form.telephone.trim()) {
-      toast.error('Prénom, nom et téléphone sont requis');
+      toast.error(t('clients.requiredFields'));
       return;
     }
     if (form.telephone.replace(/\D/g, '').length < 9) {
-      toast.error('Numéro de téléphone invalide (9 chiffres minimum)');
+      toast.error(t('clients.invalidPhone'));
       return;
     }
 
     const plafond = form.plafondCredit.trim();
     const plafondCredit = plafond ? Number(plafond) : undefined;
     if (plafond && (isNaN(plafondCredit!) || plafondCredit! < 0)) {
-      toast.error('Plafond de crédit invalide');
+      toast.error(t('clients.invalidCredit'));
       return;
     }
 
@@ -134,25 +136,26 @@ const ClientsPage: React.FC = () => {
     try {
       if (editing) {
         updateCustomer(editing.id, data);
-        toast.success('Client mis à jour');
+        toast.success(t('clients.updated'));
       } else {
         addCustomer(data);
-        toast.success('Client ajouté');
+        toast.success(t('clients.added'));
       }
       setShowModal(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erreur');
+      toast.error(err instanceof Error ? err.message : t('common.error'));
     }
   };
 
   const handleArchive = () => {
     if (!archiveTarget) return;
+    const name = `${archiveTarget.prenom} ${archiveTarget.nom}`;
     if (archiveTarget.archived) {
       unarchiveCustomer(archiveTarget.id);
-      toast.success(`${archiveTarget.prenom} ${archiveTarget.nom} réactivé`);
+      toast.success(t('clients.reactivated').replace('{name}', name));
     } else {
       archiveCustomer(archiveTarget.id);
-      toast.success(`${archiveTarget.prenom} ${archiveTarget.nom} archivé`);
+      toast.success(t('clients.archivedToast').replace('{name}', name));
     }
     setArchiveTarget(null);
   };
@@ -162,12 +165,12 @@ const ClientsPage: React.FC = () => {
     // Vérification : refuse la suppression si le client a des ventes
     const hasSales = sales.some(s => s.customerId === deleteTarget.id);
     if (hasSales) {
-      toast.error('Ce client a un historique de ventes. Utilisez "Archiver" pour préserver l\'historique.');
+      toast.error(t('clients.hasSalesHistory'));
       setDeleteTarget(null);
       return;
     }
     deleteCustomer(deleteTarget.id);
-    toast.success('Client supprimé');
+    toast.success(t('clients.deleted'));
     setDeleteTarget(null);
   };
 
@@ -184,9 +187,9 @@ const ClientsPage: React.FC = () => {
     <div className="p-4 lg:p-8 animate-fade-in">
       {/* En-tête */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-grid">
-        <h1 className="text-headline-lg nova-heading text-foreground">Clients</h1>
+        <h1 className="text-headline-lg nova-heading text-foreground">{t('clients.title')}</h1>
         <button onClick={openAdd} className="nova-btn-primary flex items-center gap-2 px-5 py-2.5">
-          <Plus className="w-4 h-4" /> Ajouter un client
+          <Plus className="w-4 h-4" /> {t('clients.addBtn')}
         </button>
       </div>
 
@@ -198,7 +201,7 @@ const ClientsPage: React.FC = () => {
               <Users className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Clients actifs</p>
+              <p className="text-xs text-muted-foreground">{t('clients.kpiActive')}</p>
               <p className="text-xl font-bold text-foreground tabular-nums">{stats.totalActive}</p>
             </div>
           </div>
@@ -209,7 +212,7 @@ const ClientsPage: React.FC = () => {
               <ShoppingBag className="w-5 h-5 text-secondary" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Avec achats</p>
+              <p className="text-xs text-muted-foreground">{t('clients.kpiWithPurchases')}</p>
               <p className="text-xl font-bold text-foreground tabular-nums">{stats.nbClientsWithSales}</p>
             </div>
           </div>
@@ -220,7 +223,7 @@ const ClientsPage: React.FC = () => {
               <UserCircle className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">CA généré</p>
+              <p className="text-xs text-muted-foreground">{t('clients.kpiRevenue')}</p>
               <p className="text-base font-bold text-foreground tabular-nums">{formatFCFA(stats.totalCAClients)}</p>
             </div>
           </div>
@@ -231,7 +234,7 @@ const ClientsPage: React.FC = () => {
               <Archive className="w-5 h-5 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Archivés</p>
+              <p className="text-xs text-muted-foreground">{t('clients.kpiArchived')}</p>
               <p className="text-xl font-bold text-foreground tabular-nums">{stats.totalArchived}</p>
             </div>
           </div>
@@ -245,7 +248,7 @@ const ClientsPage: React.FC = () => {
           <input
             type="text" value={search} onChange={e => setSearch(e.target.value)}
             className="nova-input w-full pl-10"
-            placeholder="Rechercher par nom ou téléphone..."
+            placeholder={t('clients.searchPlaceholder')}
           />
         </div>
         {isGerant && (
@@ -255,7 +258,7 @@ const ClientsPage: React.FC = () => {
               onChange={e => setShowArchived(e.target.checked)}
               className="w-4 h-4 rounded"
             />
-            Voir les archivés
+            {t('clients.showArchived')}
           </label>
         )}
       </div>
@@ -264,8 +267,8 @@ const ClientsPage: React.FC = () => {
       {filtered.length === 0 ? (
         <EmptyState
           icon={<Users className="w-12 h-12" />}
-          title={showArchived ? 'Aucun client archivé' : 'Aucun client'}
-          description={showArchived ? 'Les clients archivés apparaîtront ici.' : 'Ajoutez vos clients pour suivre leurs achats et leurs crédits.'}
+          title={showArchived ? t('clients.noArchivedTitle') : t('clients.noClientTitle')}
+          description={showArchived ? t('clients.noArchivedDesc') : t('clients.noClientDesc')}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -287,7 +290,7 @@ const ClientsPage: React.FC = () => {
                       </h3>
                       {c.archived && (
                         <span className="inline-block text-[9px] uppercase tracking-wider bg-muted text-muted-foreground px-1.5 py-0.5 rounded mt-0.5">
-                          Archivé
+                          {t('clients.archivedBadge')}
                         </span>
                       )}
                     </div>
@@ -295,14 +298,14 @@ const ClientsPage: React.FC = () => {
                   <div className="flex gap-1 shrink-0">
                     <button
                       onClick={() => setDetailsCustomer(c)}
-                      aria-label="Voir détails"
+                      aria-label="details"
                       className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                     >
                       <Eye className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => openEdit(c)}
-                      aria-label="Modifier"
+                      aria-label="edit"
                       className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                     >
                       <Edit className="w-4 h-4" />
@@ -311,7 +314,7 @@ const ClientsPage: React.FC = () => {
                       <>
                         <button
                           onClick={() => setArchiveTarget(c)}
-                          aria-label={c.archived ? 'Désarchiver' : 'Archiver'}
+                          aria-label={c.archived ? t('clients.reactivate') : t('clients.archive')}
                           className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                         >
                           {c.archived
@@ -321,7 +324,7 @@ const ClientsPage: React.FC = () => {
                         {!customerStats && (
                           <button
                             onClick={() => setDeleteTarget(c)}
-                            aria-label="Supprimer définitivement"
+                            aria-label={t('clients.delete')}
                             className="p-1.5 rounded-lg hover:bg-destructive/20 transition-colors text-muted-foreground hover:text-destructive"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -352,18 +355,18 @@ const ClientsPage: React.FC = () => {
                 {customerStats && (
                   <div className="mt-3 pt-3 border-t border-border/50 grid grid-cols-2 gap-2 text-xs">
                     <div>
-                      <p className="text-muted-foreground">Achats</p>
+                      <p className="text-muted-foreground">{t('clients.cardPurchases')}</p>
                       <p className="font-semibold text-foreground tabular-nums">{customerStats.count}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Total dépensé</p>
+                      <p className="text-muted-foreground">{t('clients.cardTotalSpent')}</p>
                       <p className="font-semibold text-foreground tabular-nums">{formatFCFA(customerStats.total)}</p>
                     </div>
                   </div>
                 )}
                 {c.plafondCredit !== undefined && c.plafondCredit > 0 && (
                   <div className="mt-2 text-[11px] text-amber-400">
-                    Plafond crédit : {formatFCFA(c.plafondCredit)}
+                    {t('clients.cardCreditLimit').replace('{n}', formatFCFA(c.plafondCredit))}
                   </div>
                 )}
               </NovaCard>
@@ -384,7 +387,7 @@ const ClientsPage: React.FC = () => {
           >
             <div className="flex items-center justify-between mb-6">
               <h2 className="nova-heading text-lg text-foreground">
-                {editing ? 'Modifier le client' : 'Ajouter un client'}
+                {editing ? t('clients.editTitle') : t('clients.addTitle')}
               </h2>
               <button onClick={() => setShowModal(false)} className="p-2 rounded-lg hover:bg-muted">
                 <X className="w-5 h-5 text-muted-foreground" />
@@ -393,7 +396,7 @@ const ClientsPage: React.FC = () => {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Prénom *</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t('clients.labelFirstname')}</label>
                   <input
                     type="text" value={form.prenom}
                     onChange={e => setForm({ ...form, prenom: e.target.value })}
@@ -401,7 +404,7 @@ const ClientsPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Nom *</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t('clients.labelLastname')}</label>
                   <input
                     type="text" value={form.nom}
                     onChange={e => setForm({ ...form, nom: e.target.value })}
@@ -410,7 +413,7 @@ const ClientsPage: React.FC = () => {
                 </div>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Téléphone *</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('clients.labelPhone')}</label>
                 <input
                   type="tel" value={form.telephone}
                   onChange={e => setForm({ ...form, telephone: e.target.value })}
@@ -418,7 +421,7 @@ const ClientsPage: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Email</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('clients.labelEmail')}</label>
                 <input
                   type="email" value={form.email}
                   onChange={e => setForm({ ...form, email: e.target.value })}
@@ -426,7 +429,7 @@ const ClientsPage: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Adresse</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('clients.labelAddress')}</label>
                 <input
                   type="text" value={form.adresse}
                   onChange={e => setForm({ ...form, adresse: e.target.value })}
@@ -435,20 +438,20 @@ const ClientsPage: React.FC = () => {
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">
-                  Plafond de crédit (FCFA)
+                  {t('clients.labelCreditLimit')}
                 </label>
                 <input
                   type="number" value={form.plafondCredit} min="0"
                   onChange={e => setForm({ ...form, plafondCredit: e.target.value })}
                   className="nova-input w-full"
-                  placeholder="Laisser vide = pas de limite"
+                  placeholder={t('clients.creditLimitPlaceholder')}
                 />
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Utilisé pour limiter les ventes à crédit. 0 = crédit interdit. Vide = pas de limite.
+                  {t('clients.creditLimitHint')}
                 </p>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Notes</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('clients.labelNotes')}</label>
                 <textarea
                   value={form.notes}
                   onChange={e => setForm({ ...form, notes: e.target.value })}
@@ -461,10 +464,10 @@ const ClientsPage: React.FC = () => {
                 onClick={() => setShowModal(false)}
                 className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors"
               >
-                Annuler
+                {t('clients.cancel')}
               </button>
               <button onClick={handleSubmit} className="flex-1 nova-btn-primary py-2.5">
-                {editing ? 'Enregistrer' : 'Ajouter'}
+                {editing ? t('clients.save') : t('clients.add')}
               </button>
             </div>
           </div>
@@ -482,25 +485,25 @@ const ClientsPage: React.FC = () => {
             onClick={e => e.stopPropagation()}
           >
             <h3 className="nova-heading text-lg text-foreground mb-2">
-              {archiveTarget.archived ? 'Réactiver ce client ?' : 'Archiver ce client ?'}
+              {archiveTarget.archived ? t('clients.reactivateTitle') : t('clients.archiveTitle')}
             </h3>
             <p className="text-sm text-muted-foreground mb-6">
               {archiveTarget.archived
-                ? <>Réactiver <strong className="text-foreground">{archiveTarget.prenom} {archiveTarget.nom}</strong> ? Il redeviendra visible dans la recherche.</>
-                : <>Archiver <strong className="text-foreground">{archiveTarget.prenom} {archiveTarget.nom}</strong> ? Son historique d'achats sera préservé, mais il n'apparaîtra plus dans la recherche.</>}
+                ? t('clients.reactivateDesc').replace('{name}', `${archiveTarget.prenom} ${archiveTarget.nom}`)
+                : t('clients.archiveDesc').replace('{name}', `${archiveTarget.prenom} ${archiveTarget.nom}`)}
             </p>
             <div className="flex gap-grid">
               <button
                 onClick={() => setArchiveTarget(null)}
                 className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors"
               >
-                Annuler
+                {t('clients.cancel')}
               </button>
               <button
                 onClick={handleArchive}
                 className="flex-1 nova-btn-primary py-2.5"
               >
-                {archiveTarget.archived ? 'Réactiver' : 'Archiver'}
+                {archiveTarget.archived ? t('clients.reactivate') : t('clients.archive')}
               </button>
             </div>
           </div>
@@ -517,22 +520,22 @@ const ClientsPage: React.FC = () => {
             className="nova-card p-6 w-full max-w-[400px] animate-scale-in"
             onClick={e => e.stopPropagation()}
           >
-            <h3 className="nova-heading text-lg text-foreground mb-2">Supprimer définitivement ?</h3>
+            <h3 className="nova-heading text-lg text-foreground mb-2">{t('clients.deleteTitle')}</h3>
             <p className="text-sm text-muted-foreground mb-6">
-              Supprimer <strong className="text-foreground">{deleteTarget.prenom} {deleteTarget.nom}</strong> de manière permanente ? Cette action est irréversible.
+              {t('clients.deleteDesc').replace('{name}', `${deleteTarget.prenom} ${deleteTarget.nom}`)}
             </p>
             <div className="flex gap-grid">
               <button
                 onClick={() => setDeleteTarget(null)}
                 className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors"
               >
-                Annuler
+                {t('clients.cancel')}
               </button>
               <button
                 onClick={handleDelete}
                 className="flex-1 py-2.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
               >
-                Supprimer
+                {t('clients.delete')}
               </button>
             </div>
           </div>
@@ -560,7 +563,7 @@ const ClientsPage: React.FC = () => {
                   {detailsCustomer.prenom} {detailsCustomer.nom}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Client depuis {formatDateShort(new Date(detailsCustomer.dateCreation))}
+                  {t('clients.drawerSince').replace('{date}', formatDateShort(new Date(detailsCustomer.dateCreation)))}
                 </p>
               </div>
             </div>
@@ -589,15 +592,15 @@ const ClientsPage: React.FC = () => {
               return (
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-3 rounded-lg bg-muted/40 text-center">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Achats</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('clients.drawerPurchases')}</p>
                     <p className="text-lg font-bold text-foreground">{cs?.count ?? 0}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-muted/40 text-center">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('clients.drawerTotal')}</p>
                     <p className="text-sm font-bold text-foreground">{formatFCFA(cs?.total ?? 0)}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-muted/40 text-center">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Panier moy.</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('clients.drawerAvgBasket')}</p>
                     <p className="text-sm font-bold text-foreground">{formatFCFA(avgBasket)}</p>
                   </div>
                 </div>
@@ -607,14 +610,14 @@ const ClientsPage: React.FC = () => {
             {detailsCustomer.plafondCredit !== undefined && detailsCustomer.plafondCredit > 0 && (
               <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
                 <p className="text-xs text-amber-400">
-                  Plafond de crédit : <strong>{formatFCFA(detailsCustomer.plafondCredit)}</strong>
+                  {t('clients.drawerCreditLimit').replace('{n}', formatFCFA(detailsCustomer.plafondCredit))}
                 </p>
               </div>
             )}
 
             {detailsCustomer.notes && (
               <div className="p-3 rounded-lg bg-muted/40">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Notes</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{t('clients.drawerNotes')}</p>
                 <p className="text-sm text-foreground italic">{detailsCustomer.notes}</p>
               </div>
             )}
@@ -622,10 +625,10 @@ const ClientsPage: React.FC = () => {
             {/* Historique d'achats */}
             <div>
               <h4 className="text-sm font-semibold text-foreground mb-2">
-                Derniers achats ({customerSales.length})
+                {t('clients.recentPurchases').replace('{n}', String(customerSales.length))}
               </h4>
               {customerSales.length === 0 ? (
-                <p className="text-xs text-muted-foreground italic">Aucun achat enregistré.</p>
+                <p className="text-xs text-muted-foreground italic">{t('clients.noPurchase')}</p>
               ) : (
                 <div className="space-y-1.5 max-h-72 overflow-y-auto">
                   {customerSales.map(s => (
@@ -639,7 +642,10 @@ const ClientsPage: React.FC = () => {
                       <div className="min-w-0">
                         <p className="font-medium text-foreground truncate">{s.saleNumber}</p>
                         <p className="text-muted-foreground">
-                          {formatDateShort(new Date(s.date))} — {s.items.length} article{s.items.length > 1 ? 's' : ''}
+                          {formatDateShort(new Date(s.date))} —{' '}
+                          {s.items.length > 1
+                            ? t('clients.saleArticlePlural').replace('{n}', String(s.items.length))
+                            : t('clients.saleArticle').replace('{n}', String(s.items.length))}
                         </p>
                       </div>
                       <p className="font-semibold text-foreground tabular-nums shrink-0 ml-2">
@@ -658,7 +664,7 @@ const ClientsPage: React.FC = () => {
               }}
               className="w-full nova-btn-primary py-2.5 flex items-center justify-center gap-2"
             >
-              <Edit className="w-4 h-4" /> Modifier ce client
+              <Edit className="w-4 h-4" /> {t('clients.editBtn')}
             </button>
           </div>
         )}

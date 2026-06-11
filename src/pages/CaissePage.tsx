@@ -6,6 +6,7 @@ import { useCashSessionStore } from '@/stores/useCashSessionStore';
 import { usePaymentStore } from '@/stores/usePaymentStore';
 import type { Customer } from '@/stores/useCustomerStore';
 import { checkCreditLimit, getCustomerOutstanding } from '@/lib/credit';
+import { useTranslation } from '@/i18n';
 import { formatPrice, formatFCFA } from '@/utils/formatters';
 
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -29,6 +30,7 @@ const CaissePage: React.FC = () => {
   const { currentUser } = useAuthStore();
   const { getCurrentSession } = useCashSessionStore();
   const currentSession = getCurrentSession();
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('especes');
   const [amountReceived, setAmountReceived] = useState('');
@@ -40,16 +42,12 @@ const CaissePage: React.FC = () => {
   const [showReceipt, setShowReceipt] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
-  // Client identifié pour la vente en cours (optionnel sauf pour crédit)
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  // Date d'échéance pour les ventes à crédit (optionnel)
   const [dueDate, setDueDate] = useState<string>('');
-  // Négociation de prix : ligne du panier en cours d'édition + contexte d'override
   const [priceEditorTarget, setPriceEditorTarget] = useState<{ productId: string; currentPrice: number } | null>(null);
   const [overrideContext, setOverrideContext] = useState<{
     productId: string; productName: string; requestedPrice: number; floor: number;
   } | null>(null);
-  // Mobile: toggle between products view and cart view
   const [mobileView, setMobileView] = useState<'products' | 'cart'>('products');
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -66,21 +64,25 @@ const CaissePage: React.FC = () => {
       const inCart = cart.find(c => c.productId === product.id);
       const qtyInCart = inCart ? inCart.quantity : 0;
       if (product.stock <= 0) {
-        toast.error(`${product.nom} est en rupture de stock`);
+        toast.error(t('caisse.outOfStockName').replace('{name}', product.nom));
         return;
       }
       if (qtyInCart >= product.stock) {
-        toast.error(`Stock insuffisant. Disponible : ${product.stock}, dans le panier : ${qtyInCart}`);
+        toast.error(
+          t('caisse.insufficientStockScan')
+            .replace('{available}', String(product.stock))
+            .replace('{qty}', String(qtyInCart))
+        );
         return;
       }
       addToCart({ productId: product.id, nom: product.nom, prixVente: product.prixVente });
       setAddedProductId(product.id);
       setTimeout(() => setAddedProductId(null), 500);
-      toast.success(`${product.nom} ajouté au panier`);
+      toast.success(t('caisse.addedToCartName').replace('{name}', product.nom));
     } else {
-      toast.error(`Produit non trouvé : ${barcode}`);
+      toast.error(t('caisse.productNotFound').replace('{barcode}', barcode));
     }
-  }, [products, addToCart, cart]);
+  }, [products, addToCart, cart, t]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -132,21 +134,21 @@ const CaissePage: React.FC = () => {
     const inCart = cart.find(c => c.productId === product.id);
     const qtyInCart = inCart ? inCart.quantity : 0;
     if (product.stock <= 0) {
-      toast.error('Ce produit est en rupture de stock');
+      toast.error(t('caisse.outOfStockClick'));
       return;
     }
     if (qtyInCart >= product.stock) {
-      toast.error(`Stock insuffisant. Disponible : ${product.stock}, dans le panier : ${qtyInCart}`);
+      toast.error(
+        t('caisse.insufficientStockScan')
+          .replace('{available}', String(product.stock))
+          .replace('{qty}', String(qtyInCart))
+      );
       return;
     }
     addToCart({ productId: product.id, nom: product.nom, prixVente: product.prixVente });
     setAddedProductId(product.id);
     setTimeout(() => setAddedProductId(null), 500);
-    toast.success(`${product.nom} ajouté`);
-    // On mobile, notify cart count
-    if (window.innerWidth < 1024) {
-      // brief bounce on the cart tab — handled via CSS
-    }
+    toast.success(t('caisse.addedName').replace('{name}', product.nom));
   };
 
   const subtotal = getCartSubtotal();
@@ -158,13 +160,11 @@ const CaissePage: React.FC = () => {
   const { sales: allSales } = useSaleStore();
   const { payments: allPayments } = usePaymentStore();
 
-  // Encours actuel du client sélectionné (somme des soldes restants)
   const customerOutstanding = useMemo(() => {
     if (!selectedCustomer) return 0;
     return getCustomerOutstanding(selectedCustomer.id, allSales, allPayments);
   }, [selectedCustomer, allSales, allPayments]);
 
-  // Vérification du plafond si vente à crédit
   const creditLimitCheck = useMemo(() => {
     if (paymentMode !== 'credit' || !selectedCustomer) return { ok: true as const };
     return checkCreditLimit(
@@ -201,9 +201,6 @@ const CaissePage: React.FC = () => {
         dueDate: paymentMode === 'credit' && dueDate ? dueDate : undefined,
       });
 
-      // Le stock et les mouvements sont décrémentés atomiquement dans
-      // completeSale (un seul batch Firestore vente + stock + mouvements).
-
       setIsProcessing(false);
       setIsDone(true);
       setReceiptSale(sale);
@@ -218,7 +215,7 @@ const CaissePage: React.FC = () => {
         setMobileView('products');
       }, 600);
 
-      toast.success('Vente validée avec succès !');
+      toast.success(t('caisse.saleSuccess'));
     }, 600);
   };
 
@@ -235,18 +232,20 @@ const CaissePage: React.FC = () => {
       <div className="p-4 lg:p-5 border-b border-border flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <ShoppingCart className="w-5 h-5 text-primary" aria-hidden="true" />
-          <h2 className="nova-heading text-foreground">Panier en cours</h2>
+          <h2 className="nova-heading text-foreground">{t('caisse.cartTitle')}</h2>
         </div>
         {cart.length > 0 && (
           <div className="flex items-center gap-2">
             <span className="bg-primary/20 text-primary text-xs font-medium px-2.5 py-1 rounded-full">
-              {cartCount} article{cartCount > 1 ? 's' : ''}
+              {cartCount > 1
+                ? t('caisse.cartArticlePlural').replace('{n}', String(cartCount))
+                : t('caisse.cartArticle').replace('{n}', String(cartCount))}
             </span>
             <button
               onClick={clearCart}
               className="p-1.5 rounded-lg hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
-              aria-label="Vider le panier"
-              title="Vider le panier"
+              aria-label={t('caisse.clearCartAriaLabel')}
+              title={t('caisse.clearCartAriaLabel')}
             >
               <X className="w-4 h-4" />
             </button>
@@ -265,8 +264,8 @@ const CaissePage: React.FC = () => {
       {cart.length === 0 ? (
         <EmptyState
           icon={<Package className="w-12 h-12" />}
-          title="Panier vide"
-          description="Scanner ou rechercher un produit pour commencer"
+          title={t('caisse.cartEmptyTitle')}
+          description={t('caisse.cartEmptyDesc')}
           className="flex-1"
         />
       ) : (
@@ -299,7 +298,7 @@ const CaissePage: React.FC = () => {
                         onClick={() => {
                           if (!product) return;
                           if (!negotiable) {
-                            toast.info('Ce produit n\'est pas négociable');
+                            toast.info(t('caisse.notNegotiable'));
                             return;
                           }
                           setPriceEditorTarget({ productId: item.productId, currentPrice: applied });
@@ -314,7 +313,7 @@ const CaissePage: React.FC = () => {
                             : isNegotiated ? 'text-amber-400 font-medium'
                             : 'text-muted-foreground'
                         )}
-                        title={negotiable ? 'Cliquer pour négocier le prix' : 'Prix fixe'}
+                        title={negotiable ? t('caisse.clickToNegotiate') : t('caisse.fixedPrice')}
                       >
                         {isNegotiated && (
                           <span className="line-through text-muted-foreground/60 mr-1 tabular-nums">
@@ -331,21 +330,21 @@ const CaissePage: React.FC = () => {
                   <button
                     onClick={() => updateCartQuantity(item.productId, item.quantity - 1)}
                     className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-all active:scale-90"
-                    aria-label={`Réduire quantité de ${item.nom}`}
+                    aria-label={t('caisse.decreaseQty').replace('{name}', item.nom)}
                   >
                     <Minus className="w-3 h-3 text-foreground" aria-hidden="true" />
                   </button>
-                  <span className="w-6 lg:w-8 text-center text-sm font-medium text-foreground tabular-nums" aria-label={`Quantité: ${item.quantity}`}>{item.quantity}</span>
+                  <span className="w-6 lg:w-8 text-center text-sm font-medium text-foreground tabular-nums" aria-label={t('caisse.quantityLabel').replace('{n}', String(item.quantity))}>{item.quantity}</span>
                   <button onClick={() => {
                     const product = products.find(p => p.id === item.productId);
                     if (product && item.quantity >= product.stock) {
-                      toast.error(`Stock max atteint (${product.stock})`);
+                      toast.error(t('caisse.stockMaxReached').replace('{n}', String(product.stock)));
                       return;
                     }
                     updateCartQuantity(item.productId, item.quantity + 1);
                   }}
                     className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-all active:scale-90"
-                    aria-label={`Augmenter quantité de ${item.nom}`}
+                    aria-label={t('caisse.increaseQty').replace('{name}', item.nom)}
                   >
                     <Plus className="w-3 h-3 text-foreground" aria-hidden="true" />
                   </button>
@@ -354,7 +353,7 @@ const CaissePage: React.FC = () => {
                 <button
                   onClick={() => removeFromCart(item.productId)}
                   className="p-1.5 rounded-lg hover:bg-destructive/20 transition-all active:scale-90 text-muted-foreground hover:text-destructive"
-                  aria-label={`Supprimer ${item.nom} du panier`}
+                  aria-label={t('caisse.removeFromCart').replace('{name}', item.nom)}
                 >
                   <Trash2 className="w-4 h-4" aria-hidden="true" />
                 </button>
@@ -366,11 +365,11 @@ const CaissePage: React.FC = () => {
           <div className="border-t border-border p-4 lg:p-5 space-y-3 lg:space-y-4 shrink-0">
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Sous-total</span>
+                <span className="text-muted-foreground">{t('caisse.subtotal')}</span>
                 <span className="text-foreground tabular-nums">{formatPrice(subtotal)}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Remise (%)</span>
+                <span className="text-muted-foreground">{t('caisse.discount')}</span>
                 <input
                   type="number" min="0" max="100"
                   value={discount || ''}
@@ -380,7 +379,7 @@ const CaissePage: React.FC = () => {
                 />
               </div>
               <div className="flex justify-between items-center pt-2 border-t border-border">
-                <span className="text-base lg:text-lg font-semibold text-foreground">TOTAL</span>
+                <span className="text-base lg:text-lg font-semibold text-foreground">{t('caisse.total')}</span>
                 <span className="text-2xl lg:text-[32px] font-bold text-primary tabular-nums">{formatPrice(total)}</span>
               </div>
             </div>
@@ -400,7 +399,7 @@ const CaissePage: React.FC = () => {
                       : 'bg-muted border-border text-muted-foreground hover:text-foreground'
                   )}
                 >
-                  {mode === 'especes' ? '💵 Espèces' : mode === 'mobile_money' ? '📱 Mobile' : '🧾 Crédit'}
+                  {mode === 'especes' ? t('caisse.payEspeces') : mode === 'mobile_money' ? t('caisse.payMobile') : t('caisse.payCredit')}
                 </button>
               ))}
             </div>
@@ -411,11 +410,11 @@ const CaissePage: React.FC = () => {
                   type="number" value={amountReceived}
                   onChange={e => setAmountReceived(e.target.value)}
                   className="nova-input w-full py-2"
-                  placeholder="Montant reçu (FCFA)"
+                  placeholder={t('caisse.amountReceivedPlaceholder')}
                 />
                 {amountReceived && (parseInt(amountReceived, 10) || 0) >= total && (
                   <div className="text-sm text-secondary font-medium">
-                    Monnaie à rendre: {formatFCFA((parseInt(amountReceived, 10) || 0) - total)}
+                    {t('caisse.changeToGive').replace('{n}', formatFCFA((parseInt(amountReceived, 10) || 0) - total))}
                   </div>
                 )}
               </div>
@@ -432,26 +431,26 @@ const CaissePage: React.FC = () => {
                     Orange Money
                   </button>
                 </div>
-                <input type="text" value={mobileRef} onChange={e => setMobileRef(e.target.value)} className="nova-input w-full py-2" placeholder="Référence transaction" />
+                <input type="text" value={mobileRef} onChange={e => setMobileRef(e.target.value)} className="nova-input w-full py-2" placeholder={t('caisse.mobileRefPlaceholder')} />
               </div>
             )}
             {paymentMode === 'credit' && (
               <div className="space-y-2">
                 {!selectedCustomer ? (
                   <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs">
-                    ⚠ Sélectionnez un client en haut du panier pour vendre à crédit
+                    {t('caisse.creditNoCustomer')}
                   </div>
                 ) : (
                   <>
                     <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Encours actuel</span>
+                      <span className="text-muted-foreground">{t('caisse.creditOutstanding')}</span>
                       <span className="text-foreground tabular-nums">
                         {formatFCFA(customerOutstanding)}
                       </span>
                     </div>
                     {selectedCustomer.plafondCredit !== undefined && (
                       <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Plafond crédit</span>
+                        <span className="text-muted-foreground">{t('caisse.creditLimit')}</span>
                         <span className="text-foreground tabular-nums">
                           {formatFCFA(selectedCustomer.plafondCredit)}
                         </span>
@@ -459,7 +458,7 @@ const CaissePage: React.FC = () => {
                     )}
                     {creditLimitCheck.ok === false && (
                       <div className="p-2 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-xs">
-                        Plafond dépassé. Encours après vente : {formatFCFA(creditLimitCheck.afterSale)}
+                        {t('caisse.creditLimitExceeded').replace('{n}', formatFCFA(creditLimitCheck.afterSale))}
                       </div>
                     )}
                     <input
@@ -467,10 +466,10 @@ const CaissePage: React.FC = () => {
                       onChange={e => setDueDate(e.target.value)}
                       min={new Date().toISOString().split('T')[0]}
                       className="nova-input w-full py-2 text-xs"
-                      placeholder="Date d'échéance (optionnel)"
+                      placeholder={t('caisse.dueDatePlaceholder')}
                     />
                     <p className="text-[10px] text-muted-foreground">
-                      Le client signera le reçu comme reconnaissance de dette.
+                      {t('caisse.creditReceiptNote')}
                     </p>
                   </>
                 )}
@@ -488,9 +487,9 @@ const CaissePage: React.FC = () => {
               {isProcessing ? (
                 <LoadingSpinner size={20} className="text-white" />
               ) : isDone ? (
-                <><Check className="w-5 h-5" /> Vente validée !</>
+                <><Check className="w-5 h-5" /> {t('caisse.validating')}</>
               ) : (
-                'Valider la vente'
+                t('caisse.validate')
               )}
             </button>
           </div>
@@ -500,8 +499,6 @@ const CaissePage: React.FC = () => {
   );
 
   // ── Guard : un caissier doit avoir une session ouverte pour vendre ────────
-  // Le gérant peut accéder à la caisse sans session (rôle backoffice mixte),
-  // mais sera invité à en ouvrir une au moment de la première vente.
   if (currentUser?.role === 'caissier' && !currentSession) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center p-4">
@@ -510,17 +507,16 @@ const CaissePage: React.FC = () => {
             <ShoppingCart className="w-8 h-8 text-amber-400" />
           </div>
           <h2 className="nova-heading text-lg text-foreground mb-2">
-            Aucune session de caisse ouverte
+            {t('caisse.noSessionTitle')}
           </h2>
           <p className="text-sm text-muted-foreground mb-5">
-            Vous devez ouvrir une session et déclarer votre fond de caisse
-            avant de pouvoir enregistrer des ventes.
+            {t('caisse.noSessionDesc')}
           </p>
           <button
             onClick={() => window.location.href = '/ouverture-session'}
             className="nova-btn-primary px-5 py-2.5 inline-flex items-center gap-2"
           >
-            Ouvrir une session
+            {t('caisse.openSession')}
             <Plus className="w-4 h-4" />
           </button>
         </div>
@@ -531,14 +527,10 @@ const CaissePage: React.FC = () => {
   return (
     <div className="animate-fade-in flex flex-col lg:flex-row" style={{ height: 'calc(100vh - 0px)' }}>
 
-      {/* ── DESKTOP: side-by-side layout ── */}
-      {/* ── MOBILE: tab-switched layout ── */}
-
       {/* Products panel */}
       <div className={cn(
         'flex flex-col border-r border-border',
         'lg:flex-[58]',
-        // Mobile: show/hide based on mobileView
         mobileView === 'products' ? 'flex flex-col flex-1' : 'hidden lg:flex'
       )}>
         <div className="p-3 lg:p-5 border-b border-border shrink-0">
@@ -548,16 +540,16 @@ const CaissePage: React.FC = () => {
               id="pos-search"
               ref={searchRef}
               type="text"
-              placeholder="Rechercher ou scanner... (F2)"
+              placeholder={t('caisse.searchPlaceholder')}
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="nova-input w-full pl-10 lg:pl-12 pr-10 lg:pr-12 py-2 lg:py-3 text-sm"
-              aria-label="Rechercher un produit ou scanner un code-barres"
+              aria-label={t('caisse.searchAriaLabel')}
             />
             <button
               onClick={() => setShowScanner(true)}
               className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 lg:p-2 rounded-lg hover:bg-muted transition-colors"
-              aria-label="Ouvrir le scanner de code-barres"
+              aria-label={t('caisse.scannerAriaLabel')}
             >
               <ScanBarcode className="w-4 lg:w-5 h-4 lg:h-5 text-muted-foreground" aria-hidden="true" />
             </button>
@@ -566,7 +558,7 @@ const CaissePage: React.FC = () => {
 
         <div className="flex-1 overflow-y-auto p-3 lg:p-5">
           {filteredProducts.length === 0 ? (
-            <EmptyState icon={<Package className="w-10 h-10" />} title="Aucun produit" />
+            <EmptyState icon={<Package className="w-10 h-10" />} title={t('caisse.noProduct')} />
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2 lg:gap-3">
               {filteredProducts.map(product => {
@@ -597,7 +589,7 @@ const CaissePage: React.FC = () => {
                       )}
                       {isOut && (
                         <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
-                          <span className="text-[9px] font-bold uppercase tracking-wider text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">Rupture</span>
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">{t('caisse.outOfStock')}</span>
                         </div>
                       )}
                       <div className="absolute top-1.5 right-1.5">
@@ -616,7 +608,7 @@ const CaissePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Cart panel — desktop: always visible right column; mobile: full screen when mobileView=cart */}
+      {/* Cart panel */}
       <div className={cn(
         'lg:flex-[42]',
         mobileView === 'cart' ? 'flex flex-col flex-1' : 'hidden lg:flex lg:flex-col'
@@ -634,7 +626,7 @@ const CaissePage: React.FC = () => {
           )}
         >
           <Package className="w-5 h-5" />
-          Produits
+          {t('caisse.tabProducts')}
         </button>
         <button
           onClick={() => setMobileView('cart')}
@@ -644,7 +636,7 @@ const CaissePage: React.FC = () => {
           )}
         >
           <ShoppingCart className="w-5 h-5" />
-          Panier
+          {t('caisse.tabCart')}
           {cartCount > 0 && (
             <span className="absolute top-2 right-[calc(50%-18px)] bg-primary text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
               {cartCount > 9 ? '9+' : cartCount}
@@ -653,7 +645,7 @@ const CaissePage: React.FC = () => {
         </button>
       </div>
 
-      {/* Spacer for mobile tab bar (accounts for safe area bottom on iOS) */}
+      {/* Spacer for mobile tab bar */}
       <div className="lg:hidden" style={{ height: 'calc(4rem + env(safe-area-inset-bottom))' }} />
 
       <BarcodeScanner
@@ -675,7 +667,6 @@ const CaissePage: React.FC = () => {
           if (!product) return;
 
           if (requiresOverride) {
-            // On ouvre la modal d'autorisation gérant ; PriceEditor se ferme.
             setOverrideContext({
               productId: product.id,
               productName: product.nom,
@@ -684,15 +675,14 @@ const CaissePage: React.FC = () => {
             });
             setPriceEditorTarget(null);
           } else {
-            // Application directe
             applyPriceOverride(product.id, newPrice, false);
             const isBelowTarget = product.prixCible !== undefined && newPrice < product.prixCible;
             if (isBelowTarget) {
-              toast.warning('Prix négocié — marge réduite');
+              toast.warning(t('caisse.priceNegotiatedReduced'));
             } else if (newPrice < product.prixVente) {
-              toast.success('Prix négocié appliqué');
+              toast.success(t('caisse.priceNegotiatedApplied'));
             } else {
-              toast.success('Prix appliqué');
+              toast.success(t('caisse.priceApplied'));
             }
             setPriceEditorTarget(null);
           }
@@ -712,7 +702,7 @@ const CaissePage: React.FC = () => {
             true,
             { userId: manager.userId, userName: manager.userName }
           );
-          toast.success(`Override autorisé par ${manager.userName}`);
+          toast.success(t('caisse.overrideApproved').replace('{name}', manager.userName));
           setOverrideContext(null);
         }}
       />

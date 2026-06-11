@@ -95,7 +95,7 @@ const ParametresPage: React.FC = () => {
   const handleCopyCode = () => {
     navigator.clipboard.writeText(boutiqueId).then(() => {
       setCodeCopied(true);
-      toast.success('Identifiant boutique copié');
+      toast.success(t('settings.code.copied'));
       setTimeout(() => setCodeCopied(false), 2000);
     });
   };
@@ -299,7 +299,7 @@ const ParametresPage: React.FC = () => {
               <p className="text-xs text-muted-foreground mb-1">{t('settings.code.label')}</p>
               <p className="text-2xl font-mono font-bold text-foreground tracking-widest">{boutiqueCode}</p>
               <p className="text-xs text-muted-foreground mt-2">
-                Code court pour identifier la boutique. Pour restaurer sur une autre machine, activez le compte cloud ci-dessous.
+                {t('settings.code.hint')}
               </p>
             </div>
             <button
@@ -310,7 +310,7 @@ const ParametresPage: React.FC = () => {
                   ? 'border-secondary/40 bg-secondary/10 text-secondary'
                   : 'border-border bg-muted text-foreground hover:bg-muted/80'
               )}
-              aria-label="Copier l'identifiant complet"
+              aria-label={t('settings.code.copyAriaLabel')}
             >
               {codeCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               {codeCopied ? t('settings.code.copied') : t('settings.code.copy')}
@@ -332,7 +332,7 @@ const ParametresPage: React.FC = () => {
 
             {!isLocalMode && (
               <div className="pt-1">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Identifiant complet Firebase</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{t('settings.code.firebaseLabel')}</p>
                 <p className="text-[11px] font-mono text-muted-foreground break-all bg-muted/40 rounded px-2 py-1.5 select-all">
                   {boutiqueId}
                 </p>
@@ -391,10 +391,9 @@ const ParametresPage: React.FC = () => {
                 <MapPin className="w-4 h-4 text-primary" />
               </div>
               <div>
-                <p className="font-medium text-foreground text-sm">Partage de la position</p>
+                <p className="font-medium text-foreground text-sm">{t('settings.boutique.gpsShareTitle')}</p>
                 <p className="text-xs text-muted-foreground mt-1 max-w-md">
-                  Autorise l'envoi de la position géographique de votre boutique à l'éditeur,
-                  pour le support et le suivi du service. Facultatif — désactivable à tout moment.
+                  {t('settings.boutique.gpsShareDesc')}
                 </p>
               </div>
             </div>
@@ -405,7 +404,7 @@ const ParametresPage: React.FC = () => {
                 const next = !geoConsentOn;
                 setGeoConsentOn(next);
                 setGeoConsent(next);
-                toast.success(next ? 'Partage de la position activé' : 'Partage de la position désactivé');
+                toast.success(next ? t('settings.boutique.gpsShareOn') : t('settings.boutique.gpsShareOff'));
               }}
               className={cn(
                 'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',

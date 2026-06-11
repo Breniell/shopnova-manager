@@ -18,8 +18,10 @@ import { NovaCard } from '@/components/ui/NovaCard';
 import { formatFCFA, formatDateShort, formatTime } from '@/utils/formatters';
 import { Wallet, ArrowRight, LogOut, Info, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from '@/i18n';
 
 const OuvertureSessionPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentUser, logout } = useAuthStore();
   const { sessions, openSession, getOpenSessionForUser } = useCashSessionStore();
@@ -53,7 +55,7 @@ const OuvertureSessionPage: React.FC = () => {
     if (!currentUser) return;
     const fond = parseInt(fondInitial, 10);
     if (!Number.isFinite(fond) || fond < 0) {
-      toast.error('Fond de caisse invalide');
+      toast.error(t('session.open.invalidFond'));
       return;
     }
     setIsSubmitting(true);
@@ -64,10 +66,10 @@ const OuvertureSessionPage: React.FC = () => {
         fondInitial: fond,
         notesOuverture: notes.trim() || undefined,
       });
-      toast.success('Session ouverte');
+      toast.success(t('session.open.success'));
       navigate('/caisse', { replace: true });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erreur');
+      toast.error(err instanceof Error ? err.message : t('common.error'));
     } finally {
       setIsSubmitting(false);
     }
@@ -82,7 +84,7 @@ const OuvertureSessionPage: React.FC = () => {
   if (!currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Veuillez vous connecter</p>
+        <p className="text-muted-foreground">{t('session.open.loginRequired')}</p>
       </div>
     );
   }
@@ -96,9 +98,9 @@ const OuvertureSessionPage: React.FC = () => {
               <Wallet className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h1 className="nova-heading text-lg text-foreground">Ouvrir la session</h1>
+              <h1 className="nova-heading text-lg text-foreground">{t('session.open.title')}</h1>
               <p className="text-xs text-muted-foreground">
-                Bonjour {currentUser.prenom}, déclarez votre fond de caisse pour démarrer
+                {t('session.open.greeting').replace('{name}', currentUser.prenom)}
               </p>
             </div>
           </div>
@@ -108,7 +110,7 @@ const OuvertureSessionPage: React.FC = () => {
             <div className="mb-4 p-3 rounded-lg bg-muted/40 text-xs space-y-1">
               <div className="flex items-center gap-1.5 text-muted-foreground">
                 <Clock className="w-3.5 h-3.5" />
-                <span>Dernière clôture</span>
+                <span>{t('session.open.lastClose')}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-foreground">
@@ -125,7 +127,7 @@ const OuvertureSessionPage: React.FC = () => {
                 onClick={handleUseSuggested}
                 className="text-[11px] text-primary hover:underline mt-1"
               >
-                Utiliser comme fond initial
+                {t('session.open.useSuggested')}
               </button>
             </div>
           )}
@@ -134,7 +136,7 @@ const OuvertureSessionPage: React.FC = () => {
           <div className="space-y-4">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">
-                Fond de caisse de départ (FCFA) *
+                {t('session.open.fondLabel')} *
               </label>
               <input
                 type="number"
@@ -147,19 +149,19 @@ const OuvertureSessionPage: React.FC = () => {
                 onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
               />
               <p className="text-[11px] text-muted-foreground mt-1">
-                Compter les espèces actuellement présentes dans le tiroir.
+                {t('session.open.fondHint')}
               </p>
             </div>
 
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">
-                Notes (optionnel)
+                {t('session.open.notesLabel')}
               </label>
               <textarea
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 className="nova-input w-full h-16 resize-none"
-                placeholder="Ex : équipe matin, remplacement collègue..."
+                placeholder={t('session.open.notesPlaceholder')}
                 maxLength={200}
               />
             </div>
@@ -167,10 +169,7 @@ const OuvertureSessionPage: React.FC = () => {
 
           <div className="flex items-start gap-2 mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-300">
             <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-            <span>
-              Toutes vos ventes et règlements seront rattachés à cette session jusqu'à
-              la clôture. L'écart de caisse sera calculé en fin de session.
-            </span>
+            <span>{t('session.open.warning')}</span>
           </div>
 
           <div className="flex gap-grid mt-5">
@@ -180,7 +179,7 @@ const OuvertureSessionPage: React.FC = () => {
               className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-muted text-muted-foreground hover:text-foreground transition-colors text-sm"
             >
               <LogOut className="w-4 h-4" />
-              Déconnexion
+              {t('nav.logout')}
             </button>
             <button
               type="button"
@@ -188,9 +187,9 @@ const OuvertureSessionPage: React.FC = () => {
               disabled={isSubmitting || !fondInitial}
               className="flex-1 nova-btn-primary py-2.5 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Ouverture…' : (
+              {isSubmitting ? t('session.open.starting') : (
                 <>
-                  Démarrer la session
+                  {t('session.open.start')}
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

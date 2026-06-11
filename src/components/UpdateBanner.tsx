@@ -10,6 +10,7 @@
 import React, { useEffect, useState } from 'react';
 import { Download, RefreshCw, X, ArrowDownToLine } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/i18n';
 
 type UpdateState =
   | { phase: 'idle' }
@@ -34,6 +35,7 @@ declare global {
 }
 
 export const UpdateBanner: React.FC = () => {
+  const { t } = useTranslation();
   const [state, setState] = useState<UpdateState>({ phase: 'idle' });
   const [dismissed, setDismissed] = useState(false);
 
@@ -70,23 +72,23 @@ export const UpdateBanner: React.FC = () => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground">
-              Mise à jour prête — v{state.version}
+              {t('update.ready').replace('{version}', state.version)}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Redémarrez pour appliquer la mise à jour.
+              {t('update.readyDesc')}
             </p>
             <button
               onClick={() => window.legwan?.quitAndInstall?.()}
               className="mt-3 w-full py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              Redémarrer et installer
+              {t('update.install')}
             </button>
           </div>
           <button
             onClick={() => setDismissed(true)}
             className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground shrink-0"
-            aria-label="Fermer"
+            aria-label={t('update.close')}
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -102,7 +104,7 @@ export const UpdateBanner: React.FC = () => {
         <ArrowDownToLine className="w-4 h-4 text-primary shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium text-foreground mb-1.5">
-            Téléchargement… {state.percent}%
+            {t('update.downloading').replace('{percent}', String(state.percent))}
           </p>
           <div className="h-1.5 bg-muted rounded-full overflow-hidden">
             <div
@@ -126,10 +128,10 @@ export const UpdateBanner: React.FC = () => {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-foreground">
-            Mise à jour disponible — v{state.version}
+            {t('update.available').replace('{version}', state.version)}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Une nouvelle version de Legwan est disponible.
+            {t('update.availableDesc')}
           </p>
           <div className="mt-3 flex gap-2">
             <button
@@ -139,20 +141,20 @@ export const UpdateBanner: React.FC = () => {
               }}
               className="flex-1 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
             >
-              Télécharger
+              {t('update.download')}
             </button>
             <button
               onClick={() => setDismissed(true)}
               className="px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:bg-muted transition-colors"
             >
-              Plus tard
+              {t('update.later')}
             </button>
           </div>
         </div>
         <button
           onClick={() => setDismissed(true)}
           className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground shrink-0"
-          aria-label="Fermer"
+          aria-label={t('update.close')}
         >
           <X className="w-3.5 h-3.5" />
         </button>

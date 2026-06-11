@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { Calculator, Check, DollarSign, Smartphone, History, AlertTriangle, Wallet, Edit2, Receipt, Plus, Clock, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPrice, formatFCFA, formatDate, formatTime, formatDateShort } from '@/utils/formatters';
+import { useTranslation } from '@/i18n';
 
 const denominations = [
   { label: '10 000', value: 10000, type: 'billet' },
@@ -27,6 +28,7 @@ const denominations = [
 ];
 
 const ClotureCaissePage: React.FC = () => {
+  const { t } = useTranslation();
   const { sales } = useSaleStore();
   const { clotures, fondDeCaisse, addCloture, setFondDeCaisse } = useCaisseStore();
   const { currentUser } = useAuthStore();
@@ -149,18 +151,18 @@ const ClotureCaissePage: React.FC = () => {
   const handleSaveFond = () => {
     const val = parseInt(fondInput);
     if (isNaN(val) || val < 0) {
-      toast.error('Montant invalide');
+      toast.error(t('cloture.invalidAmount'));
       return;
     }
     setFondDeCaisse(val);
     setEditingFond(false);
-    toast.success('Fond de caisse mis à jour');
+    toast.success(t('cloture.fundUpdated'));
   };
 
   const handleValidate = () => {
     if (!currentUser) return;
     if (totalCompte === 0) {
-      toast.error('Veuillez compter la caisse avant de valider');
+      toast.error(t('cloture.countFirst'));
       return;
     }
 
@@ -181,7 +183,7 @@ const ClotureCaissePage: React.FC = () => {
           notesCloture: notes || undefined,
         });
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Erreur clôture session');
+        toast.error(err instanceof Error ? err.message : t('cloture.sessionError'));
         return;
       }
     }
@@ -200,7 +202,7 @@ const ClotureCaissePage: React.FC = () => {
     });
 
     setIsDone(true);
-    toast.success(inSessionMode ? 'Session clôturée !' : 'Clôture de caisse validée !');
+    toast.success(inSessionMode ? t('cloture.sessionClosed') : t('cloture.closeValidated'));
     setTimeout(() => {
       setIsDone(false);
       setCounts({});
@@ -210,14 +212,14 @@ const ClotureCaissePage: React.FC = () => {
 
   return (
     <div className="p-4 lg:p-8 animate-fade-in">
-      <h1 className="text-headline-lg nova-heading text-foreground mb-6">Clôture de caisse</h1>
+      <h1 className="text-headline-lg nova-heading text-foreground mb-6">{t('cloture.title')}</h1>
 
       <div className="flex gap-1 mb-6 bg-muted rounded-lg p-1 w-fit">
         <button onClick={() => setActiveTab('cloture')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2', activeTab === 'cloture' ? 'bg-card text-foreground ' : 'text-muted-foreground')}>
-          <Calculator className="w-4 h-4" /> Clôture du jour
+          <Calculator className="w-4 h-4" /> {t('cloture.tabCloture')}
         </button>
         <button onClick={() => setActiveTab('historique')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2', activeTab === 'historique' ? 'bg-card text-foreground ' : 'text-muted-foreground')}>
-          <History className="w-4 h-4" /> Historique
+          <History className="w-4 h-4" /> {t('cloture.tabHistory')}
         </button>
       </div>
 
@@ -225,13 +227,13 @@ const ClotureCaissePage: React.FC = () => {
         <>
           {/* KPIs — row 1 */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-            <StatCard icon={<DollarSign className="w-4 h-4 text-primary" />} iconBg="bg-primary/20" value={formatFCFA(totalEspeces)} label="Ventes espèces" />
-            <StatCard icon={<Smartphone className="w-4 h-4 text-secondary" />} iconBg="bg-secondary/20" value={formatFCFA(totalMobile)} label="Ventes Mobile Money" />
+            <StatCard icon={<DollarSign className="w-4 h-4 text-primary" />} iconBg="bg-primary/20" value={formatFCFA(totalEspeces)} label={t('cloture.cashSales')} />
+            <StatCard icon={<Smartphone className="w-4 h-4 text-secondary" />} iconBg="bg-secondary/20" value={formatFCFA(totalMobile)} label={t('cloture.mobileSales')} />
             <StatCard
               icon={<DollarSign className="w-4 h-4 text-emerald-400" />}
               iconBg="bg-emerald-500/20"
               value={formatFCFA(caEncaisse)}
-              label="Chiffre d'affaires encaissé"
+              label={t('cloture.collectedRevenue')}
             />
             {/* Fond de caisse — éditable par le gérant */}
             <div className="nova-card p-4 flex flex-col gap-2">
@@ -240,13 +242,13 @@ const ClotureCaissePage: React.FC = () => {
                   <span className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
                     <Wallet className="w-4 h-4 text-amber-400" />
                   </span>
-                  <span className="text-xs text-muted-foreground leading-tight">Fond de caisse</span>
+                  <span className="text-xs text-muted-foreground leading-tight">{t('cloture.cashFund')}</span>
                 </div>
                 {isGerant && !editingFond && (
                   <button
                     onClick={() => { setFondInput(String(fondDeCaisse)); setEditingFond(true); }}
                     className="text-muted-foreground hover:text-foreground transition-colors"
-                    title="Modifier le fond de caisse"
+                    title={t('cloture.editFund')}
                   >
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>
@@ -274,8 +276,8 @@ const ClotureCaissePage: React.FC = () => {
           {/* KPI — Solde journalier (full width highlight) */}
           <div className="mb-3 p-4 rounded-xl border border-primary/30 bg-primary/5 flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Solde journalier</p>
-              <p className="text-xs text-muted-foreground/70 mt-0.5">CA encaissé + fond de caisse</p>
+              <p className="text-sm text-muted-foreground">{t('cloture.dailyBalance')}</p>
+              <p className="text-xs text-muted-foreground/70 mt-0.5">{t('cloture.dailyBalanceHint')}</p>
             </div>
             <span className="text-2xl font-bold text-primary tabular-nums">{formatFCFA(soldeJournalier)}</span>
           </div>
@@ -286,10 +288,10 @@ const ClotureCaissePage: React.FC = () => {
               <Receipt className="w-4 h-4 text-red-400 shrink-0" />
               <div className="flex-1 text-xs">
                 <p className="text-red-400 font-medium">
-                  {periodCreditSales.length} vente{periodCreditSales.length > 1 ? 's' : ''} à crédit aujourd'hui : {formatFCFA(totalCreditPeriod)}
+                  {t('cloture.creditSalesNote').replace('{n}', String(periodCreditSales.length)).replace('{amount}', formatFCFA(totalCreditPeriod))}
                 </p>
                 <p className="text-muted-foreground mt-0.5">
-                  Non compté{periodCreditSales.length > 1 ? 'es' : 'e'} en caisse — les règlements à venir apparaîtront le jour où ils seront perçus.
+                  {t('cloture.creditSalesDesc')}
                 </p>
               </div>
             </div>
@@ -297,9 +299,9 @@ const ClotureCaissePage: React.FC = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
             {/* Comptage */}
-            <NovaCard accent title="Comptage physique de la caisse" className="lg:col-span-3">
+            <NovaCard accent title={t('cloture.physicalCount')} className="lg:col-span-3">
               <div className="space-y-3">
-                <p className="text-xs text-muted-foreground mb-4">Saisissez le nombre de chaque coupure/pièce comptée</p>
+                <p className="text-xs text-muted-foreground mb-4">{t('cloture.countHint')}</p>
                 <div className="grid grid-cols-2 gap-grid">
                   {denominations.map(d => (
                     <div key={d.value} className="flex items-center gap-grid p-2 rounded-lg bg-muted/30">
@@ -323,27 +325,27 @@ const ClotureCaissePage: React.FC = () => {
                 </div>
 
                 <div className="mt-4">
-                  <label className="text-xs text-muted-foreground mb-1 block">Notes (optionnel)</label>
-                  <textarea value={notes} onChange={e => setNotes(e.target.value)} className="nova-input w-full h-16 resize-none" placeholder="Observations..." />
+                  <label className="text-xs text-muted-foreground mb-1 block">{t('cloture.notesLabel')}</label>
+                  <textarea value={notes} onChange={e => setNotes(e.target.value)} className="nova-input w-full h-16 resize-none" placeholder={t('cloture.observations')} />
                 </div>
               </div>
             </NovaCard>
 
             {/* Résultat */}
-            <NovaCard accent title="Résultat" className="lg:col-span-2">
+            <NovaCard accent title={t('cloture.result')} className="lg:col-span-2">
               <div className="space-y-4">
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Montant compté</span>
+                    <span className="text-muted-foreground">{t('cloture.counted')}</span>
                     <span className="text-foreground font-medium tabular-nums">{formatFCFA(totalCompte)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Espèces + fond attendus</span>
+                    <span className="text-muted-foreground">{t('cloture.expected')}</span>
                     <span className="text-foreground font-medium tabular-nums">{formatFCFA(totalAttenduPhysique)}</span>
                   </div>
                   <div className="border-t border-border pt-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-base font-semibold text-foreground">Écart</span>
+                      <span className="text-base font-semibold text-foreground">{t('cloture.gap')}</span>
                       <span className={cn(
                         'text-headline-lg font-bold tabular-nums',
                         ecart === 0 ? 'text-emerald-400' : ecart > 0 ? 'text-amber-400' : 'text-destructive'
@@ -352,7 +354,7 @@ const ClotureCaissePage: React.FC = () => {
                       </span>
                     </div>
                     <p className={cn('text-sm mt-1', ecart === 0 ? 'text-emerald-400' : ecart > 0 ? 'text-amber-400' : 'text-destructive')}>
-                      {ecart === 0 ? '✓ Caisse exacte' : ecart > 0 ? '⚠ Excédent en caisse' : '⚠ Manque en caisse'}
+                      {ecart === 0 ? `✓ ${t('cloture.exact')}` : ecart > 0 ? `⚠ ${t('cloture.surplus')}` : `⚠ ${t('cloture.deficit')}`}
                     </p>
                   </div>
                 </div>
@@ -360,13 +362,17 @@ const ClotureCaissePage: React.FC = () => {
                 {ecart < -500 && (
                   <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                     <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
-                    <p className="text-xs text-destructive">Écart important détecté. Vérifiez le comptage ou signalez l'anomalie.</p>
+                    <p className="text-xs text-destructive">{t('cloture.largeGapWarning')}</p>
                   </div>
                 )}
 
                 <div className="pt-4 space-y-3">
                   <div className="text-xs text-muted-foreground">
-                    {periodSales.length} vente{periodSales.length > 1 ? 's' : ''} aujourd'hui • Caissier : {currentUser?.prenom} {currentUser?.nom}
+                    {(periodSales.length > 1
+                      ? t('cloture.salesCountPlural')
+                      : t('cloture.salesCount')
+                    ).replace('{n}', String(periodSales.length))}
+                    {' • '}{t('cloture.cashierLabel')} : {currentUser?.prenom} {currentUser?.nom}
                   </div>
                   <button
                     onClick={handleValidate}
@@ -376,7 +382,7 @@ const ClotureCaissePage: React.FC = () => {
                       isDone ? 'bg-secondary text-secondary-foreground' : 'nova-btn-primary'
                     )}
                   >
-                    {isDone ? <><Check className="w-4 h-4" /> Clôture enregistrée</> : 'Valider la clôture'}
+                    {isDone ? <><Check className="w-4 h-4" /> {t('cloture.recorded')}</> : t('cloture.validate')}
                   </button>
                 </div>
               </div>
@@ -388,19 +394,19 @@ const ClotureCaissePage: React.FC = () => {
       {activeTab === 'historique' && (
         <NovaCard accent>
           {clotures.length === 0 ? (
-            <EmptyState icon={<History className="w-12 h-12" />} title="Aucune clôture" description="Les clôtures de caisse apparaîtront ici" />
+            <EmptyState icon={<History className="w-12 h-12" />} title={t('cloture.noHistory')} description={t('cloture.noHistoryDesc')} />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="nova-table-header">
-                    <th className="text-left p-3">Date</th>
-                    <th className="text-left p-3">Caissier</th>
-                    <th className="text-right p-3">Espèces</th>
-                    <th className="text-right p-3">Mobile</th>
-                    <th className="text-right p-3">CA encaissé</th>
-                    <th className="text-right p-3">Compté</th>
-                    <th className="text-right p-3">Écart</th>
+                    <th className="text-left p-3">{t('cloture.colDate')}</th>
+                    <th className="text-left p-3">{t('cloture.colCashier')}</th>
+                    <th className="text-right p-3">{t('cloture.colCash')}</th>
+                    <th className="text-right p-3">{t('cloture.colMobile')}</th>
+                    <th className="text-right p-3">{t('cloture.colRevenue')}</th>
+                    <th className="text-right p-3">{t('cloture.colCounted')}</th>
+                    <th className="text-right p-3">{t('cloture.colGap')}</th>
                   </tr>
                 </thead>
                 <tbody>

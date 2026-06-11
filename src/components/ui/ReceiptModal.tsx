@@ -4,6 +4,7 @@ import { Sale } from '@/stores/useSaleStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { X, Printer } from 'lucide-react';
 import { formatPrice, formatFCFA, formatDate, formatTime, formatDateShort } from '@/utils/formatters';
+import { useTranslation } from '@/i18n';
 
 interface ReceiptModalProps {
   sale: Sale | null;
@@ -13,12 +14,17 @@ interface ReceiptModalProps {
 
 export const ReceiptModal: React.FC<ReceiptModalProps> = ({ sale, open, onClose }) => {
   const { shop } = useSettingsStore();
+  const { t } = useTranslation();
 
   if (!open || !sale) return null;
 
   const handlePrint = () => window.print();
 
-  const paymentLabel = sale.paymentMode === 'especes' ? 'Espèces' : sale.paymentMode === 'mobile_money' ? 'Mobile Money' : 'Crédit';
+  const paymentLabel = sale.paymentMode === 'especes'
+    ? t('receipt.payEspeces')
+    : sale.paymentMode === 'mobile_money'
+      ? t('receipt.payMobile')
+      : t('receipt.payCredit');
 
   return (
     <>
@@ -35,16 +41,16 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ sale, open, onClose 
 
             <div className="px-6 py-3 border-b border-dashed -gray-300">
               <div className="flex justify-between text-xs text-gray-500">
-                <span>Reçu: {sale.saleNumber}</span>
+                <span>{t('receipt.number')}: {sale.saleNumber}</span>
                 <span>{formatDateShort(new Date(sale.date))}</span>
               </div>
               <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>Caissier: {sale.userName}</span>
+                <span>{t('receipt.cashier')}: {sale.userName}</span>
                 <span>{formatTime(new Date(sale.date))}</span>
               </div>
               {sale.customerName && (
                 <div className="text-xs text-gray-600 mt-2 pt-2 border-t border-dashed border-gray-200">
-                  <span className="font-medium">Client : </span>
+                  <span className="font-medium">{t('receipt.client')} : </span>
                   {sale.customerName}
                 </div>
               )}
@@ -54,9 +60,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ sale, open, onClose 
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b -gray-200">
-                    <th className="text-left py-1 font-medium">Article</th>
-                    <th className="text-center py-1 font-medium">Qté</th>
-                    <th className="text-right py-1 font-medium">Total</th>
+                    <th className="text-left py-1 font-medium">{t('receipt.article')}</th>
+                    <th className="text-center py-1 font-medium">{t('receipt.qty')}</th>
+                    <th className="text-right py-1 font-medium">{t('receipt.total')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -90,21 +96,21 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ sale, open, onClose 
 
             <div className="px-6 py-3 border-t border-dashed -gray-300 space-y-1">
               <div className="flex justify-between text-xs">
-                <span>Sous-total</span>
+                <span>{t('receipt.subtotal')}</span>
                 <span className="tabular-nums">{formatPrice(sale.subtotal)}</span>
               </div>
               {sale.discount > 0 && (
                 <div className="flex justify-between text-xs text-red-500">
-                  <span>Remise ({sale.discount}%)</span>
+                  <span>{t('receipt.discount').replace('{pct}', String(sale.discount))}</span>
                   <span>-{formatFCFA(Math.round(sale.subtotal * sale.discount / 100))}</span>
                 </div>
               )}
               <div className="flex justify-between font-bold text-sm pt-1 border-t -gray-200">
-                <span>TOTAL</span>
+                <span>{t('receipt.grandTotal')}</span>
                 <span className="tabular-nums">{formatPrice(sale.total)}</span>
               </div>
               <div className="flex justify-between text-xs text-gray-500 pt-1">
-                <span>Paiement</span>
+                <span>{t('receipt.payment')}</span>
                 <span className={sale.paymentMode === 'credit' ? 'font-bold text-red-600' : ''}>
                   {paymentLabel}
                 </span>
@@ -112,11 +118,11 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ sale, open, onClose 
               {sale.amountReceived && (
                 <>
                   <div className="flex justify-between text-xs text-gray-500">
-                    <span>Reçu</span>
+                    <span>{t('receipt.received')}</span>
                     <span className="tabular-nums">{formatPrice(sale.amountReceived)}</span>
                   </div>
                   <div className="flex justify-between text-xs text-gray-500">
-                    <span>Monnaie</span>
+                    <span>{t('receipt.change')}</span>
                     <span className="tabular-nums">{formatPrice(sale.changeGiven || 0)}</span>
                   </div>
                 </>
@@ -125,16 +131,16 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ sale, open, onClose 
                 <div className="mt-2 pt-2 border-t -gray-200 space-y-1">
                   <div className="text-center">
                     <span className="inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-700 rounded">
-                      Vente à crédit
+                      {t('receipt.creditLabel')}
                     </span>
                   </div>
                   <div className="flex justify-between text-xs text-red-700 font-medium pt-1">
-                    <span>Restant dû</span>
+                    <span>{t('receipt.balance')}</span>
                     <span className="tabular-nums">{formatPrice(sale.total - (sale.amountPaid ?? 0))}</span>
                   </div>
                   {sale.dueDate && (
                     <div className="flex justify-between text-[11px] text-gray-600">
-                      <span>Échéance</span>
+                      <span>{t('receipt.dueDate')}</span>
                       <span>{new Date(sale.dueDate).toLocaleDateString('fr-FR')}</span>
                     </div>
                   )}
@@ -144,7 +150,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ sale, open, onClose 
 
             {sale.paymentMode === 'credit' && (
               <div className="px-6 py-3 border-t border-dashed -gray-300">
-                <p className="text-[10px] text-gray-500 text-center mb-1">Signature du client (reconnaissance de dette) :</p>
+                <p className="text-[10px] text-gray-500 text-center mb-1">{t('receipt.signature')}</p>
                 <div className="h-10 border-b border-gray-400"></div>
               </div>
             )}
@@ -157,10 +163,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ sale, open, onClose 
           {/* Action buttons */}
           <div className="flex gap-grid mt-4 justify-center">
             <button onClick={handlePrint} className="nova-btn-primary flex items-center gap-2 px-6 py-3">
-              <Printer className="w-4 h-4" /> Imprimer
+              <Printer className="w-4 h-4" /> {t('receipt.print')}
             </button>
             <button onClick={onClose} className="px-6 py-3 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors flex items-center gap-2">
-              <X className="w-4 h-4" /> Fermer
+              <X className="w-4 h-4" /> {t('receipt.close')}
             </button>
           </div>
         </div>

@@ -8,6 +8,7 @@
  * Cluster, heatmap CA, légende complète.
  */
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from '@/i18n';
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
@@ -105,6 +106,7 @@ type MapMode = 'markers' | 'heatmap' | 'both';
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const SAMap: React.FC<Props> = ({ boutiques }) => {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<MapMode>('both');
 
   const geolocated = useMemo(
@@ -142,20 +144,20 @@ export const SAMap: React.FC<Props> = ({ boutiques }) => {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div>
-          <p className="text-sm font-semibold text-foreground">Carte des installations</p>
+          <p className="text-sm font-semibold text-foreground">{t('superadmin.mapCardTitle')}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {geolocated.length}/{boutiques.length} boutiques localisées
+            {t('superadmin.mapLocated').replace('{located}', String(geolocated.length)).replace('{total}', String(boutiques.length))}
             {geolocated.length > 0 && (
               <span className="ml-2">
-                · {preciseCount} rue · {approxCount} ville (IP)
+                · {t('superadmin.mapStreet').replace('{n}', String(preciseCount))} · {t('superadmin.mapCity').replace('{n}', String(approxCount))}
               </span>
             )}
           </p>
         </div>
         <div className="flex gap-2">
-          {modeBtn('markers', 'Marqueurs')}
-          {modeBtn('heatmap', 'Heatmap CA')}
-          {modeBtn('both',    'Les deux')}
+          {modeBtn('markers', t('superadmin.mapModeMarkers'))}
+          {modeBtn('heatmap', t('superadmin.mapModeHeatmap'))}
+          {modeBtn('both',    t('superadmin.mapModeBoth'))}
         </div>
       </div>
 
@@ -175,16 +177,16 @@ export const SAMap: React.FC<Props> = ({ boutiques }) => {
         ))}
         <div className="flex items-center gap-1.5 ml-2 pl-2 border-l border-border/60">
           <MapPin className="w-3 h-3 text-primary" />
-          <span className="text-[10px] text-muted-foreground">Adresse précise</span>
+          <span className="text-[10px] text-muted-foreground">{t('superadmin.mapPrecise')}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <Wifi className="w-3 h-3 text-muted-foreground" />
-          <span className="text-[10px] text-muted-foreground">IP (ville)</span>
+          <span className="text-[10px] text-muted-foreground">{t('superadmin.analyticsIpLabel')}</span>
         </div>
         {mode !== 'markers' && (
           <div className="flex items-center gap-1.5 ml-auto">
             <div className="w-4 h-4 rounded-full bg-primary/20 border border-primary/40" />
-            <span className="text-[10px] text-muted-foreground">Heatmap CA</span>
+            <span className="text-[10px] text-muted-foreground">{t('superadmin.mapModeHeatmap')}</span>
           </div>
         )}
       </div>
@@ -194,9 +196,9 @@ export const SAMap: React.FC<Props> = ({ boutiques }) => {
         <div className="h-96 flex flex-col items-center justify-center gap-3 bg-muted/10">
           <Wifi className="w-8 h-8 text-muted-foreground/40" />
           <div className="text-center">
-            <p className="text-sm font-medium text-muted-foreground">Aucune boutique localisée</p>
+            <p className="text-sm font-medium text-muted-foreground">{t('superadmin.mapNoGeo')}</p>
             <p className="text-xs text-muted-foreground/70 mt-1 max-w-xs">
-              La localisation est automatique au démarrage de l'app (IP). Elle apparaîtra ici au prochain heartbeat.
+              {t('superadmin.mapNoGeoDesc')}
             </p>
           </div>
         </div>
@@ -254,16 +256,16 @@ export const SAMap: React.FC<Props> = ({ boutiques }) => {
                         {/* Location precision badge */}
                         <div className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full mb-2 ${isApprox ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'}`}>
                           {isApprox ? <Wifi className="w-2.5 h-2.5" /> : <MapPin className="w-2.5 h-2.5" />}
-                          {isApprox ? `Position approx. (IP)${b.location?.city ? ` — ${b.location.city}` : ''}` : 'Position précise (adresse)'}
+                          {isApprox ? `${t('superadmin.mapApproxBadge')}${b.location?.city ? ` — ${b.location.city}` : ''}` : t('superadmin.mapPreciseBadge')}
                         </div>
 
                         <div className="space-y-1 text-xs text-gray-700 border-t border-gray-100 pt-2">
-                          <div className="flex justify-between"><span className="text-gray-500">CA total</span><span className="font-semibold">{fmtFCFA(b.stats?.totalRevenue ?? 0)}</span></div>
-                          <div className="flex justify-between"><span className="text-gray-500">Ventes</span><span>{(b.stats?.totalVentes ?? 0).toLocaleString('fr-FR')}</span></div>
-                          <div className="flex justify-between"><span className="text-gray-500">Utilisateurs</span><span>{b.stats?.totalUsers ?? '—'}</span></div>
-                          <div className="flex justify-between"><span className="text-gray-500">Produits</span><span>{b.stats?.totalProducts ?? '—'}</span></div>
-                          <div className="flex justify-between"><span className="text-gray-500">Version</span><span className="font-mono">v{b.version}</span></div>
-                          <div className="flex justify-between"><span className="text-gray-500">Dernière activité</span><span>{fmtDate(lastSeen)}</span></div>
+                          <div className="flex justify-between"><span className="text-gray-500">{t('superadmin.detailStatRevenue')}</span><span className="font-semibold">{fmtFCFA(b.stats?.totalRevenue ?? 0)}</span></div>
+                          <div className="flex justify-between"><span className="text-gray-500">{t('superadmin.detailStatSales')}</span><span>{(b.stats?.totalVentes ?? 0).toLocaleString()}</span></div>
+                          <div className="flex justify-between"><span className="text-gray-500">{t('superadmin.detailStatUsers')}</span><span>{b.stats?.totalUsers ?? '—'}</span></div>
+                          <div className="flex justify-between"><span className="text-gray-500">{t('superadmin.detailStatProducts')}</span><span>{b.stats?.totalProducts ?? '—'}</span></div>
+                          <div className="flex justify-between"><span className="text-gray-500">{t('superadmin.detailVersionLabel')}</span><span className="font-mono">v{b.version}</span></div>
+                          <div className="flex justify-between"><span className="text-gray-500">{t('superadmin.detailLastSeen')}</span><span>{fmtDate(lastSeen)}</span></div>
                         </div>
                       </div>
                     </Popup>
@@ -279,7 +281,7 @@ export const SAMap: React.FC<Props> = ({ boutiques }) => {
       {withoutLocation.length > 0 && (
         <div className="p-3 border-t border-border/60 bg-amber-50/50">
           <p className="text-xs text-amber-700 font-medium mb-1.5">
-            {withoutLocation.length} boutique{withoutLocation.length > 1 ? 's' : ''} sans localisation (heartbeat pas encore reçu)
+            {t('superadmin.mapWithoutLoc').replace('{n}', String(withoutLocation.length))}
           </p>
           <div className="flex flex-wrap gap-1">
             {withoutLocation.map(b => (

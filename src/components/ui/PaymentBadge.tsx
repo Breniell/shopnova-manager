@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/i18n";
 
 export type PaymentMode = "especes" | "mobile_money" | "card" | "credit";
 
@@ -9,6 +10,7 @@ interface PaymentBadgeProps {
 }
 
 export const PaymentBadge = ({ mode, operator, className }: PaymentBadgeProps) => {
+  const { t } = useTranslation();
   if (mode === "especes") {
     return <span className={cn("badge-cash", className)}>CASH</span>;
   }
@@ -25,7 +27,7 @@ export const PaymentBadge = ({ mode, operator, className }: PaymentBadgeProps) =
         "bg-red-500/15 text-red-400 border border-red-500/30",
         className
       )}>
-        Crédit
+        {t('common.creditPayment')}
       </span>
     );
   }

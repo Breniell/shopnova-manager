@@ -32,6 +32,7 @@ import {
   History, Filter, Trash2, Eye, FileX,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from '@/i18n';
 
 type Tab = 'new' | 'edit' | 'history';
 
@@ -41,6 +42,7 @@ const REASONS: AdjustmentReason[] = [
 ];
 
 const InventairePage: React.FC = () => {
+  const { t } = useTranslation();
   const { sessions, createSession, updateLine, validateSession, cancelSession, updateNotes } = useInventoryStore();
   const { products, categories, updateStock } = useProductStore();
   const { addMovement } = useStockStore();
@@ -85,7 +87,7 @@ const InventairePage: React.FC = () => {
   const handleCreate = () => {
     if (!currentUser) return;
     if (productsInScope.length === 0) {
-      toast.error('Aucun produit dans le périmètre choisi');
+      toast.error(t('inventaire.noProductInScope'));
       return;
     }
     try {
@@ -97,13 +99,17 @@ const InventairePage: React.FC = () => {
         userName: `${currentUser.prenom} ${currentUser.nom}`,
         notes: newNotes.trim() || undefined,
       });
-      toast.success(`Session ${session.numero} créée — ${session.lines.length} lignes à compter`);
+      toast.success(
+        t('inventaire.sessionCreated')
+          .replace('{num}', session.numero)
+          .replace('{n}', String(session.lines.length))
+      );
       setActiveSessionId(session.id);
       setTab('edit');
       setNewSelection(new Set());
       setNewNotes('');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erreur');
+      toast.error(err instanceof Error ? err.message : t('common.error'));
     }
   };
 
@@ -163,15 +169,20 @@ const InventairePage: React.FC = () => {
     );
 
     if (result.success === false) {
+      const list = result.missingReasons.slice(0, 3).join(', ') + (result.missingReasons.length > 3 ? '...' : '');
       toast.error(
-        `Motif manquant sur ${result.missingReasons.length} ligne(s) : ${result.missingReasons.slice(0, 3).join(', ')}${result.missingReasons.length > 3 ? '...' : ''}`,
+        t('inventaire.missingReasonToast')
+          .replace('{n}', String(result.missingReasons.length))
+          .replace('{list}', list),
         { duration: 6000 }
       );
       return;
     }
 
     toast.success(
-      `Session ${result.session.numero} validée — ${result.session.lines.filter(l => l.ecart !== 0).length} ajustements effectués`
+      t('inventaire.sessionValidated')
+        .replace('{num}', result.session.numero)
+        .replace('{n}', String(result.session.lines.filter(l => l.ecart !== 0).length))
     );
     setActiveSessionId(null);
     setTab('history');
@@ -179,11 +190,11 @@ const InventairePage: React.FC = () => {
 
   const handleCancel = () => {
     if (!activeSession || !currentUser) return;
-    if (!confirm(`Annuler la session ${activeSession.numero} ? Les saisies seront perdues, les stocks ne seront pas modifiés.`)) {
+    if (!confirm(t('inventaire.cancelConfirm').replace('{num}', activeSession.numero))) {
       return;
     }
     cancelSession(activeSession.id, currentUser.id);
-    toast.success('Session annulée');
+    toast.success(t('inventaire.sessionCancelled'));
     setActiveSessionId(null);
     setTab('new');
   };
@@ -219,10 +230,12 @@ const InventairePage: React.FC = () => {
     <div className="p-4 lg:p-8 animate-fade-in">
       {/* En-tête */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-grid">
-        <h1 className="text-headline-lg nova-heading text-foreground">Inventaire</h1>
+        <h1 className="text-headline-lg nova-heading text-foreground">{t('inventaire.title')}</h1>
         {openSessions.length > 0 && tab !== 'edit' && (
           <div className="text-xs px-3 py-1.5 rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/30">
-            {openSessions.length} session{openSessions.length > 1 ? 's' : ''} en cours
+            {openSessions.length > 1
+              ? t('inventaire.sessionBadgePlural').replace('{n}', String(openSessions.length))
+              : t('inventaire.sessionBadge').replace('{n}', String(openSessions.length))}
           </div>
         )}
       </div>
@@ -237,7 +250,7 @@ const InventairePage: React.FC = () => {
           )}
         >
           <Plus className="w-3.5 h-3.5 inline mr-1" />
-          Nouvelle
+          {t('inventaire.tabNew')}
         </button>
         <button
           onClick={() => setTab('edit')}
@@ -248,7 +261,9 @@ const InventairePage: React.FC = () => {
           )}
         >
           <ClipboardList className="w-3.5 h-3.5 inline mr-1" />
-          Saisie {openSessions.length > 0 && `(${openSessions.length})`}
+          {openSessions.length > 0
+            ? t('inventaire.tabEntry').replace('{n}', String(openSessions.length))
+            : t('inventaire.tabEntry').replace(' ({n})', '')}
         </button>
         <button
           onClick={() => setTab('history')}
@@ -258,24 +273,24 @@ const InventairePage: React.FC = () => {
           )}
         >
           <History className="w-3.5 h-3.5 inline mr-1" />
-          Historique
+          {t('inventaire.tabHistory')}
         </button>
       </div>
 
       {/* ─────────────────────── Onglet : Nouvelle session ─────────────────────── */}
       {tab === 'new' && (
         <div className="space-y-4 max-w-2xl">
-          <NovaCard accent title="Créer une session d'inventaire">
+          <NovaCard accent title={t('inventaire.createCard')}>
             <div className="space-y-4">
               {/* Choix du scope */}
               <div>
-                <label className="text-xs text-muted-foreground mb-2 block">Périmètre</label>
+                <label className="text-xs text-muted-foreground mb-2 block">{t('inventaire.scopeLabel')}</label>
                 <div className="grid grid-cols-3 gap-2">
                   {([
-                    { v: 'complet', l: 'Tout le magasin' },
-                    { v: 'categorie', l: 'Par catégorie' },
-                    { v: 'manuel', l: 'Sélection manuelle' },
-                  ] as { v: InventoryScope; l: string }[]).map(opt => (
+                    { v: 'complet' as InventoryScope, l: t('inventaire.scopeAll') },
+                    { v: 'categorie' as InventoryScope, l: t('inventaire.scopeCategory') },
+                    { v: 'manuel' as InventoryScope, l: t('inventaire.scopeManual') },
+                  ]).map(opt => (
                     <button
                       key={opt.v}
                       onClick={() => setNewScope(opt.v)}
@@ -295,7 +310,7 @@ const InventairePage: React.FC = () => {
               {/* Catégorie si scope=categorie */}
               {newScope === 'categorie' && (
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Catégorie</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t('inventaire.categoryLabel')}</label>
                   <select
                     value={newCategorie}
                     onChange={e => setNewCategorie(e.target.value)}
@@ -310,7 +325,7 @@ const InventairePage: React.FC = () => {
               {newScope === 'manuel' && (
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">
-                    Produits à inclure ({newSelection.size}/{products.length})
+                    {t('inventaire.productsLabel').replace('{n}', String(newSelection.size)).replace('{total}', String(products.length))}
                   </label>
                   <div className="max-h-48 overflow-y-auto border border-border rounded-lg divide-y divide-border">
                     {products.map(p => (
@@ -333,7 +348,7 @@ const InventairePage: React.FC = () => {
                         />
                         <span className="text-sm text-foreground flex-1 truncate">{p.nom}</span>
                         <span className="text-[10px] text-muted-foreground">
-                          Stock : {p.stock}
+                          {t('inventaire.stockLabel').replace('{n}', String(p.stock))}
                         </span>
                       </label>
                     ))}
@@ -343,20 +358,21 @@ const InventairePage: React.FC = () => {
 
               {/* Notes */}
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Notes (optionnel)</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('inventaire.notesLabel')}</label>
                 <textarea
                   value={newNotes}
                   onChange={e => setNewNotes(e.target.value)}
                   className="nova-input w-full h-16 resize-none"
-                  placeholder="Ex : Inventaire mensuel mai 2026"
+                  placeholder={t('inventaire.notesPlaceholder')}
                 />
               </div>
 
               <div className="p-3 rounded-lg bg-muted/40 text-xs text-muted-foreground flex items-start gap-2">
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-400" />
                 <span>
-                  <strong className="text-foreground">{productsInScope.length} produit{productsInScope.length > 1 ? 's' : ''}</strong>{' '}
-                  seront à compter. Idéalement, faites l'inventaire boutique fermée pour éviter les changements de stock pendant le comptage.
+                  {productsInScope.length > 1
+                    ? t('inventaire.warningProductsPlural').replace('{n}', String(productsInScope.length))
+                    : t('inventaire.warningProducts').replace('{n}', String(productsInScope.length))}
                 </span>
               </div>
 
@@ -365,7 +381,7 @@ const InventairePage: React.FC = () => {
                 disabled={productsInScope.length === 0}
                 className="w-full nova-btn-primary py-3 flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                Démarrer la session
+                {t('inventaire.startBtn')}
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -373,7 +389,7 @@ const InventairePage: React.FC = () => {
 
           {/* Sessions ouvertes existantes */}
           {openSessions.length > 0 && (
-            <NovaCard title="Sessions ouvertes">
+            <NovaCard title={t('inventaire.openSessionsCard')}>
               <div className="space-y-2">
                 {openSessions.map(s => (
                   <button
@@ -384,10 +400,10 @@ const InventairePage: React.FC = () => {
                     <div className="text-left">
                       <p className="text-sm font-medium text-foreground">{s.numero}</p>
                       <p className="text-[11px] text-muted-foreground">
-                        {s.scope === 'complet' ? 'Inventaire complet'
-                          : s.scope === 'categorie' ? `Catégorie : ${s.scopeCategorie}`
-                          : 'Sélection manuelle'}
-                        {' · '}{s.lines.length} produits · {formatDateShort(new Date(s.createdAt))}
+                        {s.scope === 'complet' ? t('inventaire.scopeCompleteFull')
+                          : s.scope === 'categorie' ? t('inventaire.scopeCategoryFull').replace('{cat}', s.scopeCategorie ?? '')
+                          : t('inventaire.scopeManualFull')}
+                        {' · '}{t('inventaire.sessionProducts').replace('{n}', String(s.lines.length)).replace('{m}', String(s.lines.filter(l => l.stockCompte !== null).length))} · {formatDateShort(new Date(s.createdAt))}
                       </p>
                     </div>
                     <ArrowRight className="w-4 h-4 text-muted-foreground" />
@@ -405,11 +421,11 @@ const InventairePage: React.FC = () => {
           {!activeSession && openSessions.length === 0 ? (
             <EmptyState
               icon={<ClipboardList className="w-12 h-12" />}
-              title="Aucune session ouverte"
-              description="Créez une nouvelle session dans l'onglet Nouvelle."
+              title={t('inventaire.noOpenSession')}
+              description={t('inventaire.noOpenSessionDesc')}
             />
           ) : !activeSession ? (
-            <NovaCard accent title="Choisir une session à saisir">
+            <NovaCard accent title={t('inventaire.chooseSessionCard')}>
               <div className="space-y-2">
                 {openSessions.map(s => (
                   <button
@@ -420,7 +436,9 @@ const InventairePage: React.FC = () => {
                     <div className="text-left">
                       <p className="text-sm font-medium text-foreground">{s.numero}</p>
                       <p className="text-[11px] text-muted-foreground">
-                        {s.lines.length} produits · {s.lines.filter(l => l.stockCompte !== null).length} comptés
+                        {t('inventaire.sessionProducts')
+                          .replace('{n}', String(s.lines.length))
+                          .replace('{m}', String(s.lines.filter(l => l.stockCompte !== null).length))}
                       </p>
                     </div>
                     <ArrowRight className="w-4 h-4 text-muted-foreground" />
@@ -436,27 +454,29 @@ const InventairePage: React.FC = () => {
                   <div>
                     <p className="text-sm font-semibold text-foreground">{activeSession.numero}</p>
                     <p className="text-[11px] text-muted-foreground">
-                      {activeSession.scope === 'complet' ? 'Inventaire complet'
-                        : activeSession.scope === 'categorie' ? `Catégorie : ${activeSession.scopeCategorie}`
-                        : 'Sélection manuelle'}
-                      {' · démarré le '}{formatDateShort(new Date(activeSession.createdAt))} à {formatTime(new Date(activeSession.createdAt))}
+                      {activeSession.scope === 'complet' ? t('inventaire.scopeCompleteFull')
+                        : activeSession.scope === 'categorie' ? t('inventaire.scopeCategoryFull').replace('{cat}', activeSession.scopeCategorie ?? '')
+                        : t('inventaire.scopeManualFull')}
+                      {' '}{t('inventaire.sessionStarted')
+                        .replace('{date}', formatDateShort(new Date(activeSession.createdAt)))
+                        .replace('{time}', formatTime(new Date(activeSession.createdAt)))}
                     </p>
                   </div>
                   {sessionStats && (
                     <div className="flex gap-4 text-xs">
                       <div className="text-center">
-                        <p className="text-muted-foreground">Comptés</p>
+                        <p className="text-muted-foreground">{t('inventaire.statCounted')}</p>
                         <p className="font-bold text-foreground tabular-nums">{sessionStats.counted} / {sessionStats.total}</p>
                       </div>
                       <div className="text-center">
-                        <p className="text-muted-foreground">Écarts</p>
+                        <p className="text-muted-foreground">{t('inventaire.statGaps')}</p>
                         <p className={cn(
                           'font-bold tabular-nums',
                           sessionStats.withEcart > 0 ? 'text-amber-400' : 'text-foreground'
                         )}>{sessionStats.withEcart}</p>
                       </div>
                       <div className="text-center">
-                        <p className="text-muted-foreground">Motifs manquants</p>
+                        <p className="text-muted-foreground">{t('inventaire.statMissingReasons')}</p>
                         <p className={cn(
                           'font-bold tabular-nums',
                           sessionStats.missingReason > 0 ? 'text-destructive' : 'text-foreground'
@@ -469,11 +489,13 @@ const InventairePage: React.FC = () => {
 
               {/* Filtre */}
               <div className="flex items-center gap-grid">
-                <span className="text-xs text-muted-foreground"><Filter className="w-3.5 h-3.5 inline mr-1" />Afficher :</span>
+                <span className="text-xs text-muted-foreground">
+                  <Filter className="w-3.5 h-3.5 inline mr-1" />{t('inventaire.filterLabel')}
+                </span>
                 {[
-                  { v: 'all' as const, l: 'Tout' },
-                  { v: 'uncounted' as const, l: 'Non comptés' },
-                  { v: 'ecart' as const, l: 'Avec écart' },
+                  { v: 'all' as const, l: t('inventaire.filterAll') },
+                  { v: 'uncounted' as const, l: t('inventaire.filterUncounted') },
+                  { v: 'ecart' as const, l: t('inventaire.filterWithGap') },
                 ].map(opt => (
                   <button
                     key={opt.v}
@@ -494,18 +516,18 @@ const InventairePage: React.FC = () => {
                   <table className="w-full">
                     <thead>
                       <tr className="nova-table-header">
-                        <th className="text-left p-3 text-xs">Produit</th>
-                        <th className="text-right p-3 text-xs w-24">Théorique</th>
-                        <th className="text-right p-3 text-xs w-32">Compté</th>
-                        <th className="text-right p-3 text-xs w-20">Écart</th>
-                        <th className="text-left p-3 text-xs w-44">Motif (si écart)</th>
+                        <th className="text-left p-3 text-xs">{t('inventaire.colProduct')}</th>
+                        <th className="text-right p-3 text-xs w-24">{t('inventaire.colTheoretical')}</th>
+                        <th className="text-right p-3 text-xs w-32">{t('inventaire.colCounted')}</th>
+                        <th className="text-right p-3 text-xs w-20">{t('inventaire.colGap')}</th>
+                        <th className="text-left p-3 text-xs w-44">{t('inventaire.colReason')}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {visibleLines.length === 0 ? (
                         <tr>
                           <td colSpan={5} className="p-6 text-center text-sm text-muted-foreground">
-                            Aucune ligne ne correspond au filtre.
+                            {t('inventaire.noRowMatch')}
                           </td>
                         </tr>
                       ) : visibleLines.map(line => {
@@ -545,7 +567,7 @@ const InventairePage: React.FC = () => {
                                     !line.reason && 'border-destructive/50'
                                   )}
                                 >
-                                  <option value="">— Motif obligatoire —</option>
+                                  <option value="">{t('inventaire.reasonPlaceholder')}</option>
                                   {REASONS.map(r => (
                                     <option key={r} value={r}>{ADJUSTMENT_REASON_LABELS[r]}</option>
                                   ))}
@@ -568,25 +590,25 @@ const InventairePage: React.FC = () => {
                   onClick={handleCancel}
                   className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-destructive/20 hover:text-destructive transition-colors flex items-center justify-center gap-2"
                 >
-                  <FileX className="w-4 h-4" /> Annuler la session
+                  <FileX className="w-4 h-4" /> {t('inventaire.cancelBtn')}
                 </button>
                 <button
                   onClick={() => { setActiveSessionId(null); setTab('new'); }}
                   className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors flex items-center justify-center gap-2"
                 >
-                  <Save className="w-4 h-4" /> Sauvegarder en brouillon
+                  <Save className="w-4 h-4" /> {t('inventaire.draftBtn')}
                 </button>
                 <button
                   onClick={handleValidate}
                   disabled={sessionStats?.missingReason !== 0}
                   className="flex-1 nova-btn-primary py-2.5 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Check className="w-4 h-4" /> Valider la session
+                  <Check className="w-4 h-4" /> {t('inventaire.validateBtn')}
                 </button>
               </div>
               {sessionStats?.missingReason !== 0 && (
                 <p className="text-[11px] text-destructive italic text-center">
-                  Renseignez les motifs des {sessionStats?.missingReason} ligne{sessionStats && sessionStats.missingReason > 1 ? 's' : ''} avec écart avant de valider.
+                  {t('inventaire.missingReasonsWarning').replace('{n}', String(sessionStats?.missingReason ?? 0))}
                 </p>
               )}
             </div>
@@ -600,8 +622,8 @@ const InventairePage: React.FC = () => {
           {validatedSessions.length === 0 ? (
             <EmptyState
               icon={<History className="w-12 h-12" />}
-              title="Aucune session validée"
-              description="L'historique des inventaires terminés apparaîtra ici."
+              title={t('inventaire.noValidatedSession')}
+              description={t('inventaire.noValidatedSessionDesc')}
             />
           ) : (
             <NovaCard accent>
@@ -609,13 +631,13 @@ const InventairePage: React.FC = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="nova-table-header">
-                      <th className="text-left p-3 text-xs">N°</th>
-                      <th className="text-left p-3 text-xs">Périmètre</th>
-                      <th className="text-left p-3 text-xs">Date validation</th>
-                      <th className="text-left p-3 text-xs">Validé par</th>
-                      <th className="text-right p-3 text-xs">Écart qté</th>
-                      <th className="text-right p-3 text-xs">Écart valeur</th>
-                      <th className="text-right p-3 text-xs">Actions</th>
+                      <th className="text-left p-3 text-xs">{t('inventaire.histColNum')}</th>
+                      <th className="text-left p-3 text-xs">{t('inventaire.histColScope')}</th>
+                      <th className="text-left p-3 text-xs">{t('inventaire.histColDate')}</th>
+                      <th className="text-left p-3 text-xs">{t('inventaire.histColUser')}</th>
+                      <th className="text-right p-3 text-xs">{t('inventaire.histColQtyGap')}</th>
+                      <th className="text-right p-3 text-xs">{t('inventaire.histColValueGap')}</th>
+                      <th className="text-right p-3 text-xs">{t('inventaire.histColActions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -623,9 +645,9 @@ const InventairePage: React.FC = () => {
                       <tr key={s.id} className="border-t border-border hover:bg-muted/30">
                         <td className="p-3 text-sm font-medium text-foreground">{s.numero}</td>
                         <td className="p-3 text-xs text-muted-foreground">
-                          {s.scope === 'complet' ? 'Complet'
+                          {s.scope === 'complet' ? t('inventaire.scopeCompleteBadge')
                             : s.scope === 'categorie' ? s.scopeCategorie
-                            : 'Manuel'}
+                            : t('inventaire.scopeManualBadge')}
                         </td>
                         <td className="p-3 text-xs text-muted-foreground whitespace-nowrap">
                           {s.validatedAt ? formatDateShort(new Date(s.validatedAt)) : '—'}
@@ -651,7 +673,7 @@ const InventairePage: React.FC = () => {
                           <button
                             onClick={() => setViewedSession(s)}
                             className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                            aria-label="Voir détails"
+                            aria-label="details"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
@@ -670,24 +692,24 @@ const InventairePage: React.FC = () => {
       <SideDrawer
         open={!!viewedSession}
         onClose={() => setViewedSession(null)}
-        title={viewedSession ? `Inventaire ${viewedSession.numero}` : ''}
+        title={viewedSession ? t('inventaire.drawerTitle').replace('{num}', viewedSession.numero) : ''}
       >
         {viewedSession && (
           <div className="space-y-5">
             <div className="space-y-1 text-sm">
               <p className="text-muted-foreground">
-                <span className="font-medium">Périmètre :</span>{' '}
-                {viewedSession.scope === 'complet' ? 'Inventaire complet'
-                  : viewedSession.scope === 'categorie' ? `Catégorie : ${viewedSession.scopeCategorie}`
-                  : 'Sélection manuelle'}
+                <span className="font-medium">{t('inventaire.drawerScope')}</span>{' '}
+                {viewedSession.scope === 'complet' ? t('inventaire.scopeCompleteFull')
+                  : viewedSession.scope === 'categorie' ? t('inventaire.scopeCategoryFull').replace('{cat}', viewedSession.scopeCategorie ?? '')
+                  : t('inventaire.scopeManualFull')}
               </p>
               <p className="text-muted-foreground">
-                <span className="font-medium">Créé par :</span> {viewedSession.createdByName}{' '}
+                <span className="font-medium">{t('inventaire.drawerCreatedBy')}</span> {viewedSession.createdByName}{' '}
                 — {formatDateShort(new Date(viewedSession.createdAt))}
               </p>
               {viewedSession.validatedAt && (
                 <p className="text-muted-foreground">
-                  <span className="font-medium">Validé par :</span> {viewedSession.validatedByName}{' '}
+                  <span className="font-medium">{t('inventaire.drawerValidatedBy')}</span> {viewedSession.validatedByName}{' '}
                   — {formatDateShort(new Date(viewedSession.validatedAt))}
                 </p>
               )}
@@ -701,7 +723,7 @@ const InventairePage: React.FC = () => {
             {/* Stats */}
             <div className="grid grid-cols-2 gap-2">
               <div className="p-3 rounded-lg bg-muted/40 text-center">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Écart total</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('inventaire.drawerTotalGap')}</p>
                 <p className={cn(
                   'text-lg font-bold tabular-nums',
                   (viewedSession.totalEcartQty ?? 0) < 0 ? 'text-destructive' : 'text-foreground'
@@ -710,7 +732,7 @@ const InventairePage: React.FC = () => {
                 </p>
               </div>
               <div className="p-3 rounded-lg bg-muted/40 text-center">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Valeur</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('inventaire.drawerValue')}</p>
                 <p className={cn(
                   'text-base font-bold tabular-nums',
                   (viewedSession.totalEcartValue ?? 0) < 0 ? 'text-destructive' : 'text-foreground'
@@ -722,11 +744,11 @@ const InventairePage: React.FC = () => {
 
             {/* Lignes avec écart */}
             <div>
-              <h4 className="text-sm font-semibold text-foreground mb-2">Ajustements effectués</h4>
+              <h4 className="text-sm font-semibold text-foreground mb-2">{t('inventaire.drawerAdjustments')}</h4>
               {(() => {
                 const ecartLines = viewedSession.lines.filter(l => l.ecart !== 0);
                 if (ecartLines.length === 0) {
-                  return <p className="text-xs text-muted-foreground italic">Aucun écart détecté — tout balance ✓</p>;
+                  return <p className="text-xs text-muted-foreground italic">{t('inventaire.drawerNoGap')}</p>;
                 }
                 return (
                   <div className="space-y-1.5">

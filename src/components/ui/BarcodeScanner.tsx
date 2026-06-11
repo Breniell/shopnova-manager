@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Camera } from 'lucide-react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
+import { useTranslation } from '@/i18n';
 
 interface BarcodeScannerProps {
   open: boolean;
@@ -10,6 +11,7 @@ interface BarcodeScannerProps {
 }
 
 export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ open, onClose, onScan }) => {
+  const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
   const [manualCode, setManualCode] = useState('');
@@ -52,7 +54,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ open, onClose, o
         }
       } catch (err) {
         if (!cancelled) {
-          setError("Impossible d'accéder à la caméra. Utilisez la saisie manuelle.");
+          setError(t('barcode.cameraError'));
         }
       }
     };
@@ -83,7 +85,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ open, onClose, o
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <Camera className="w-5 h-5 text-primary" />
-            Scanner un code-barres
+            {t('barcode.scanTitle')}
           </DialogTitle>
         </DialogHeader>
 
@@ -115,7 +117,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ open, onClose, o
             {detectedCode && (
               <div className="absolute inset-0 bg-secondary/20 flex items-center justify-center animate-fade-in">
                 <div className="bg-card border border-secondary rounded-lg px-4 py-2">
-                  <p className="text-sm text-secondary font-medium">Code détecté: {detectedCode}</p>
+                  <p className="text-sm text-secondary font-medium">{t('barcode.detected')}: {detectedCode}</p>
                 </div>
               </div>
             )}
@@ -128,10 +130,10 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ open, onClose, o
               value={manualCode}
               onChange={e => setManualCode(e.target.value)}
               className="nova-input flex-1"
-              placeholder="Saisir le code-barres manuellement..."
+              placeholder={t('barcode.placeholder')}
             />
             <button type="submit" className="nova-btn-primary px-4" disabled={!manualCode.trim()}>
-              Valider
+              {t('common.validate')}
             </button>
           </form>
         </div>

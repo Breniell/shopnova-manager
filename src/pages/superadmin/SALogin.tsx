@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { useSuperAdminStore } from '@/stores/useSuperAdminStore';
 import { Shield, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/i18n';
 
 export const SALogin: React.FC = () => {
   const { login, loading, error, clearError } = useSuperAdminStore();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -33,8 +35,8 @@ export const SALogin: React.FC = () => {
               <line x1="20" y1="60" x2="34" y2="60" stroke="white" strokeWidth="6" strokeLinecap="round"/>
             </svg>
           </div>
-          <h1 className="text-xl font-bold text-foreground">Console Super-Admin</h1>
-          <p className="text-sm text-muted-foreground mt-1">Legwan Platform — Accès développeur</p>
+          <h1 className="text-xl font-bold text-foreground">{t('superadmin.loginTitle')}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t('superadmin.loginSubtitle')}</p>
         </div>
 
         {/* Login card */}
@@ -42,13 +44,13 @@ export const SALogin: React.FC = () => {
           <div className="flex items-center gap-2 mb-5 p-3 rounded-lg bg-primary/8 border border-primary/20">
             <Shield className="w-4 h-4 text-primary shrink-0" />
             <p className="text-xs text-muted-foreground">
-              Réservé au développeur Legwan. Identifiants distincts de votre compte boutique.
+              {t('superadmin.loginNote')}
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Email développeur</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('superadmin.loginEmailLabel')}</label>
               <input
                 type="email"
                 value={email}
@@ -62,7 +64,7 @@ export const SALogin: React.FC = () => {
             </div>
 
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Mot de passe Firebase</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('superadmin.loginPasswordLabel')}</label>
               <div className="relative">
                 <input
                   type={showPw ? 'text' : 'password'}
@@ -76,7 +78,7 @@ export const SALogin: React.FC = () => {
                   type="button"
                   onClick={() => setShowPw(v => !v)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label="Afficher/masquer le mot de passe"
+                  aria-label={t('superadmin.loginPasswordAria')}
                 >
                   {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -98,16 +100,16 @@ export const SALogin: React.FC = () => {
               )}
             >
               {loading ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Connexion…</>
+                <><Loader2 className="w-4 h-4 animate-spin" /> {t('superadmin.loginConnecting')}</>
               ) : (
-                'Accéder à la console'
+                t('superadmin.loginButton')
               )}
             </button>
           </form>
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-4">
-          Ce compte Firebase doit être créé manuellement dans Firebase Console.
+          {t('superadmin.loginFooter')}
         </p>
       </div>
     </div>

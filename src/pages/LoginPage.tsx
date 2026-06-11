@@ -182,9 +182,9 @@ const LoginPage: React.FC = () => {
   };
 
   const features = [
-    { icon: ShoppingCart, label: 'Point de vente rapide et intuitif' },
-    { icon: BarChart3, label: 'Rapports et statistiques en temps réel' },
-    { icon: Shield, label: 'Gestion sécurisée par code PIN' },
+    { icon: ShoppingCart, label: t('dashboard.feature1') },
+    { icon: BarChart3, label: t('dashboard.feature2') },
+    { icon: Shield, label: t('dashboard.feature3') },
   ];
 
   return (
@@ -204,7 +204,7 @@ const LoginPage: React.FC = () => {
             </svg>
             <div>
               <h1 className="text-display-md font-bold text-foreground tracking-tight">Legwan</h1>
-              <p className="text-sm text-muted-foreground">La gestion, réinventée.</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.taglinePunct')}</p>
             </div>
           </div>
 

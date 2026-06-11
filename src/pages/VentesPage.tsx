@@ -14,23 +14,26 @@ import { Receipt, Search, Eye, Printer, CalendarIcon, Download, XCircle, AlertTr
 import { exportCSV, exportPDF } from '@/lib/export';
 import { toast } from 'sonner';
 import { formatPrice, formatFCFA, formatTime, formatDateShort, formatDate } from '@/utils/formatters';
+import { useTranslation } from '@/i18n';
 
 const StatusBadgeSale: React.FC<{ status?: string }> = ({ status }) => {
+  const { t } = useTranslation();
   if (status === 'refunded') {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-destructive/15 text-destructive">
-        <XCircle className="w-3 h-3" /> Annulée
+        <XCircle className="w-3 h-3" /> {t('ventes.statusCancelled')}
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-secondary/15 text-secondary">
-      Validée
+      {t('ventes.statusValidated')}
     </span>
   );
 };
 
 const VentesPage: React.FC = () => {
+  const { t } = useTranslation();
   const { sales, refundSale } = useSaleStore();
   const { currentUser } = useAuthStore();
   const [search, setSearch] = useState('');
@@ -81,9 +84,9 @@ const VentesPage: React.FC = () => {
 
   const handleRefund = () => {
     if (!refundTarget || !currentUser) return;
-    if (!refundReason.trim()) { toast.error('Veuillez indiquer un motif d\'annulation'); return; }
+    if (!refundReason.trim()) { toast.error(t('ventes.reasonRequired')); return; }
     refundSale(refundTarget.id, refundReason.trim(), currentUser.id, `${currentUser.prenom} ${currentUser.nom}`);
-    toast.success(`Vente ${refundTarget.saleNumber} annulée — stock restitué`);
+    toast.success(t('ventes.cancelSuccess').replace('{id}', refundTarget.saleNumber));
     setRefundTarget(null);
     setRefundReason('');
     setSelectedSale(null);
@@ -92,10 +95,10 @@ const VentesPage: React.FC = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
-        <h1 className="text-headline-lg nova-heading text-foreground">Historique des ventes</h1>
+        <h1 className="text-headline-lg nova-heading text-foreground">{t('ventes.title')}</h1>
         <div className="flex gap-1 shrink-0">
           <button onClick={() => {
-            const headers = ['ID', 'Date', 'Heure', 'Caissier', 'Articles', 'Total', 'Paiement', 'Statut'];
+            const headers = [t('ventes.colId'), 'Date', 'Heure', t('ventes.colCashier'), t('ventes.colItems'), t('ventes.colTotal'), t('ventes.colPayment'), t('ventes.colStatus')];
             const rows = filtered.map(s => [
               s.saleNumber,
               formatDateShort(new Date(s.date)),
@@ -104,15 +107,15 @@ const VentesPage: React.FC = () => {
               String(s.items.reduce((sum, i) => sum + i.quantity, 0)),
               formatFCFA(s.total),
               s.paymentMode,
-              s.status === 'refunded' ? 'Annulée' : 'Validée',
+              s.status === 'refunded' ? t('ventes.statusCancelled') : t('ventes.statusValidated'),
             ]);
             exportCSV('historique-ventes', headers, rows);
-            toast.success('Export CSV téléchargé');
+            toast.success(t('ventes.exportCsvDone'));
           }} className="nova-btn-secondary flex items-center gap-2 px-3 py-2 text-sm">
             <Download className="w-4 h-4" /> CSV
           </button>
           <button onClick={() => {
-            const headers = ['ID', 'Date', 'Heure', 'Caissier', 'Articles', 'Total', 'Paiement', 'Statut'];
+            const headers = [t('ventes.colId'), 'Date', 'Heure', t('ventes.colCashier'), t('ventes.colItems'), t('ventes.colTotal'), t('ventes.colPayment'), t('ventes.colStatus')];
             const rows = filtered.map(s => [
               s.saleNumber,
               formatDateShort(new Date(s.date)),
@@ -121,14 +124,14 @@ const VentesPage: React.FC = () => {
               String(s.items.reduce((sum, i) => sum + i.quantity, 0)),
               formatFCFA(s.total),
               s.paymentMode,
-              s.status === 'refunded' ? 'Annulée' : 'Validée',
+              s.status === 'refunded' ? t('ventes.statusCancelled') : t('ventes.statusValidated'),
             ]);
             const summary = [
-              `<strong>${activeFiltered.length}</strong>Ventes actives`,
-              `<strong>${formatFCFA(totalRevenue)}</strong>Total`,
-              `<strong>${formatFCFA(avgSale)}</strong>Moyenne`,
+              `<strong>${activeFiltered.length}</strong>${t('ventes.activeCount')}`,
+              `<strong>${formatFCFA(totalRevenue)}</strong>${t('ventes.colTotal')}`,
+              `<strong>${formatFCFA(avgSale)}</strong>${t('ventes.summaryAvg')}`,
             ];
-            exportPDF('Historique des ventes — Legwan', headers, rows, summary);
+            exportPDF(t('ventes.pdfTitle'), headers, rows, summary);
           }} className="nova-btn-secondary flex items-center gap-2 px-3 py-2 text-sm">
             <Download className="w-4 h-4" /> PDF
           </button>
@@ -144,8 +147,8 @@ const VentesPage: React.FC = () => {
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="nova-input w-full pl-10"
-            placeholder="Rechercher par ID ou caissier..."
-            aria-label="Rechercher une vente"
+            placeholder={t('ventes.searchPlaceholder')}
+            aria-label={t('ventes.searchPlaceholder')}
           />
         </div>
 
@@ -153,7 +156,7 @@ const VentesPage: React.FC = () => {
           <PopoverTrigger asChild>
             <Button variant="outline" className={cn("min-w-[140px] justify-start text-left font-normal text-sm", !dateFrom && "text-muted-foreground")}>
               <CalendarIcon className="mr-2 h-4 w-4" />
-              {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Début"}
+              {dateFrom ? format(dateFrom, "dd/MM/yyyy") : t('ventes.dateFrom')}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
@@ -165,7 +168,7 @@ const VentesPage: React.FC = () => {
           <PopoverTrigger asChild>
             <Button variant="outline" className={cn("min-w-[140px] justify-start text-left font-normal text-sm", !dateTo && "text-muted-foreground")}>
               <CalendarIcon className="mr-2 h-4 w-4" />
-              {dateTo ? format(dateTo, "dd/MM/yyyy") : "Fin"}
+              {dateTo ? format(dateTo, "dd/MM/yyyy") : t('ventes.dateTo')}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
@@ -175,7 +178,7 @@ const VentesPage: React.FC = () => {
 
         {(dateFrom || dateTo) && (
           <Button variant="ghost" onClick={() => { setDateFrom(undefined); setDateTo(undefined); }} className="text-muted-foreground hover:text-foreground text-sm">
-            Réinitialiser
+            {t('ventes.resetDates')}
           </Button>
         )}
 
@@ -183,42 +186,42 @@ const VentesPage: React.FC = () => {
           value={paymentFilter}
           onChange={e => setPaymentFilter(e.target.value)}
           className="nova-input min-w-[140px]"
-          aria-label="Filtrer par paiement"
+          aria-label={t('ventes.filterPaymentAria')}
         >
-          <option value="">Tous paiements</option>
-          <option value="especes">Espèces</option>
-          <option value="mobile_money">Mobile Money</option>
+          <option value="">{t('ventes.filterAllPayment')}</option>
+          <option value="especes">{t('ventes.filterCash')}</option>
+          <option value="mobile_money">{t('ventes.filterMobile')}</option>
         </select>
 
         <select
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
           className="nova-input min-w-[130px]"
-          aria-label="Filtrer par statut"
+          aria-label={t('ventes.filterStatusAria')}
         >
-          <option value="">Tous statuts</option>
-          <option value="completed">Validées</option>
-          <option value="refunded">Annulées</option>
+          <option value="">{t('ventes.filterAllStatus')}</option>
+          <option value="completed">{t('ventes.filterValidated')}</option>
+          <option value="refunded">{t('ventes.filterCancelled')}</option>
         </select>
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState icon={<Receipt className="w-12 h-12" />} title="Aucune vente" description="Les ventes apparaîtront ici" />
+        <EmptyState icon={<Receipt className="w-12 h-12" />} title={t('ventes.noSale')} description={t('ventes.noSaleDesc')} />
       ) : (
         <>
           <div className="nova-card overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px]" role="table" aria-label="Liste des ventes">
+              <table className="w-full min-w-[640px]" role="table" aria-label={t('ventes.listAria')}>
                 <thead>
                   <tr className="nova-table-header">
-                    <th className="text-left p-3">ID</th>
-                    <th className="text-left p-3">Date / Heure</th>
-                    <th className="text-left p-3 hidden sm:table-cell">Caissier</th>
-                    <th className="text-right p-3 hidden sm:table-cell">Articles</th>
-                    <th className="text-right p-3">Total</th>
-                    <th className="text-center p-3 hidden md:table-cell">Paiement</th>
-                    <th className="text-center p-3">Statut</th>
-                    <th className="text-right p-3">Actions</th>
+                    <th className="text-left p-3">{t('ventes.colId')}</th>
+                    <th className="text-left p-3">{t('ventes.colDateTime')}</th>
+                    <th className="text-left p-3 hidden sm:table-cell">{t('ventes.colCashier')}</th>
+                    <th className="text-right p-3 hidden sm:table-cell">{t('ventes.colItems')}</th>
+                    <th className="text-right p-3">{t('ventes.colTotal')}</th>
+                    <th className="text-center p-3 hidden md:table-cell">{t('ventes.colPayment')}</th>
+                    <th className="text-center p-3">{t('ventes.colStatus')}</th>
+                    <th className="text-right p-3">{t('ventes.colActions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -253,7 +256,7 @@ const VentesPage: React.FC = () => {
                           <button
                             onClick={(e) => { e.stopPropagation(); setSelectedSale(s); }}
                             className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                            aria-label="Voir les détails"
+                            aria-label={t('ventes.viewDetailsAria')}
                           >
                             <Eye className="w-4 h-4" />
                           </button>
@@ -261,8 +264,8 @@ const VentesPage: React.FC = () => {
                             <button
                               onClick={(e) => { e.stopPropagation(); setRefundTarget(s); setRefundReason(''); }}
                               className="p-1.5 rounded-lg hover:bg-destructive/20 transition-colors text-muted-foreground hover:text-destructive"
-                              aria-label="Annuler la vente"
-                              title="Annuler la vente"
+                              aria-label={t('ventes.confirmCancelAria')}
+                              title={t('ventes.confirmCancelAria')}
                             >
                               <XCircle className="w-4 h-4" />
                             </button>
@@ -279,19 +282,25 @@ const VentesPage: React.FC = () => {
           {/* Summary bar */}
           <div className="mt-4 nova-card px-4 lg:px-5 py-3 flex flex-wrap items-center justify-between gap-2">
             <span className="text-sm text-muted-foreground">
-              {filtered.length} vente{filtered.length > 1 ? 's' : ''} affichée{filtered.length > 1 ? 's' : ''}
+              {(filtered.length > 1
+                ? t('ventes.summaryShownPlural')
+                : t('ventes.summaryShown')
+              ).replace('{n}', String(filtered.length))}
               {filtered.length !== activeFiltered.length && (
                 <span className="ml-2 text-destructive/70">
-                  ({filtered.length - activeFiltered.length} annulée{filtered.length - activeFiltered.length > 1 ? 's' : ''})
+                  ({(filtered.length - activeFiltered.length > 1
+                    ? t('ventes.summaryCancelledPlural')
+                    : t('ventes.summaryCancelled')
+                  ).replace('{n}', String(filtered.length - activeFiltered.length))})
                 </span>
               )}
             </span>
             <div className="flex flex-wrap gap-3 lg:gap-6">
               <span className="text-sm text-muted-foreground">
-                CA: <strong className="text-foreground tabular-nums">{formatFCFA(totalRevenue)}</strong>
+                {t('ventes.summaryRevenue')}: <strong className="text-foreground tabular-nums">{formatFCFA(totalRevenue)}</strong>
               </span>
               <span className="text-sm text-muted-foreground">
-                Moyenne: <strong className="text-foreground tabular-nums">{formatFCFA(avgSale)}</strong>/vente
+                {t('ventes.summaryAvg')}: <strong className="text-foreground tabular-nums">{formatFCFA(avgSale)}</strong>{t('ventes.summaryAvgUnit')}
               </span>
             </div>
           </div>
@@ -299,38 +308,38 @@ const VentesPage: React.FC = () => {
       )}
 
       {/* Sale detail drawer */}
-      <SideDrawer open={!!selectedSale} onClose={() => setSelectedSale(null)} title={`Vente ${selectedSale?.saleNumber || ''}`}>
+      <SideDrawer open={!!selectedSale} onClose={() => setSelectedSale(null)} title={t('ventes.drawerTitle').replace('{id}', selectedSale?.saleNumber || '')}>
         {selectedSale && (
           <div className="space-y-6">
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Statut</span>
+                <span className="text-muted-foreground">{t('ventes.detailStatus')}</span>
                 <StatusBadgeSale status={selectedSale.status} />
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Date</span>
+                <span className="text-muted-foreground">{t('ventes.detailDate')}</span>
                 <span className="text-foreground">{formatDateShort(new Date(selectedSale.date))} {formatTime(new Date(selectedSale.date))}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Caissier</span>
+                <span className="text-muted-foreground">{t('ventes.detailCashier')}</span>
                 <span className="text-foreground">{selectedSale.userName}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Paiement</span>
+                <span className="text-muted-foreground">{t('ventes.detailPayment')}</span>
                 <PaymentBadge mode={selectedSale.paymentMode} />
               </div>
               {selectedSale.status === 'refunded' && (
                 <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 space-y-1">
-                  <p className="text-xs font-medium text-destructive">Vente annulée</p>
-                  {selectedSale.refundReason && <p className="text-xs text-destructive/80">Motif : {selectedSale.refundReason}</p>}
-                  {selectedSale.refundedBy && <p className="text-xs text-destructive/80">Par : {selectedSale.refundedBy}</p>}
+                  <p className="text-xs font-medium text-destructive">{t('ventes.saleRefunded')}</p>
+                  {selectedSale.refundReason && <p className="text-xs text-destructive/80">{t('ventes.refundReason')} : {selectedSale.refundReason}</p>}
+                  {selectedSale.refundedBy && <p className="text-xs text-destructive/80">{t('ventes.refundBy')} : {selectedSale.refundedBy}</p>}
                   {selectedSale.refundedAt && <p className="text-xs text-muted-foreground">{formatDate(new Date(selectedSale.refundedAt))}</p>}
                 </div>
               )}
             </div>
 
             <div>
-              <h4 className="text-sm font-medium text-foreground mb-3">Articles</h4>
+              <h4 className="text-sm font-medium text-foreground mb-3">{t('ventes.itemsSection')}</h4>
               <div className="space-y-2">
                 {selectedSale.items.map((item, i) => (
                   <div key={i} className="flex justify-between text-sm p-2 rounded-lg bg-muted/30">
@@ -346,17 +355,17 @@ const VentesPage: React.FC = () => {
 
             <div className="border-t border-border pt-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Sous-total</span>
+                <span className="text-muted-foreground">{t('ventes.subtotal')}</span>
                 <span className="text-foreground tabular-nums">{formatPrice(selectedSale.subtotal)}</span>
               </div>
               {selectedSale.discount > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Remise</span>
+                  <span className="text-muted-foreground">{t('ventes.discount')}</span>
                   <span className="text-destructive">{selectedSale.discount}%</span>
                 </div>
               )}
               <div className="flex justify-between text-base font-semibold">
-                <span className="text-foreground">Total</span>
+                <span className="text-foreground">{t('ventes.total')}</span>
                 <span className="text-primary tabular-nums">{formatPrice(selectedSale.total)}</span>
               </div>
             </div>
@@ -365,17 +374,17 @@ const VentesPage: React.FC = () => {
               <button
                 onClick={() => { setReceiptSale(selectedSale); setSelectedSale(null); }}
                 className="nova-btn-primary w-full flex items-center justify-center gap-2 py-3"
-                aria-label="Réimprimer le reçu"
+                aria-label={t('ventes.reprint')}
               >
-                <Printer className="w-4 h-4" /> Réimprimer le reçu
+                <Printer className="w-4 h-4" /> {t('ventes.reprint')}
               </button>
               {isGerant && selectedSale.status !== 'refunded' && (
                 <button
                   onClick={() => { setRefundTarget(selectedSale); setRefundReason(''); setSelectedSale(null); }}
                   className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors text-sm font-medium"
-                  aria-label="Annuler cette vente"
+                  aria-label={t('ventes.cancelSale')}
                 >
-                  <XCircle className="w-4 h-4" /> Annuler la vente
+                  <XCircle className="w-4 h-4" /> {t('ventes.cancelSale')}
                 </button>
               )}
             </div>
@@ -390,7 +399,7 @@ const VentesPage: React.FC = () => {
           onClick={() => setRefundTarget(null)}
           role="dialog"
           aria-modal="true"
-          aria-label="Confirmer l'annulation"
+          aria-label={t('ventes.confirmCancelAria')}
         >
           <div className="nova-card w-full max-w-[420px] p-5 lg:p-6 animate-scale-in" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3 mb-5">
@@ -398,24 +407,24 @@ const VentesPage: React.FC = () => {
                 <AlertTriangle className="w-5 h-5 text-destructive" />
               </div>
               <div>
-                <h2 className="nova-heading text-base text-foreground">Annuler la vente</h2>
+                <h2 className="nova-heading text-base text-foreground">{t('ventes.confirmTitle')}</h2>
                 <p className="text-xs text-muted-foreground">{refundTarget.saleNumber} · {formatFCFA(refundTarget.total)}</p>
               </div>
             </div>
 
             <p className="text-sm text-muted-foreground mb-4">
-              Cette action est irréversible. Le stock sera automatiquement restitué pour chaque article.
+              {t('ventes.confirmWarning')}
             </p>
 
             <div className="mb-5">
-              <label className="text-xs text-muted-foreground mb-1.5 block">Motif d'annulation *</label>
+              <label className="text-xs text-muted-foreground mb-1.5 block">{t('ventes.reasonLabel')} *</label>
               <textarea
                 value={refundReason}
                 onChange={e => setRefundReason(e.target.value)}
                 className="nova-input w-full h-20 resize-none"
-                placeholder="Ex: Erreur de caisse, retour client..."
+                placeholder={t('ventes.reasonPlaceholder')}
                 autoFocus
-                aria-label="Motif d'annulation"
+                aria-label={t('ventes.reasonLabel')}
               />
             </div>
 
@@ -424,14 +433,14 @@ const VentesPage: React.FC = () => {
                 onClick={() => setRefundTarget(null)}
                 className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors text-sm"
               >
-                Annuler
+                {t('ventes.cancelBtn')}
               </button>
               <button
                 onClick={handleRefund}
                 disabled={!refundReason.trim()}
                 className="flex-1 py-2.5 rounded-lg bg-destructive text-white hover:bg-destructive/90 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Confirmer l'annulation
+                {t('ventes.confirmBtn')}
               </button>
             </div>
           </div>

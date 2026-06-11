@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useProductStore } from '@/stores/useProductStore';
 import { useStockStore } from '@/stores/useStockStore';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -9,36 +9,42 @@ import { StatCard } from '@/components/ui/StatCard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { getStockStatus, cn } from '@/lib/utils';
-import { Package, AlertTriangle, TrendingDown, Warehouse, Plus, X, Mail, Send, ChevronDown } from 'lucide-react';
+import { Package, AlertTriangle, TrendingDown, Warehouse, Plus, X, Mail, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatFCFA, formatDateShort, formatTime } from '@/utils/formatters';
+import { useTranslation } from '@/i18n';
 import type { Product } from '@/stores/useProductStore';
 
-// ─── Email builder ────────────────────────────────────────────────────────────
 function buildMailtoLink(
   supplierEmail: string,
   supplierName: string,
   shopName: string,
   products: Product[],
+  tr: {
+    subject: string;
+    greeting: string;
+    intro: string;
+    stockInfo: string;
+    closing: string;
+    salutation: string;
+  },
 ): string {
-  const subject = encodeURIComponent(`Commande urgente – ${shopName}`);
-
+  const subject = encodeURIComponent(tr.subject.replace('{shop}', shopName));
   const productLines = products
-    .map(p => `  - ${p.nom} (stock actuel : ${p.stock}, seuil : ${p.seuilAlerte})`)
+    .map(p => `  - ${p.nom} (${tr.stockInfo.replace('{stock}', String(p.stock)).replace('{seuil}', String(p.seuilAlerte))})`)
     .join('\n');
-
   const body = encodeURIComponent(
-    `Bonjour ${supplierName},\n\n` +
-    `Nous vous contactons depuis ${shopName} concernant les produits suivants qui sont en rupture ou en stock critique :\n\n` +
+    `${tr.greeting.replace('{name}', supplierName)}\n\n` +
+    `${tr.intro.replace('{shop}', shopName)}\n\n` +
     `${productLines}\n\n` +
-    `Merci de nous informer de vos délais de livraison et de nous envoyer votre devis dans les plus brefs délais.\n\n` +
-    `Cordialement,\n${shopName}`
+    `${tr.closing}\n\n` +
+    `${tr.salutation}\n${shopName}`
   );
-
   return `mailto:${supplierEmail}?subject=${subject}&body=${body}`;
 }
 
 const StockPage: React.FC = () => {
+  const { t } = useTranslation();
   const { products, updateStock } = useProductStore();
   const { movements, addMovement } = useStockStore();
   const { currentUser } = useAuthStore();
@@ -47,7 +53,6 @@ const StockPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'etat' | 'historique' | 'alertes'>('etat');
 
-  // ── Stock entry modal ──
   const [showModal, setShowModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState('');
   const [qty, setQty] = useState('');
@@ -55,7 +60,6 @@ const StockPage: React.FC = () => {
   const [supplier, setSupplier] = useState('');
   const [notes, setNotes] = useState('');
 
-  // ── Email modal ──
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
   const [selectedAlertProducts, setSelectedAlertProducts] = useState<Set<string>>(new Set());
@@ -75,7 +79,7 @@ const StockPage: React.FC = () => {
 
   const handleSubmit = () => {
     if (!selectedProduct || !qty) {
-      toast.error('Veuillez sélectionner un produit et une quantité');
+      toast.error(t('stock.selectRequired'));
       return;
     }
     const product = products.find(p => p.id === selectedProduct);
@@ -98,7 +102,7 @@ const StockPage: React.FC = () => {
       notes,
     });
 
-    toast.success(`${quantity} unités ajoutées à ${product.nom}`);
+    toast.success(t('stock.entrySuccess').replace('{qty}', String(quantity)).replace('{product}', product.nom));
     setShowModal(false);
     setSelectedProduct('');
     setQty('');
@@ -122,17 +126,24 @@ const StockPage: React.FC = () => {
   const handleSendEmail = () => {
     const s = suppliers.find(sup => sup.id === selectedSupplierId);
     if (!s || !s.email) {
-      toast.error('Sélectionnez un fournisseur avec un email');
+      toast.error(t('stock.supplierRequired'));
       return;
     }
     if (selectedAlertProducts.size === 0) {
-      toast.error('Sélectionnez au moins un produit');
+      toast.error(t('stock.productMinOne'));
       return;
     }
     const chosen = alertProducts.filter(p => selectedAlertProducts.has(p.id));
-    const link = buildMailtoLink(s.email, s.nom, shop.nom, chosen);
+    const link = buildMailtoLink(s.email, s.nom, shop.nom, chosen, {
+      subject:     t('stock.emailSubject'),
+      greeting:    t('stock.emailBodyGreeting'),
+      intro:       t('stock.emailBodyIntro'),
+      stockInfo:   t('stock.emailBodyStockInfo'),
+      closing:     t('stock.emailBodyClosing'),
+      salutation:  t('stock.emailBodySalutation'),
+    });
     window.open(link, '_blank');
-    toast.success('Application mail ouverte avec le message pré-rempli');
+    toast.success(t('stock.mailOpened'));
     setShowEmailModal(false);
   };
 
@@ -145,7 +156,7 @@ const StockPage: React.FC = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
-        <h1 className="text-headline-lg nova-heading text-foreground">Gestion du stock</h1>
+        <h1 className="text-headline-lg nova-heading text-foreground">{t('stock.title')}</h1>
         <div className="flex gap-2">
           {alertProducts.length > 0 && (
             <button
@@ -153,15 +164,15 @@ const StockPage: React.FC = () => {
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors text-sm font-medium"
             >
               <Mail className="w-4 h-4" />
-              <span className="hidden sm:inline">Alerter fournisseur</span>
-              <span className="sm:hidden">Email</span>
+              <span className="hidden sm:inline">{t('stock.alertBtn')}</span>
+              <span className="sm:hidden">{t('stock.alertBtnShort')}</span>
               <span className="bg-amber-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
                 {alertProducts.length}
               </span>
             </button>
           )}
           <button onClick={() => setShowModal(true)} className="nova-btn-primary flex items-center gap-2 px-5 py-2.5 shrink-0">
-            <Plus className="w-4 h-4" /> Entrée de stock
+            <Plus className="w-4 h-4" /> {t('stock.entryBtn')}
           </button>
         </div>
       </div>
@@ -169,13 +180,13 @@ const StockPage: React.FC = () => {
       {/* Tabs */}
       <div className="flex gap-1 mb-6 bg-muted rounded-lg p-1 w-fit overflow-x-auto">
         <button onClick={() => setActiveTab('etat')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap', activeTab === 'etat' ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground')}>
-          État du stock
+          {t('stock.tabState')}
         </button>
         <button onClick={() => setActiveTab('historique')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap', activeTab === 'historique' ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground')}>
-          Historique
+          {t('stock.tabHistory')}
         </button>
         <button onClick={() => setActiveTab('alertes')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5', activeTab === 'alertes' ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground')}>
-          Alertes
+          {t('stock.tabAlerts')}
           {alertProducts.length > 0 && (
             <span className="bg-destructive text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
               {alertProducts.length > 9 ? '9+' : alertProducts.length}
@@ -188,10 +199,10 @@ const StockPage: React.FC = () => {
       {activeTab === 'etat' && (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
-            <StatCard icon={<Package className="w-4 h-4 text-primary" />} iconBg="bg-primary/20" value={String(products.length)} label="Total produits" />
-            <StatCard icon={<AlertTriangle className="w-4 h-4 text-destructive" />} iconBg="bg-destructive/20" value={String(outOfStock.length)} label="En rupture" />
-            <StatCard icon={<TrendingDown className="w-4 h-4 text-amber-400" />} iconBg="bg-amber-500/20" value={String(lowStock.length)} label="Stock faible" />
-            <StatCard icon={<Warehouse className="w-4 h-4 text-secondary" />} iconBg="bg-secondary/20" value={formatFCFA(totalValue)} label="Valeur totale" />
+            <StatCard icon={<Package className="w-4 h-4 text-primary" />} iconBg="bg-primary/20" value={String(products.length)} label={t('stock.statTotal')} />
+            <StatCard icon={<AlertTriangle className="w-4 h-4 text-destructive" />} iconBg="bg-destructive/20" value={String(outOfStock.length)} label={t('stock.statOutOfStock')} />
+            <StatCard icon={<TrendingDown className="w-4 h-4 text-amber-400" />} iconBg="bg-amber-500/20" value={String(lowStock.length)} label={t('stock.statLowStock')} />
+            <StatCard icon={<Warehouse className="w-4 h-4 text-secondary" />} iconBg="bg-secondary/20" value={formatFCFA(totalValue)} label={t('stock.statValue')} />
           </div>
 
           <div className="nova-card overflow-hidden">
@@ -199,11 +210,11 @@ const StockPage: React.FC = () => {
               <table className="w-full min-w-[500px]">
                 <thead>
                   <tr className="nova-table-header">
-                    <th className="text-left p-3">Produit</th>
-                    <th className="text-left p-3 hidden sm:table-cell">Catégorie</th>
-                    <th className="text-right p-3">Stock</th>
-                    <th className="text-right p-3 hidden sm:table-cell">Seuil</th>
-                    <th className="text-center p-3">Statut</th>
+                    <th className="text-left p-3">{t('stock.colProduct')}</th>
+                    <th className="text-left p-3 hidden sm:table-cell">{t('stock.colCategory')}</th>
+                    <th className="text-right p-3">{t('stock.colStock')}</th>
+                    <th className="text-right p-3 hidden sm:table-cell">{t('stock.colThreshold')}</th>
+                    <th className="text-center p-3">{t('stock.colStatus')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -227,20 +238,20 @@ const StockPage: React.FC = () => {
       {activeTab === 'historique' && (
         <div className="nova-card overflow-hidden">
           {movements.length === 0 ? (
-            <EmptyState icon={<Warehouse className="w-12 h-12" />} title="Aucun mouvement" description="Les mouvements de stock apparaîtront ici" />
+            <EmptyState icon={<Warehouse className="w-12 h-12" />} title={t('stock.noMovement')} description={t('stock.noMovementDesc')} />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[700px]">
                 <thead>
                   <tr className="nova-table-header">
-                    <th className="text-left p-3">Date</th>
-                    <th className="text-left p-3">Produit</th>
-                    <th className="text-left p-3">Type</th>
-                    <th className="text-right p-3">Qté</th>
-                    <th className="text-right p-3 hidden md:table-cell">Avant</th>
-                    <th className="text-right p-3 hidden md:table-cell">Après</th>
-                    <th className="text-left p-3 hidden sm:table-cell">Utilisateur</th>
-                    <th className="text-left p-3 hidden lg:table-cell">Notes</th>
+                    <th className="text-left p-3">{t('stock.colDate')}</th>
+                    <th className="text-left p-3">{t('stock.colProduct')}</th>
+                    <th className="text-left p-3">{t('stock.colType')}</th>
+                    <th className="text-right p-3">{t('stock.colQty')}</th>
+                    <th className="text-right p-3 hidden md:table-cell">{t('stock.colBefore')}</th>
+                    <th className="text-right p-3 hidden md:table-cell">{t('stock.colAfter')}</th>
+                    <th className="text-left p-3 hidden sm:table-cell">{t('stock.colUser')}</th>
+                    <th className="text-left p-3 hidden lg:table-cell">{t('stock.colNotes')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -276,36 +287,36 @@ const StockPage: React.FC = () => {
             <NovaCard>
               <EmptyState
                 icon={<Package className="w-12 h-12" />}
-                title="Aucune alerte"
-                description="Tous les produits sont au-dessus de leur seuil d'alerte"
+                title={t('stock.noAlert')}
+                description={t('stock.noAlertDesc')}
               />
             </NovaCard>
           ) : (
             <>
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm text-muted-foreground">
-                  {outOfStock.length > 0 && <span className="text-destructive font-medium">{outOfStock.length} en rupture</span>}
+                  {outOfStock.length > 0 && <span className="text-destructive font-medium">{t('stock.outOfStockCount').replace('{n}', String(outOfStock.length))}</span>}
                   {outOfStock.length > 0 && lowStock.length > 0 && <span className="text-muted-foreground"> · </span>}
-                  {lowStock.length > 0 && <span className="text-amber-400 font-medium">{lowStock.length} stock faible</span>}
+                  {lowStock.length > 0 && <span className="text-amber-400 font-medium">{t('stock.lowStockCount').replace('{n}', String(lowStock.length))}</span>}
                 </p>
                 <button onClick={openEmailModal} className="flex items-center gap-2 nova-btn-primary px-4 py-2 text-sm">
-                  <Send className="w-4 h-4" /> Envoyer email fournisseur
+                  <Send className="w-4 h-4" /> {t('stock.sendEmailBtn')}
                 </button>
               </div>
 
               {outOfStock.length > 0 && (
                 <div className="mb-4">
                   <h3 className="text-sm font-semibold text-destructive mb-2 flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4" /> Rupture de stock
+                    <AlertTriangle className="w-4 h-4" /> {t('stock.outOfStockTitle')}
                   </h3>
                   <div className="nova-card overflow-hidden">
                     <table className="w-full">
                       <thead>
                         <tr className="nova-table-header">
-                          <th className="text-left p-3">Produit</th>
-                          <th className="text-left p-3 hidden sm:table-cell">Catégorie</th>
-                          <th className="text-right p-3">Stock</th>
-                          <th className="text-right p-3">Seuil</th>
+                          <th className="text-left p-3">{t('stock.colProduct')}</th>
+                          <th className="text-left p-3 hidden sm:table-cell">{t('stock.colCategory')}</th>
+                          <th className="text-right p-3">{t('stock.colStock')}</th>
+                          <th className="text-right p-3">{t('stock.colThreshold')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -326,16 +337,16 @@ const StockPage: React.FC = () => {
               {lowStock.length > 0 && (
                 <div>
                   <h3 className="text-sm font-semibold text-amber-400 mb-2 flex items-center gap-2">
-                    <TrendingDown className="w-4 h-4" /> Stock faible
+                    <TrendingDown className="w-4 h-4" /> {t('stock.lowStockTitle')}
                   </h3>
                   <div className="nova-card overflow-hidden">
                     <table className="w-full">
                       <thead>
                         <tr className="nova-table-header">
-                          <th className="text-left p-3">Produit</th>
-                          <th className="text-left p-3 hidden sm:table-cell">Catégorie</th>
-                          <th className="text-right p-3">Stock</th>
-                          <th className="text-right p-3">Seuil</th>
+                          <th className="text-left p-3">{t('stock.colProduct')}</th>
+                          <th className="text-left p-3 hidden sm:table-cell">{t('stock.colCategory')}</th>
+                          <th className="text-right p-3">{t('stock.colStock')}</th>
+                          <th className="text-right p-3">{t('stock.colThreshold')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -362,37 +373,37 @@ const StockPage: React.FC = () => {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
           <div className="nova-card w-full max-w-[480px] p-5 lg:p-6 animate-scale-in" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="nova-heading text-lg text-foreground">Entrée de stock</h2>
+              <h2 className="nova-heading text-lg text-foreground">{t('stock.entryModalTitle')}</h2>
               <button onClick={() => setShowModal(false)} className="p-2 rounded-lg hover:bg-muted"><X className="w-5 h-5 text-muted-foreground" /></button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Produit *</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('stock.labelProduct')}</label>
                 <select value={selectedProduct} onChange={e => handleProductSelect(e.target.value)} className="nova-input w-full">
-                  <option value="">Sélectionner...</option>
+                  <option value="">{t('stock.selectProduct')}</option>
                   {products.map(p => <option key={p.id} value={p.id}>{p.nom} (stock: {p.stock})</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Quantité reçue *</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('stock.labelQty')}</label>
                 <input type="number" value={qty} onChange={e => setQty(e.target.value)} className="nova-input w-full" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Prix d'achat unitaire</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('stock.labelUnitPrice')}</label>
                 <input type="number" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} className="nova-input w-full" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Fournisseur</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('stock.labelSupplier')}</label>
                 <input type="text" value={supplier} onChange={e => setSupplier(e.target.value)} className="nova-input w-full" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Notes</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('stock.labelNotes')}</label>
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} className="nova-input w-full h-20 resize-none" />
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowModal(false)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors">Annuler</button>
-              <button onClick={handleSubmit} className="flex-1 nova-btn-primary py-2.5">Valider l'entrée</button>
+              <button onClick={() => setShowModal(false)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors">{t('stock.cancel')}</button>
+              <button onClick={handleSubmit} className="flex-1 nova-btn-primary py-2.5">{t('stock.validateEntry')}</button>
             </div>
           </div>
         </div>
@@ -404,18 +415,17 @@ const StockPage: React.FC = () => {
           <div className="nova-card w-full max-w-[520px] p-5 lg:p-6 animate-scale-in max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h2 className="nova-heading text-lg text-foreground">Email fournisseur</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Un email pré-rempli sera ouvert dans votre messagerie</p>
+                <h2 className="nova-heading text-lg text-foreground">{t('stock.emailModalTitle')}</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">{t('stock.emailModalSubtitle')}</p>
               </div>
               <button onClick={() => setShowEmailModal(false)} className="p-2 rounded-lg hover:bg-muted"><X className="w-5 h-5 text-muted-foreground" /></button>
             </div>
 
-            {/* Supplier selector */}
             <div className="mb-4">
-              <label className="text-xs text-muted-foreground mb-1 block">Fournisseur destinataire *</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('stock.labelRecipient')}</label>
               {suppliersWithEmail.length === 0 ? (
                 <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400">
-                  Aucun fournisseur n'a d'email enregistré. Ajoutez un email dans la fiche fournisseur.
+                  {t('stock.noSupplierEmail')}
                 </div>
               ) : (
                 <select
@@ -423,7 +433,7 @@ const StockPage: React.FC = () => {
                   onChange={e => setSelectedSupplierId(e.target.value)}
                   className="nova-input w-full"
                 >
-                  <option value="">Sélectionner un fournisseur...</option>
+                  <option value="">{t('stock.selectSupplier')}</option>
                   {suppliersWithEmail.map(s => (
                     <option key={s.id} value={s.id}>{s.nom} — {s.email}</option>
                   ))}
@@ -431,11 +441,10 @@ const StockPage: React.FC = () => {
               )}
             </div>
 
-            {/* Product selection */}
             <div className="mb-5">
               <div className="flex items-center justify-between mb-2">
-                <label className="text-xs text-muted-foreground">Produits à inclure</label>
-                <button onClick={selectAllAlerts} className="text-xs text-primary hover:underline">Tout sélectionner</button>
+                <label className="text-xs text-muted-foreground">{t('stock.productsLabel')}</label>
+                <button onClick={selectAllAlerts} className="text-xs text-primary hover:underline">{t('stock.selectAll')}</button>
               </div>
               <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                 {alertProducts.map(p => (
@@ -453,7 +462,9 @@ const StockPage: React.FC = () => {
                     />
                     <div className="flex-1 min-w-0">
                       <span className="text-sm font-medium text-foreground block truncate">{p.nom}</span>
-                      <span className="text-xs text-muted-foreground">Stock : {p.stock} / Seuil : {p.seuilAlerte}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {t('stock.stockInfo').replace('{stock}', String(p.stock)).replace('{seuil}', String(p.seuilAlerte))}
+                      </span>
                     </div>
                     <StatusBadge status={getStockStatus(p.stock, p.seuilAlerte)} />
                   </label>
@@ -461,26 +472,25 @@ const StockPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Preview */}
             {selectedSupplierId && selectedAlertProducts.size > 0 && (() => {
               const s = suppliers.find(sup => sup.id === selectedSupplierId);
               if (!s) return null;
               return (
                 <div className="mb-5 p-3 rounded-lg bg-muted/30 border border-border">
-                  <p className="text-xs text-muted-foreground mb-1 font-medium">Aperçu de l'objet</p>
-                  <p className="text-sm text-foreground">Commande urgente – {shop.nom}</p>
+                  <p className="text-xs text-muted-foreground mb-1 font-medium">{t('stock.previewLabel')}</p>
+                  <p className="text-sm text-foreground">{t('stock.emailSubject').replace('{shop}', shop.nom)}</p>
                 </div>
               );
             })()}
 
             <div className="flex gap-3">
-              <button onClick={() => setShowEmailModal(false)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors">Annuler</button>
+              <button onClick={() => setShowEmailModal(false)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors">{t('stock.cancel')}</button>
               <button
                 onClick={handleSendEmail}
                 disabled={!selectedSupplierId || selectedAlertProducts.size === 0}
                 className="flex-1 nova-btn-primary py-2.5 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Send className="w-4 h-4" /> Ouvrir la messagerie
+                <Send className="w-4 h-4" /> {t('stock.openMailer')}
               </button>
             </div>
           </div>

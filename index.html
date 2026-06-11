@@ -17,10 +17,61 @@
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="Legwan" />
     <meta name="twitter:description" content="Système de gestion de boutique et point de vente hors-ligne" />
+
+    <!--
+      Fonts are loaded non-blocking so the page renders immediately with
+      system font fallbacks. Google Fonts then swaps in when available.
+      This prevents the black screen caused by @import blocking CSS parsing
+      on slow or offline connections (common in West Africa).
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="preload"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+      as="style"
+      onload="this.onload=null;this.rel='stylesheet'"
+    />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" />
+    </noscript>
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!--
+        Native splash screen — shown immediately (no JS required).
+        React's FirebaseProvider renders its own SplashScreen and replaces
+        this div's content once it mounts, so this disappears automatically.
+        Background matches :root --background (hsl 60 11% 97% ≈ #f8f8f6).
+      -->
+      <div id="legwan-native-splash" style="
+        position:fixed;inset:0;
+        background:#f8f8f6;
+        display:flex;flex-direction:column;
+        align-items:center;justify-content:center;
+        gap:20px;
+        z-index:10000;
+        font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif
+      ">
+        <svg width="60" height="60" viewBox="0 0 80 80" fill="none" aria-hidden="true">
+          <rect width="80" height="80" rx="18" fill="#A93200"/>
+          <path d="M 54,14 A 22,22 0 1,0 54,60 L 54,42 L 40,42" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          <line x1="20" y1="13" x2="20" y2="60" stroke="white" stroke-width="5" stroke-linecap="round"/>
+          <line x1="20" y1="60" x2="34" y2="60" stroke="white" stroke-width="5" stroke-linecap="round"/>
+        </svg>
+        <div style="text-align:center">
+          <p style="margin:0;font-size:1.25rem;font-weight:700;color:#1c1c1a;letter-spacing:-0.01em">Legwan</p>
+          <p style="margin:4px 0 0;font-size:0.875rem;color:#888">Chargement…</p>
+        </div>
+        <div style="width:180px;height:4px;background:#e8e7e0;border-radius:999px;overflow:hidden">
+          <div style="height:100%;background:#A93200;border-radius:999px;width:60%;animation:legwan-load 1.5s ease-in-out infinite"></div>
+        </div>
+      </div>
+      <style>
+        @keyframes legwan-load { 0% { transform:translateX(-100%) } 100% { transform:translateX(266%) } }
+      </style>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

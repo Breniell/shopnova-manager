@@ -2,6 +2,7 @@ import React from 'react';
 import type { RegistryEntry } from '@/services/registryService';
 import { getBoutiqueStatus } from '@/stores/useSuperAdminStore';
 import { Store, TrendingUp, Users, Package, Activity, Clock, Globe } from 'lucide-react';
+import { useTranslation } from '@/i18n';
 
 interface Props {
   boutiques: RegistryEntry[];
@@ -20,6 +21,7 @@ function formatFCFA(n: number): string {
 }
 
 export const SAGlobalStats: React.FC<Props> = ({ boutiques }) => {
+  const { t } = useTranslation();
   const total = boutiques.length;
   const active   = boutiques.filter(b => getBoutiqueStatus(toDate(b.lastSeen)) === 'active').length;
   const recent   = boutiques.filter(b => getBoutiqueStatus(toDate(b.lastSeen)) === 'recent').length;
@@ -36,57 +38,57 @@ export const SAGlobalStats: React.FC<Props> = ({ boutiques }) => {
   const cards = [
     {
       icon: Store,
-      label: 'Installations totales',
+      label: t('superadmin.statsTotalInstalls'),
       value: total.toString(),
-      sub: `${active} actives · ${recent} récentes · ${inactive} inactives`,
+      sub: t('superadmin.statsInstallsSub').replace('{active}', String(active)).replace('{recent}', String(recent)).replace('{inactive}', String(inactive)),
       color: 'text-primary',
       bg: 'bg-primary/10',
     },
     {
       icon: TrendingUp,
-      label: 'Chiffre d\'affaires global',
+      label: t('superadmin.statsRevenue'),
       value: formatFCFA(totalRevenue),
-      sub: `${totalVentes.toLocaleString('fr-FR')} ventes totales`,
+      sub: t('superadmin.statsRevenueSub').replace('{n}', totalVentes.toLocaleString()),
       color: 'text-secondary',
       bg: 'bg-secondary/10',
     },
     {
       icon: Activity,
-      label: 'Actives dernières 24h',
+      label: t('superadmin.statsActive24h'),
       value: active.toString(),
-      sub: `${Math.round((active / (total || 1)) * 100)}% du parc`,
+      sub: t('superadmin.statsActiveSub').replace('{pct}', String(Math.round((active / (total || 1)) * 100))),
       color: 'text-[#2B6954]',
       bg: 'bg-[#2B6954]/10',
     },
     {
       icon: Users,
-      label: 'Utilisateurs créés',
+      label: t('superadmin.statsUsersCreated'),
       value: totalUsers.toString(),
-      sub: 'Gérants + caissiers cumulés',
+      sub: t('superadmin.statsUsersSub'),
       color: 'text-[#F59E0B]',
       bg: 'bg-[#F59E0B]/10',
     },
     {
       icon: Package,
-      label: 'Produits catalogués',
-      value: totalProducts.toLocaleString('fr-FR'),
-      sub: 'Total tous catalogues',
+      label: t('superadmin.statsProducts'),
+      value: totalProducts.toLocaleString(),
+      sub: t('superadmin.statsProductsSub'),
       color: 'text-[#8B5CF6]',
       bg: 'bg-[#8B5CF6]/10',
     },
     {
       icon: Globe,
-      label: 'Boutiques géolocalisées',
+      label: t('superadmin.statsGeolocated'),
       value: withLocation.toString(),
-      sub: `${total - withLocation} sans coordonnées`,
+      sub: t('superadmin.statsNoGeoSub').replace('{n}', String(total - withLocation)),
       color: 'text-[#EC4899]',
       bg: 'bg-[#EC4899]/10',
     },
     {
       icon: Clock,
-      label: 'Versions déployées',
+      label: t('superadmin.statsVersions'),
       value: versions,
-      sub: `${boutiques.length} installations`,
+      sub: t('superadmin.statsVersionSub').replace('{n}', String(boutiques.length)),
       color: 'text-muted-foreground',
       bg: 'bg-muted/50',
     },

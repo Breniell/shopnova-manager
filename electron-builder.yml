@@ -60,8 +60,15 @@ nsis:
   # Keep false: UAC elevation restarts the installer process causing windows
   # to flash open/close multiple times. Per-user install needs no elevation.
   allowElevation: false
-  allowToChangeInstallationDirectory: true
+  # Keep false: letting users pick the directory lets them choose Program Files,
+  # which requires elevation and triggers the UAC restart loop (open/close flash).
+  allowToChangeInstallationDirectory: false
   perMachine: false
+  # Stable GUID ensures Windows correctly tracks installs/updates/uninstalls
+  # without treating each version as a separate product.
+  guid: "c8f3a1b2-4d5e-6f7a-8b9c-0d1e2f3a4b5c"
+  # Custom hooks: force user-space install dir, set per-user shell context
+  include: build/installer.nsh
 
   # French interface (fr-FR = BCP 47, language code 1036 = fr)
   installerLanguages:

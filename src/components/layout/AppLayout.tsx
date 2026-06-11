@@ -7,12 +7,14 @@ import { useUIStore } from '@/stores/useUIStore';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { Menu } from 'lucide-react';
+import { useTranslation } from '@/i18n';
 
 export const AppLayout = forwardRef<HTMLDivElement>((_props, ref) => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
   const { toggleSidebar } = useUIStore();
   const isMobile = useIsMobile();
+  const { t } = useTranslation();
 
   // Auto-logout after 15 min of inactivity — protects an unattended register.
   useSessionTimeout(15);
@@ -49,7 +51,7 @@ export const AppLayout = forwardRef<HTMLDivElement>((_props, ref) => {
       {isMobile && (
         <div className="fixed top-0 left-0 right-0 z-10 bg-card border-b border-border px-4 flex items-center gap-3"
           style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))', paddingBottom: '0.75rem' }}>
-          <button onClick={toggleSidebar} aria-label="Ouvrir le menu" className="p-2 rounded-lg hover:bg-muted transition-colors">
+          <button onClick={toggleSidebar} aria-label={t('common.openMenu')} className="p-2 rounded-lg hover:bg-muted transition-colors">
             <Menu className="w-5 h-5 text-foreground" />
           </button>
           <h1 className="text-foreground font-semibold text-sm">Legwan</h1>

@@ -14,6 +14,7 @@
  * If Firebase is not configured (missing env vars), runs in pure-local mode.
  */
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from '@/i18n';
 import { initBoutique } from '@/services/boutiqueService';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import {
@@ -162,26 +163,29 @@ const SplashScreen: React.FC<{ message?: string }> = ({ message }) => (
   </div>
 );
 
-const ErrorScreen: React.FC<{ error: string }> = ({ error }) => (
-  <div className="fixed inset-0 bg-background flex flex-col items-center justify-center gap-4 p-6 z-[9999]">
-    <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
-      <span className="text-2xl">⚠️</span>
+const ErrorScreen: React.FC<{ error: string }> = ({ error }) => {
+  const { t } = useTranslation();
+  return (
+    <div className="fixed inset-0 bg-background flex flex-col items-center justify-center gap-4 p-6 z-[9999]">
+      <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
+        <span className="text-2xl">⚠️</span>
+      </div>
+      <h2 className="text-lg font-semibold text-foreground text-center">
+        {t('common.firebaseError')}
+      </h2>
+      <p className="text-sm text-muted-foreground text-center max-w-sm">{error}</p>
+      <p className="text-xs text-muted-foreground text-center max-w-sm">
+        {t('common.firebaseEnvHint')}
+      </p>
+      <button
+        onClick={() => window.location.reload()}
+        className="nova-btn-primary px-6 py-2 rounded-lg text-sm"
+      >
+        {t('common.retry')}
+      </button>
     </div>
-    <h2 className="text-lg font-semibold text-foreground text-center">
-      Erreur de connexion Firebase
-    </h2>
-    <p className="text-sm text-muted-foreground text-center max-w-sm">{error}</p>
-    <p className="text-xs text-muted-foreground text-center max-w-sm">
-      Vérifiez votre fichier <code className="bg-muted px-1 rounded">.env</code> et les credentials Firebase.
-    </p>
-    <button
-      onClick={() => window.location.reload()}
-      className="nova-btn-primary px-6 py-2 rounded-lg text-sm"
-    >
-      Réessayer
-    </button>
-  </div>
-);
+  );
+};
 
 // ─── Main bootstrap ─────────────────────────────────────────────────────────────
 

@@ -15,6 +15,7 @@ import { useCustomerStore, Customer } from '@/stores/useCustomerStore';
 import { UserCircle, Search, Plus, X, UserMinus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useTranslation } from '@/i18n';
 
 interface CustomerPickerProps {
   selectedCustomer: Customer | null;
@@ -28,6 +29,7 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({
   className,
 }) => {
   const { searchCustomers, addCustomer } = useCustomerStore();
+  const { t } = useTranslation();
 
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -71,11 +73,11 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({
 
   const handleCreateNew = () => {
     if (!newForm.prenom.trim() || !newForm.nom.trim() || !newForm.telephone.trim()) {
-      toast.error('Prénom, nom et téléphone sont requis');
+      toast.error(t('customerPicker.requiredFields'));
       return;
     }
     if (newForm.telephone.replace(/\D/g, '').length < 9) {
-      toast.error('Numéro de téléphone invalide (9 chiffres minimum)');
+      toast.error(t('customerPicker.invalidPhone'));
       return;
     }
     try {
@@ -84,14 +86,14 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({
         nom: newForm.nom.trim(),
         telephone: newForm.telephone.trim(),
       });
-      toast.success(`${created.prenom} ${created.nom} ajouté`);
+      toast.success(t('customerPicker.created').replace('{name}', `${created.prenom} ${created.nom}`));
       onSelect(created);
       setShowNewModal(false);
       setOpen(false);
       setNewForm({ prenom: '', nom: '', telephone: '' });
       setQuery('');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erreur lors de la création');
+      toast.error(err instanceof Error ? err.message : t('customerPicker.createError'));
     }
   };
 
@@ -112,14 +114,14 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({
           <span className="flex-1 text-left truncate">
             {selectedCustomer
               ? `${selectedCustomer.prenom} ${selectedCustomer.nom}`
-              : 'Aucun client sélectionné'}
+              : t('customerPicker.noCustomer')}
           </span>
           {selectedCustomer && (
             <span
               onClick={handleRemove}
               role="button"
               tabIndex={0}
-              aria-label="Retirer le client"
+              aria-label={t('customerPicker.removeAria')}
               className="p-0.5 rounded hover:bg-destructive/20 hover:text-destructive transition-colors"
             >
               <X className="w-3.5 h-3.5" />
@@ -139,7 +141,7 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({
                   value={query}
                   onChange={e => setQuery(e.target.value)}
                   className="nova-input w-full pl-8 py-1.5 text-xs"
-                  placeholder="Rechercher par nom ou téléphone..."
+                  placeholder={t('customerPicker.searchPlaceholder')}
                 />
               </div>
             </div>
@@ -147,7 +149,7 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({
             <div className="max-h-60 overflow-y-auto">
               {results.length === 0 ? (
                 <div className="p-3 text-center text-xs text-muted-foreground">
-                  {query ? 'Aucun client trouvé' : 'Tapez pour rechercher un client'}
+                  {query ? t('customerPicker.noResults') : t('customerPicker.typeToSearch')}
                 </div>
               ) : (
                 results.map(c => (
@@ -188,7 +190,7 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({
                 }}
                 className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-medium bg-primary/15 text-primary hover:bg-primary/25 transition-colors"
               >
-                <Plus className="w-3.5 h-3.5" /> Nouveau client
+                <Plus className="w-3.5 h-3.5" /> {t('customerPicker.newCustomer')}
               </button>
               {selectedCustomer && (
                 <button
@@ -215,18 +217,18 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-5">
-              <h3 className="nova-heading text-base text-foreground">Nouveau client</h3>
+              <h3 className="nova-heading text-base text-foreground">{t('customerPicker.title')}</h3>
               <button
                 onClick={() => setShowNewModal(false)}
                 className="p-1.5 rounded-lg hover:bg-muted"
-                aria-label="Fermer"
+                aria-label={t('common.closeMenu')}
               >
                 <X className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Prénom *</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('customerPicker.firstnameLabel')}</label>
                 <input
                   type="text"
                   value={newForm.prenom}
@@ -236,7 +238,7 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({
                 />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Nom *</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('customerPicker.lastnameLabel')}</label>
                 <input
                   type="text"
                   value={newForm.nom}
@@ -245,7 +247,7 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({
                 />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Téléphone *</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('customerPicker.phoneLabel')}</label>
                 <input
                   type="tel"
                   value={newForm.telephone}
@@ -259,20 +261,20 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({
               </div>
             </div>
             <p className="text-[11px] text-muted-foreground mt-3">
-              Plus de détails (email, adresse, plafond) peuvent être ajoutés depuis la page Clients.
+              {t('customerPicker.detailsHint')}
             </p>
             <div className="flex gap-grid mt-5">
               <button
                 onClick={() => setShowNewModal(false)}
                 className="flex-1 py-2 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors text-sm"
               >
-                Annuler
+                {t('customerPicker.cancel')}
               </button>
               <button
                 onClick={handleCreateNew}
                 className="flex-1 nova-btn-primary py-2 text-sm"
               >
-                Créer et sélectionner
+                {t('customerPicker.createAndSelect')}
               </button>
             </div>
           </div>

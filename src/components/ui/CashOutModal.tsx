@@ -18,6 +18,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { formatFCFA } from '@/utils/formatters';
 import { X, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from '@/i18n';
 
 interface CashOutModalProps {
   open: boolean;
@@ -35,6 +36,7 @@ export const CashOutModal: React.FC<CashOutModalProps> = ({
 }) => {
   const { addCashOut } = useCashSessionStore();
   const { currentUser } = useAuthStore();
+  const { t } = useTranslation();
 
   const [type, setType] = useState<CashOutType>('autre');
   const [amount, setAmount] = useState('');
@@ -56,11 +58,11 @@ export const CashOutModal: React.FC<CashOutModalProps> = ({
     if (!currentUser) return;
     const a = parseInt(amount, 10);
     if (!Number.isFinite(a) || a <= 0) {
-      toast.error('Montant invalide');
+      toast.error(t('cashout.invalidAmount'));
       return;
     }
     if (!motif.trim()) {
-      toast.error('Motif requis');
+      toast.error(t('cashout.motifRequired'));
       return;
     }
     try {
@@ -74,11 +76,11 @@ export const CashOutModal: React.FC<CashOutModalProps> = ({
         userId: currentUser.id,
         userName: `${currentUser.prenom} ${currentUser.nom}`,
       });
-      toast.success(`Sortie de ${formatFCFA(a)} enregistrée`);
+      toast.success(t('cashout.successAmount').replace('{n}', formatFCFA(a)));
       onCreated?.(co.id);
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erreur');
+      toast.error(err instanceof Error ? err.message : t('cashout.error'));
     }
   };
 
@@ -96,12 +98,12 @@ export const CashOutModal: React.FC<CashOutModalProps> = ({
             <div className="w-9 h-9 rounded-lg bg-destructive/15 flex items-center justify-center">
               <Wallet className="w-5 h-5 text-destructive" />
             </div>
-            <h3 className="nova-heading text-base text-foreground">Sortie de caisse</h3>
+            <h3 className="nova-heading text-base text-foreground">{t('cashout.title')}</h3>
           </div>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-muted"
-            aria-label="Fermer"
+            aria-label={t('cashout.close')}
           >
             <X className="w-4 h-4 text-muted-foreground" />
           </button>
@@ -109,7 +111,7 @@ export const CashOutModal: React.FC<CashOutModalProps> = ({
 
         <div className="space-y-4">
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Type *</label>
+            <label className="text-xs text-muted-foreground mb-1 block">{t('cashout.typeLabel')}</label>
             <select
               value={type}
               onChange={e => setType(e.target.value as CashOutType)}
@@ -122,7 +124,7 @@ export const CashOutModal: React.FC<CashOutModalProps> = ({
           </div>
 
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Montant (FCFA) *</label>
+            <label className="text-xs text-muted-foreground mb-1 block">{t('cashout.amountLabel')}</label>
             <input
               type="number"
               value={amount}
@@ -134,37 +136,36 @@ export const CashOutModal: React.FC<CashOutModalProps> = ({
           </div>
 
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Bénéficiaire</label>
+            <label className="text-xs text-muted-foreground mb-1 block">{t('cashout.beneficiaryLabel')}</label>
             <input
               type="text"
               value={beneficiaire}
               onChange={e => setBeneficiaire(e.target.value)}
               className="nova-input w-full py-2"
               placeholder={
-                type === 'avance_salaire' ? 'Nom du caissier'
-                : type === 'pret' ? 'Nom du gérant/patron'
-                : type === 'remboursement' ? 'Nom du client'
-                : 'Bénéficiaire (optionnel)'
+                type === 'avance_salaire' ? t('cashout.beneficiaryAvance')
+                : type === 'pret' ? t('cashout.beneficiaryPret')
+                : type === 'remboursement' ? t('cashout.beneficiaryRemboursement')
+                : t('cashout.beneficiaryOther')
               }
               maxLength={100}
             />
           </div>
 
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Motif *</label>
+            <label className="text-xs text-muted-foreground mb-1 block">{t('cashout.motifLabel')}</label>
             <textarea
               value={motif}
               onChange={e => setMotif(e.target.value)}
               className="nova-input w-full h-16 resize-none text-sm"
-              placeholder="Description courte de la sortie..."
+              placeholder={t('cashout.motifPlaceholder')}
               maxLength={200}
             />
           </div>
         </div>
 
         <div className="mt-4 p-2.5 rounded-lg bg-muted/40 text-[11px] text-muted-foreground">
-          Cette sortie sera déduite du total attendu en caisse à la clôture
-          de votre session.
+          {t('cashout.sessionNote')}
         </div>
 
         <div className="flex gap-grid mt-5">
@@ -172,13 +173,13 @@ export const CashOutModal: React.FC<CashOutModalProps> = ({
             onClick={onClose}
             className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors text-sm"
           >
-            Annuler
+            {t('cashout.cancel')}
           </button>
           <button
             onClick={handleSubmit}
             className="flex-1 nova-btn-primary py-2.5 text-sm"
           >
-            Enregistrer la sortie
+            {t('cashout.submit')}
           </button>
         </div>
       </div>
