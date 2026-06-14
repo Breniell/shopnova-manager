@@ -13,18 +13,28 @@ export interface ShopSettings {
   piedPageRecu: string;
   devise: string;
   langue: SupportedLocale;
+  momoMerchantCodeMtn?: string;
+  momoMerchantCodeOrange?: string;
+  // Thermal printer
+  printerName?: string;
+  paperWidth: '58' | '80';
+  openDrawerOnSale: boolean;
+  autoPrintOnSale: boolean;
 }
 
 export const defaultShopSettings: ShopSettings = {
-  nom:          'Ma Boutique',
-  adresse:      '',
-  telephone:    '',
-  email:        '',
-  nui:          '',
-  enteteRecu:   'Bienvenue !',
-  piedPageRecu: 'Merci pour votre achat. À bientôt !',
-  devise:       'FCFA',
-  langue:       'fr',
+  nom:              'Ma Boutique',
+  adresse:          '',
+  telephone:        '',
+  email:            '',
+  nui:              '',
+  enteteRecu:       'Bienvenue !',
+  piedPageRecu:     'Merci pour votre achat. À bientôt !',
+  devise:           'FCFA',
+  langue:           'fr',
+  paperWidth:       '80',
+  openDrawerOnSale: false,
+  autoPrintOnSale:  false,
 };
 
 interface SettingsState {

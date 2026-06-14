@@ -17,10 +17,14 @@ import { PriceEditor } from '@/components/ui/PriceEditor';
 import { ManagerOverrideModal } from '@/components/ui/ManagerOverrideModal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { OneTimeHint } from '@/components/ui/OneTimeHint';
 import { isNegociable, getEffectiveFloor, getAppliedPrice } from '@/lib/pricing';
+import { canValidateMomo, isValidMomoRef } from '@/lib/momoValidation';
+import { isThermalAvailable, buildReceiptHtml } from '@/lib/thermalPrint';
+import { useSettingsStore } from '@/stores/useSettingsStore';
 import { getStockStatus, cn } from '@/lib/utils';
 import { productImages } from '@/assets/productImages';
-import { Search, ScanBarcode, Minus, Plus, Trash2, ShoppingCart, Check, Package, X } from 'lucide-react';
+import { Search, ScanBarcode, Minus, Plus, Trash2, ShoppingCart, Check, Package, X, Pencil, Handshake, Banknote, Smartphone, NotebookPen, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Sale } from '@/stores/useSaleStore';
 
@@ -30,12 +34,15 @@ const CaissePage: React.FC = () => {
   const { currentUser } = useAuthStore();
   const { getCurrentSession } = useCashSessionStore();
   const currentSession = getCurrentSession();
+  const { shop } = useSettingsStore();
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('especes');
   const [amountReceived, setAmountReceived] = useState('');
   const [mobileOperator, setMobileOperator] = useState<MobileOperator>('mtn');
   const [mobileRef, setMobileRef] = useState('');
+  const [confirmationReceived, setConfirmationReceived] = useState(false);
+  const [mobileRefError, setMobileRefError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const [receiptSale, setReceiptSale] = useState<Sale | null>(null);
@@ -176,9 +183,19 @@ const CaissePage: React.FC = () => {
     );
   }, [paymentMode, selectedCustomer, total, allSales, allPayments]);
 
+  const momoMerchantCode = mobileOperator === 'mtn'
+    ? shop.momoMerchantCodeMtn
+    : shop.momoMerchantCodeOrange;
+
+  const handleSetPaymentMode = (mode: PaymentMode) => {
+    setPaymentMode(mode);
+    setConfirmationReceived(false);
+    setMobileRefError(null);
+  };
+
   const canValidate = cart.length > 0 && !isProcessing && (
     paymentMode === 'especes' ? (amountReceived && (parseInt(amountReceived, 10) || 0) >= total) :
-    paymentMode === 'mobile_money' ? !!mobileRef.trim() :
+    paymentMode === 'mobile_money' ? canValidateMomo({ mobileOperator, momoMerchantCode, confirmationReceived, mobileRef }) :
     paymentMode === 'credit' ? (!!selectedCustomer && creditLimitCheck.ok) :
     false
   );
@@ -187,36 +204,59 @@ const CaissePage: React.FC = () => {
     if (!canValidate || !currentUser) return;
     setIsProcessing(true);
 
-    setTimeout(() => {
-      const sale = completeSale({
-        paymentMode,
-        mobileOperator: paymentMode === 'mobile_money' ? mobileOperator : undefined,
-        mobileReference: paymentMode === 'mobile_money' ? mobileRef : undefined,
-        amountReceived: paymentMode === 'especes' ? (parseInt(amountReceived, 10) || 0) : undefined,
-        changeGiven: paymentMode === 'especes' ? Math.max(0, change) : undefined,
-        userId: currentUser.id,
-        userName: `${currentUser.prenom} ${currentUser.nom}`,
-        customerId: selectedCustomer?.id,
-        customerName: selectedCustomer ? `${selectedCustomer.prenom} ${selectedCustomer.nom}` : undefined,
-        dueDate: paymentMode === 'credit' && dueDate ? dueDate : undefined,
-      });
+    await new Promise(resolve => setTimeout(resolve, 600));
 
-      setIsProcessing(false);
-      setIsDone(true);
-      setReceiptSale(sale);
+    const sale = completeSale({
+      paymentMode,
+      mobileOperator: paymentMode === 'mobile_money' ? mobileOperator : undefined,
+      mobileReference: paymentMode === 'mobile_money' ? mobileRef.trim() : undefined,
+      momoMerchantCode: paymentMode === 'mobile_money' ? momoMerchantCode : undefined,
+      confirmationAcknowledged: paymentMode === 'mobile_money' ? true : undefined,
+      amountReceived: paymentMode === 'especes' ? (parseInt(amountReceived, 10) || 0) : undefined,
+      changeGiven: paymentMode === 'especes' ? Math.max(0, change) : undefined,
+      userId: currentUser.id,
+      userName: `${currentUser.prenom} ${currentUser.nom}`,
+      customerId: selectedCustomer?.id,
+      customerName: selectedCustomer ? `${selectedCustomer.prenom} ${selectedCustomer.nom}` : undefined,
+      dueDate: paymentMode === 'credit' && dueDate ? dueDate : undefined,
+    });
 
-      setTimeout(() => {
-        setIsDone(false);
-        setShowReceipt(true);
-        setAmountReceived('');
-        setMobileRef('');
-        setSelectedCustomer(null);
-        setDueDate('');
-        setMobileView('products');
-      }, 600);
+    setIsProcessing(false);
+    setIsDone(true);
+    setReceiptSale(sale);
+    toast.success(t('caisse.saleSuccess'));
 
-      toast.success(t('caisse.saleSuccess'));
-    }, 600);
+    // Auto-print on sale (never blocks or loses the sale on failure)
+    let autoPrinted = false;
+    if (shop.autoPrintOnSale && isThermalAvailable() && shop.printerName) {
+      try {
+        const payLabel = paymentMode === 'especes' ? t('receipt.payEspeces') : paymentMode === 'mobile_money' ? t('receipt.payMobile') : t('receipt.payCredit');
+        const html = buildReceiptHtml(sale, shop, payLabel);
+        const result = await window.legwan!.printer!.printReceipt({ html, printerName: shop.printerName, paperWidth: shop.paperWidth });
+        if (result.ok) {
+          autoPrinted = true;
+          if (shop.openDrawerOnSale) {
+            window.legwan!.printer!.openDrawer().catch(() => {});
+          }
+        } else {
+          toast.error(t('caisse.printError'));
+        }
+      } catch {
+        toast.error(t('caisse.printError'));
+      }
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 600));
+
+    setIsDone(false);
+    if (!autoPrinted) setShowReceipt(true);
+    setAmountReceived('');
+    setMobileRef('');
+    setConfirmationReceived(false);
+    setMobileRefError(null);
+    setSelectedCustomer(null);
+    setDueDate('');
+    setMobileView('products');
   };
 
   const filteredProducts = products.filter(p =>
@@ -225,6 +265,11 @@ const CaissePage: React.FC = () => {
   );
 
   const getProductImage = (product: Product) => productImages[product.id] || null;
+
+  const firstNegotiableProductId = cart.find(item => {
+    const p = products.find(pp => pp.id === item.productId);
+    return p ? isNegociable(p) : false;
+  })?.productId;
 
   // ── Shared cart panel content ──────────────────────────────────────────────
   const CartPanel = (
@@ -271,9 +316,15 @@ const CaissePage: React.FC = () => {
       ) : (
         <>
           <div className="flex-1 overflow-y-auto p-3 lg:p-4 space-y-2">
-            {cart.map((item, index) => (
+            {cart.map((item, index) => {
+              const cartProduct = products.find(p => p.id === item.productId);
+              const isFirstNegotiable = cartProduct && isNegociable(cartProduct) && item.productId === firstNegotiableProductId;
+              return (
+              <React.Fragment key={item.productId}>
+                {isFirstNegotiable && (
+                  <OneTimeHint id="caisse-negotiate">{t('caisse.negotiableHint')}</OneTimeHint>
+                )}
               <div
-                key={item.productId}
                 className="flex items-center gap-2 lg:gap-3 p-2 lg:p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors animate-slide-in-right"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
@@ -292,28 +343,27 @@ const CaissePage: React.FC = () => {
                     const negotiable = product ? isNegociable(product) : false;
                     const isNegotiated = !!item.negotiated;
                     const belowFloor = item.negotiated?.belowFloor;
+                    if (!negotiable) {
+                      return (
+                        <span className="text-[11px] mt-0.5 px-1 py-0.5 text-muted-foreground inline-block">
+                          <span className="tabular-nums">{formatFCFA(applied)}</span> / u.
+                        </span>
+                      );
+                    }
                     return (
                       <button
                         type="button"
                         onClick={() => {
                           if (!product) return;
-                          if (!negotiable) {
-                            toast.info(t('caisse.notNegotiable'));
-                            return;
-                          }
                           setPriceEditorTarget({ productId: item.productId, currentPrice: applied });
                         }}
-                        disabled={!negotiable}
                         className={cn(
-                          'text-[11px] transition-colors mt-0.5 -ml-0.5 px-1 py-0.5 rounded',
-                          negotiable
-                            ? 'cursor-pointer hover:bg-muted'
-                            : 'cursor-default',
+                          'text-[11px] transition-colors mt-0.5 -ml-0.5 px-1 py-0.5 rounded cursor-pointer hover:bg-muted inline-flex items-center gap-1',
                           isNegotiated && belowFloor ? 'text-destructive font-semibold'
                             : isNegotiated ? 'text-amber-400 font-medium'
                             : 'text-muted-foreground'
                         )}
-                        title={negotiable ? t('caisse.clickToNegotiate') : t('caisse.fixedPrice')}
+                        title={t('caisse.clickToNegotiate')}
                       >
                         {isNegotiated && (
                           <span className="line-through text-muted-foreground/60 mr-1 tabular-nums">
@@ -322,6 +372,7 @@ const CaissePage: React.FC = () => {
                         )}
                         <span className="tabular-nums">{formatFCFA(applied)}</span> / u.
                         {isNegotiated && (belowFloor ? ' ⚡' : ' •')}
+                        <Pencil className="w-2.5 h-2.5 ml-0.5 shrink-0" />
                       </button>
                     );
                   })()}
@@ -329,12 +380,12 @@ const CaissePage: React.FC = () => {
                 <div className="flex items-center gap-1 lg:gap-2">
                   <button
                     onClick={() => updateCartQuantity(item.productId, item.quantity - 1)}
-                    className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-all active:scale-90"
+                    className="w-10 h-10 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-all active:scale-90"
                     aria-label={t('caisse.decreaseQty').replace('{name}', item.nom)}
                   >
-                    <Minus className="w-3 h-3 text-foreground" aria-hidden="true" />
+                    <Minus className="w-4 h-4 text-foreground" aria-hidden="true" />
                   </button>
-                  <span className="w-6 lg:w-8 text-center text-sm font-medium text-foreground tabular-nums" aria-label={t('caisse.quantityLabel').replace('{n}', String(item.quantity))}>{item.quantity}</span>
+                  <span className="w-8 text-center text-sm font-semibold text-foreground tabular-nums" aria-label={t('caisse.quantityLabel').replace('{n}', String(item.quantity))}>{item.quantity}</span>
                   <button onClick={() => {
                     const product = products.find(p => p.id === item.productId);
                     if (product && item.quantity >= product.stock) {
@@ -343,10 +394,10 @@ const CaissePage: React.FC = () => {
                     }
                     updateCartQuantity(item.productId, item.quantity + 1);
                   }}
-                    className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-all active:scale-90"
+                    className="w-10 h-10 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-muted/80 transition-all active:scale-90"
                     aria-label={t('caisse.increaseQty').replace('{name}', item.nom)}
                   >
-                    <Plus className="w-3 h-3 text-foreground" aria-hidden="true" />
+                    <Plus className="w-4 h-4 text-foreground" aria-hidden="true" />
                   </button>
                 </div>
                 <span className="text-xs lg:text-sm font-semibold text-foreground tabular-nums w-20 lg:w-24 text-right">{formatPrice(item.quantity * getAppliedPrice(item))}</span>
@@ -358,7 +409,9 @@ const CaissePage: React.FC = () => {
                   <Trash2 className="w-4 h-4" aria-hidden="true" />
                 </button>
               </div>
-            ))}
+              </React.Fragment>
+            );
+            })}
           </div>
 
           {/* Totals & Payment */}
@@ -378,28 +431,34 @@ const CaissePage: React.FC = () => {
                   placeholder="0"
                 />
               </div>
-              <div className="flex justify-between items-center pt-2 border-t border-border">
-                <span className="text-base lg:text-lg font-semibold text-foreground">{t('caisse.total')}</span>
-                <span className="text-2xl lg:text-[32px] font-bold text-primary tabular-nums">{formatPrice(total)}</span>
+              <div className="pt-2 border-t border-border">
+                <p className="text-[13px] text-muted-foreground font-medium mb-0.5">{t('caisse.total')}</p>
+                <p className="money text-3xl lg:text-4xl text-primary text-right">{formatPrice(total)}</p>
               </div>
             </div>
 
             {/* Payment mode tabs */}
             <div className="flex gap-2">
-              {(['especes', 'mobile_money', 'credit'] as PaymentMode[]).map(mode => (
+              {([
+                { mode: 'especes' as PaymentMode, Icon: Banknote, label: t('caisse.payEspeces') },
+                { mode: 'mobile_money' as PaymentMode, Icon: Smartphone, label: t('caisse.payMobile') },
+                { mode: 'credit' as PaymentMode, Icon: NotebookPen, label: t('caisse.payCredit') },
+              ]).map(({ mode, Icon, label }) => (
                 <button
                   key={mode}
-                  onClick={() => setPaymentMode(mode)}
+                  type="button"
+                  onClick={() => handleSetPaymentMode(mode)}
                   className={cn(
-                    'flex-1 py-2 rounded-lg text-xs font-medium transition-all duration-150 border',
+                    'flex-1 flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 transition-all duration-150 min-h-[60px] px-1',
                     paymentMode === mode
                       ? mode === 'credit'
-                        ? 'bg-red-500/15 border-red-500 text-red-400'
-                        : 'bg-primary/15 border-primary text-primary'
-                      : 'bg-muted border-border text-muted-foreground hover:text-foreground'
+                        ? 'bg-red-500/10 border-red-500 text-red-500'
+                        : 'bg-primary/10 border-primary text-primary'
+                      : 'bg-muted border-border text-muted-foreground hover:text-foreground hover:border-border'
                   )}
                 >
-                  {mode === 'especes' ? t('caisse.payEspeces') : mode === 'mobile_money' ? t('caisse.payMobile') : t('caisse.payCredit')}
+                  <Icon className="w-6 h-6" />
+                  <span className="text-[11px] font-semibold leading-tight text-center">{label}</span>
                 </button>
               ))}
             </div>
@@ -413,25 +472,93 @@ const CaissePage: React.FC = () => {
                   placeholder={t('caisse.amountReceivedPlaceholder')}
                 />
                 {amountReceived && (parseInt(amountReceived, 10) || 0) >= total && (
-                  <div className="text-sm text-secondary font-medium">
-                    {t('caisse.changeToGive').replace('{n}', formatFCFA((parseInt(amountReceived, 10) || 0) - total))}
+                  <div className="rounded-xl bg-secondary/10 border border-secondary/30 p-3 text-center">
+                    <p className="text-[11px] text-secondary/70 font-semibold uppercase tracking-wide mb-0.5">{t('caisse.changeLabel')}</p>
+                    <p className="money text-2xl text-secondary">{formatFCFA((parseInt(amountReceived, 10) || 0) - total)}</p>
                   </div>
                 )}
               </div>
             )}
             {paymentMode === 'mobile_money' && (
-              <div className="space-y-2">
+              <div className="space-y-3">
+                {/* Step 1 — operator */}
                 <div className="flex gap-2">
-                  <button onClick={() => setMobileOperator('mtn')}
-                    className={cn('flex-1 py-2 rounded-lg text-xs font-medium border transition-all', mobileOperator === 'mtn' ? 'bg-amber-500/15 border-amber-500 text-amber-400' : 'bg-muted border-border text-muted-foreground')}>
-                    MTN MoMo
+                  <button
+                    onClick={() => { setMobileOperator('mtn'); setConfirmationReceived(false); }}
+                    className={cn('flex-1 flex items-center justify-center gap-2 rounded-xl border-2 transition-all min-h-[48px] text-sm font-semibold',
+                      mobileOperator === 'mtn' ? 'bg-amber-500/15 border-amber-500 text-amber-500' : 'bg-muted border-border text-muted-foreground')}
+                  >
+                    <Smartphone className="w-4 h-4" /> MTN MoMo
                   </button>
-                  <button onClick={() => setMobileOperator('orange')}
-                    className={cn('flex-1 py-2 rounded-lg text-xs font-medium border transition-all', mobileOperator === 'orange' ? 'bg-orange-500/15 border-orange-500 text-orange-400' : 'bg-muted border-border text-muted-foreground')}>
-                    Orange Money
+                  <button
+                    onClick={() => { setMobileOperator('orange'); setConfirmationReceived(false); }}
+                    className={cn('flex-1 flex items-center justify-center gap-2 rounded-xl border-2 transition-all min-h-[48px] text-sm font-semibold',
+                      mobileOperator === 'orange' ? 'bg-orange-500/15 border-orange-500 text-orange-500' : 'bg-muted border-border text-muted-foreground')}
+                  >
+                    <Smartphone className="w-4 h-4" /> Orange Money
                   </button>
                 </div>
-                <input type="text" value={mobileRef} onChange={e => setMobileRef(e.target.value)} className="nova-input w-full py-2" placeholder={t('caisse.mobileRefPlaceholder')} />
+
+                {/* Step 2 — instructions or warning */}
+                {momoMerchantCode ? (
+                  <div className="rounded-xl bg-primary/5 border border-primary/20 p-3 space-y-1.5">
+                    <p className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide">
+                      {mobileOperator === 'mtn' ? 'MTN MoMo' : 'Orange Money'}
+                    </p>
+                    <p className="text-xs text-foreground leading-snug">
+                      {(mobileOperator === 'mtn'
+                        ? t('caisse.momoInstructionsMtn')
+                        : t('caisse.momoInstructionsOrange'))
+                        .replace('{code}', momoMerchantCode)
+                        .replace('{amount}', String(total))}
+                    </p>
+                    <p className="money text-lg text-primary text-right pt-1">{formatFCFA(total)}</p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-amber-500">{t('caisse.momoNoCodeWarning')}</p>
+                      <a href="#/parametres" className="text-[11px] text-primary underline">{t('caisse.momoGoToSettings')}</a>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3 — SMS confirmation checkbox */}
+                <label className="flex items-center gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={confirmationReceived}
+                    onChange={e => setConfirmationReceived(e.target.checked)}
+                    className="w-4 h-4 accent-primary rounded"
+                  />
+                  <span className="text-xs font-medium text-foreground">{t('caisse.momoSmsConfirm')}</span>
+                </label>
+
+                {/* Step 4 — reference input */}
+                <div>
+                  <label className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide block mb-1">
+                    {t('caisse.momoRefLabel')}
+                  </label>
+                  <input
+                    type="text"
+                    value={mobileRef}
+                    onChange={e => {
+                      setMobileRef(e.target.value);
+                      setMobileRefError(null);
+                    }}
+                    onBlur={() => {
+                      if (mobileRef && !isValidMomoRef(mobileRef)) {
+                        setMobileRefError(t('caisse.momoRefError'));
+                      }
+                    }}
+                    className={cn('nova-input w-full', mobileRefError ? 'border-destructive focus:ring-destructive' : '')}
+                    placeholder={t('caisse.mobileRefPlaceholder')}
+                  />
+                  {mobileRefError && (
+                    <p className="text-[11px] text-destructive mt-1">{mobileRefError}</p>
+                  )}
+                </div>
               </div>
             )}
             {paymentMode === 'credit' && (
@@ -480,12 +607,13 @@ const CaissePage: React.FC = () => {
               onClick={handleValidate}
               disabled={!canValidate}
               className={cn(
-                'w-full py-3 lg:py-4 rounded-xl text-base font-semibold transition-all duration-150 flex items-center justify-center gap-2',
+                'w-full rounded-xl text-base font-bold transition-all duration-150 flex items-center justify-center gap-2',
                 isDone ? 'bg-secondary text-secondary-foreground' : 'nova-btn-primary'
               )}
+              style={{ minHeight: '56px' }}
             >
               {isProcessing ? (
-                <LoadingSpinner size={20} className="text-white" />
+                <><LoadingSpinner size={18} className="text-white" />{t('caisse.validate')}</>
               ) : isDone ? (
                 <><Check className="w-5 h-5" /> {t('caisse.validating')}</>
               ) : (
@@ -595,10 +723,18 @@ const CaissePage: React.FC = () => {
                       <div className="absolute top-1.5 right-1.5">
                         <StatusBadge status={status} className="text-[9px] px-1.5 py-0" />
                       </div>
+                      {isNegociable(product) && !isOut && (
+                        <div className="absolute top-1.5 left-1.5">
+                          <span className="inline-flex items-center gap-0.5 bg-amber-500/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                            <Handshake className="w-2.5 h-2.5" />
+                            {t('caisse.negotiableBadge')}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className="p-2 lg:p-3">
-                      <p className="text-xs font-medium text-foreground line-clamp-2 h-8 leading-4">{product.nom}</p>
-                      <p className="text-xs lg:text-sm font-bold text-primary tabular-nums mt-1">{formatFCFA(product.prixVente)}</p>
+                      <p className="text-[13px] font-semibold text-foreground line-clamp-2 leading-tight">{product.nom}</p>
+                      <p className="money text-sm text-primary mt-1">{formatFCFA(product.prixVente)}</p>
                     </div>
                   </button>
                 );
