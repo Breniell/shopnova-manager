@@ -3,7 +3,8 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useAuthStore, User } from '@/stores/useAuthStore';
 import { NovaCard } from '@/components/ui/NovaCard';
 import { cn } from '@/lib/utils';
-import { Store, Users, KeyRound, Trash2, Plus, X, Copy, Check, Cloud, Mail, Pencil, MapPin, LocateFixed, Loader2, PenLine } from 'lucide-react';
+import { Store, Users, KeyRound, Trash2, Plus, X, Copy, Check, Cloud, Mail, Pencil, MapPin, LocateFixed, Loader2, PenLine, Smartphone, Printer, HardDrive, Download, Upload, ShieldCheck, ShieldOff, AlertTriangle, RotateCcw } from 'lucide-react';
+import { isThermalAvailable } from '@/lib/thermalPrint';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n';
 import { ALL_LOCALES, LOCALE_LABELS } from '@/i18n/types';
@@ -20,6 +21,9 @@ import {
   sendBoutiqueRecoveryPasswordReset,
   type BoutiqueRecoveryStatus,
 } from '@/services/boutiqueService';
+import { exportBackup, daysSinceLastBackup } from '@/lib/backup/export';
+import { parseBackupFile, restoreBackupData, type ParseResult } from '@/lib/backup/import';
+import type { BackupData } from '@/lib/backup/types';
 
 const ParametresPage: React.FC = () => {
   const { shop, updateShop } = useSettingsStore();
@@ -42,10 +46,32 @@ const ParametresPage: React.FC = () => {
   const [recoveryPasswordConfirm, setRecoveryPasswordConfirm] = useState('');
   const [isRecoverySaving, setIsRecoverySaving] = useState(false);
 
+  // Printer
+  const [printerList, setPrinterList] = useState<string[]>([]);
+  const [isPrinterTesting, setIsPrinterTesting] = useState(false);
+
   // Address geo-detection
   const [isDetectingAddress, setIsDetectingAddress] = useState(false);
   const [addressPrecision, setAddressPrecision] = useState<LocationPrecision | null>(null);
   const [showManualAddress, setShowManualAddress] = useState(false);
+
+  // Backup / restore
+  const [showExportModal, setShowExportModal]   = useState(false);
+  const [exportEncrypt, setExportEncrypt]       = useState(true);
+  const [exportPassword, setExportPassword]     = useState('');
+  const [exportPassword2, setExportPassword2]   = useState('');
+  const [isExporting, setIsExporting]           = useState(false);
+  const [backupReminderDays, setBackupReminderDays] = useState<number | null>(null);
+  // Import flow
+  const importFileRef = React.useRef<HTMLInputElement>(null);
+  const [pendingFile, setPendingFile]               = useState<File | null>(null);
+  const [pendingMeta, setPendingMeta]               = useState<ParseResult['meta'] | null>(null);
+  const [showImportPassword, setShowImportPassword] = useState(false);
+  const [importPassword, setImportPassword]         = useState('');
+  const [pendingData, setPendingData]               = useState<BackupData | null>(null);
+  const [showImportConfirm, setShowImportConfirm]   = useState(false);
+  const [isRestoring, setIsRestoring]               = useState(false);
+  const [restoreProgress, setRestoreProgress]       = useState<{ done: number; total: number } | null>(null);
 
   const [localShop, setLocalShop] = useState(shop);
 
@@ -92,12 +118,117 @@ const ParametresPage: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    if (isThermalAvailable()) {
+      window.legwan!.printer!.list().then(setPrinterList).catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => { setBackupReminderDays(daysSinceLastBackup()); }, []);
+
+  const handleTestPrint = async () => {
+    if (!isThermalAvailable() || !localShop.printerName) return;
+    setIsPrinterTesting(true);
+    try {
+      const result = await window.legwan!.printer!.test({ printerName: localShop.printerName, paperWidth: localShop.paperWidth });
+      if (result.ok) toast.success(t('settings.printer.testOk'));
+      else toast.error(t('settings.printer.testFail'));
+    } catch {
+      toast.error(t('settings.printer.testFail'));
+    } finally {
+      setIsPrinterTesting(false);
+    }
+  };
+
   const handleCopyCode = () => {
     navigator.clipboard.writeText(boutiqueId).then(() => {
       setCodeCopied(true);
       toast.success(t('settings.code.copied'));
       setTimeout(() => setCodeCopied(false), 2000);
     });
+  };
+
+  // ── Backup handlers ───────────────────────────────────────────────────────
+
+  const handleExport = async () => {
+    if (exportEncrypt) {
+      if (!exportPassword) { toast.error(t('settings.backup.passwordRequired')); return; }
+      if (exportPassword !== exportPassword2) { toast.error(t('settings.backup.passwordMismatch')); return; }
+    }
+    setIsExporting(true);
+    try {
+      await exportBackup(exportEncrypt ? exportPassword : null);
+      setShowExportModal(false);
+      setExportPassword('');
+      setExportPassword2('');
+      setBackupReminderDays(0);
+      toast.success(t('settings.backup.exportSuccess'));
+    } catch {
+      toast.error(t('settings.backup.exportError'));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImportFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    const result = await parseBackupFile(file);
+
+    if (!result.ok) {
+      if (result.error === 'wrong_password' && result.meta) {
+        // Encrypted — ask for password
+        setPendingFile(file);
+        setPendingMeta(result.meta ?? null);
+        setImportPassword('');
+        setShowImportPassword(true);
+      } else {
+        toast.error(t(`settings.backup.error_${result.error ?? 'unknown'}`));
+      }
+      return;
+    }
+
+    setPendingData(result.data!);
+    setPendingMeta(result.meta ?? null);
+    setShowImportConfirm(true);
+  };
+
+  const handleImportWithPassword = async () => {
+    if (!pendingFile) return;
+    const result = await parseBackupFile(pendingFile, importPassword);
+    setShowImportPassword(false);
+    if (!result.ok) {
+      toast.error(
+        result.error === 'wrong_password'
+          ? t('settings.backup.wrongPassword')
+          : t(`settings.backup.error_${result.error ?? 'unknown'}`)
+      );
+      return;
+    }
+    setPendingData(result.data!);
+    setPendingMeta(result.meta ?? null);
+    setShowImportConfirm(true);
+  };
+
+  const handleRestore = async () => {
+    if (!pendingData) return;
+    setIsRestoring(true);
+    setRestoreProgress(null);
+    try {
+      await restoreBackupData(pendingData, (p) => setRestoreProgress({ done: p.done, total: p.total }));
+      setShowImportConfirm(false);
+      setPendingData(null);
+      setPendingMeta(null);
+      setRestoreProgress(null);
+      setBackupReminderDays(0);
+      toast.success(t('settings.backup.restoreSuccess'));
+    } catch {
+      toast.error(t('settings.backup.restoreError'));
+    } finally {
+      setIsRestoring(false);
+    }
   };
 
   const refreshRecoveryStatus = async () => {
@@ -166,7 +297,7 @@ const ParametresPage: React.FC = () => {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
-      <h1 className="text-headline-lg nova-heading text-foreground mb-6">{t('settings.title')}</h1>
+      <h1 className="text-2xl nova-heading text-foreground mb-6">{t('settings.title')}</h1>
 
       <div className="flex gap-1 mb-6 bg-muted rounded-lg p-1 w-fit">
         <button onClick={() => setActiveTab('boutique')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2', activeTab === 'boutique' ? 'bg-card text-foreground' : 'text-muted-foreground')}>
@@ -289,6 +420,139 @@ const ParametresPage: React.FC = () => {
             <button onClick={handleSaveShop} className="nova-btn-primary px-6 py-2.5">
               {t('settings.boutique.save')}
             </button>
+          </div>
+        </NovaCard>
+
+        {/* Mobile Money codes */}
+        <NovaCard accent className="w-full max-w-2xl mt-4">
+          <div className="space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+                <Smartphone className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">{t('settings.momo.title')}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t('settings.momo.subtitle')}</p>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('settings.momo.mtnCode')}</label>
+              <input
+                type="text"
+                value={localShop.momoMerchantCodeMtn ?? ''}
+                onChange={e => setLocalShop({ ...localShop, momoMerchantCodeMtn: e.target.value })}
+                className="nova-input w-full"
+                placeholder="ex. 123456"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('settings.momo.orangeCode')}</label>
+              <input
+                type="text"
+                value={localShop.momoMerchantCodeOrange ?? ''}
+                onChange={e => setLocalShop({ ...localShop, momoMerchantCodeOrange: e.target.value })}
+                className="nova-input w-full"
+                placeholder="ex. 654321"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">{t('settings.momo.hint')}</p>
+            <button onClick={handleSaveShop} className="nova-btn-primary px-6 py-2.5">
+              {t('settings.boutique.save')}
+            </button>
+          </div>
+        </NovaCard>
+
+        {/* Thermal printer */}
+        <NovaCard accent className="w-full max-w-2xl mt-4">
+          <div className="space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+                <Printer className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">{t('settings.printer.title')}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t('settings.printer.subtitle')}</p>
+              </div>
+            </div>
+
+            {!isThermalAvailable() ? (
+              <p className="text-xs text-muted-foreground rounded-lg bg-muted/60 px-3 py-2">
+                {t('settings.printer.desktopOnly')}
+              </p>
+            ) : (
+              <>
+                {/* Printer selection */}
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t('settings.printer.nameLabel')}</label>
+                  <select
+                    value={localShop.printerName ?? ''}
+                    onChange={e => setLocalShop({ ...localShop, printerName: e.target.value || undefined })}
+                    className="nova-input w-full"
+                  >
+                    <option value="">{t('settings.printer.selectPlaceholder')}</option>
+                    {printerList.map(name => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Paper width */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">{t('settings.printer.widthLabel')}</p>
+                  <div className="flex gap-3">
+                    {(['58', '80'] as const).map(w => (
+                      <label key={w} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="paperWidth"
+                          value={w}
+                          checked={localShop.paperWidth === w}
+                          onChange={() => setLocalShop({ ...localShop, paperWidth: w })}
+                          className="accent-primary"
+                        />
+                        <span className="text-sm">{w === '58' ? t('settings.printer.width58') : t('settings.printer.width80')}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Toggles */}
+                {[
+                  { key: 'autoPrintOnSale' as const, label: 'settings.printer.autoPrint' },
+                  { key: 'openDrawerOnSale' as const, label: 'settings.printer.openDrawer' },
+                ].map(({ key, label }) => (
+                  <div key={key} className="flex items-center justify-between">
+                    <span className="text-sm text-foreground">{t(label)}</span>
+                    <button
+                      role="switch"
+                      aria-checked={localShop[key]}
+                      onClick={() => setLocalShop({ ...localShop, [key]: !localShop[key] })}
+                      className={cn(
+                        'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors',
+                        localShop[key] ? 'bg-primary' : 'bg-muted-foreground/30'
+                      )}
+                    >
+                      <span className={cn('inline-block h-5 w-5 transform rounded-full bg-white transition-transform', localShop[key] ? 'translate-x-5' : 'translate-x-0.5')} />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Actions */}
+                <div className="flex gap-3 pt-1">
+                  <button onClick={handleSaveShop} className="nova-btn-primary px-6 py-2.5">
+                    {t('settings.boutique.save')}
+                  </button>
+                  <button
+                    onClick={handleTestPrint}
+                    disabled={!localShop.printerName || isPrinterTesting}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors text-sm font-medium disabled:opacity-50"
+                  >
+                    {isPrinterTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+                    {t('settings.printer.testBtn')}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </NovaCard>
 
@@ -419,6 +683,62 @@ const ParametresPage: React.FC = () => {
               />
             </button>
           </div>
+          <div className="mt-3 p-3 rounded-lg bg-muted/30 border border-border/40 space-y-1">
+            <p className="text-[11px] font-semibold text-muted-foreground">{t('settings.boutique.geoTransparencyTitle')}</p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">{t('settings.boutique.geoTransparencyList')}</p>
+            <p className="text-[11px] font-medium text-[#2B6954] mt-0.5">{t('settings.boutique.geoTransparencyNone')}</p>
+          </div>
+        </NovaCard>
+
+        {/* ── Sauvegarde & restauration ──────────────────────────────────── */}
+        <NovaCard accent className="w-full max-w-2xl mt-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+              <HardDrive className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground text-sm">{t('settings.backup.title')}</p>
+              <p className="text-xs text-muted-foreground">{t('settings.backup.subtitle')}</p>
+            </div>
+          </div>
+
+          {/* Backup reminder */}
+          {backupReminderDays !== null && backupReminderDays >= 30 && (
+            <div className="flex items-start gap-2 p-3 mb-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-600">
+                {t('settings.backup.reminderText').replace('{days}', String(backupReminderDays))}
+              </p>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => { setShowExportModal(true); setExportPassword(''); setExportPassword2(''); }}
+              className="nova-btn-primary flex items-center gap-2 px-4 py-2 text-sm"
+            >
+              <Download className="w-4 h-4" />
+              {t('settings.backup.exportBtn')}
+            </button>
+            <button
+              onClick={() => importFileRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg border border-border bg-muted hover:bg-muted/80 text-foreground transition-colors"
+            >
+              <Upload className="w-4 h-4" />
+              {t('settings.backup.importBtn')}
+            </button>
+            <input
+              ref={importFileRef}
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={handleImportFileChange}
+            />
+          </div>
+
+          <p className="text-[11px] text-muted-foreground mt-3">
+            {t('settings.backup.usbHint')}
+          </p>
         </NovaCard>
         </>
       )}
@@ -431,7 +751,7 @@ const ParametresPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {users.map(user => (
               <NovaCard key={user.id} accent className="flex flex-col items-center text-center">
-                <div className="w-14 h-14 lg:w-16 lg:h-16 rounded-lg flex items-center justify-center text-title-lg font-semibold text-white mb-3" style={{ backgroundColor: user.color }}>
+                <div className="w-14 h-14 lg:w-16 lg:h-16 rounded-lg flex items-center justify-center text-xl font-semibold text-white mb-3" style={{ backgroundColor: user.color }}>
                   {user.prenom[0]}{user.nom[0]}
                 </div>
                 <p className="font-medium text-foreground">{user.prenom} {user.nom}</p>
@@ -583,6 +903,178 @@ const ParametresPage: React.FC = () => {
                 className="flex-1 py-2.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors font-medium"
               >
                 {t('settings.users.delete')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Export backup modal ─────────────────────────────────────────── */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowExportModal(false)}>
+          <div className="nova-card w-full max-w-[460px] p-5 lg:p-6 animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="nova-heading text-lg text-foreground">{t('settings.backup.exportTitle')}</h2>
+              <button onClick={() => setShowExportModal(false)} className="p-2 rounded-lg hover:bg-muted"><X className="w-5 h-5 text-muted-foreground" /></button>
+            </div>
+
+            {/* Encrypt toggle */}
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 border border-border/40 mb-4">
+              <input
+                id="exportEncrypt"
+                type="checkbox"
+                checked={exportEncrypt}
+                onChange={e => setExportEncrypt(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded shrink-0"
+              />
+              <label htmlFor="exportEncrypt" className="cursor-pointer">
+                <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                  {exportEncrypt ? <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> : <ShieldOff className="w-3.5 h-3.5 text-amber-400" />}
+                  {t('settings.backup.encryptLabel')}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{t('settings.backup.encryptHint')}</p>
+              </label>
+            </div>
+
+            {exportEncrypt ? (
+              <div className="space-y-3 mb-4">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t('settings.backup.passwordLabel')}</label>
+                  <input type="password" value={exportPassword} onChange={e => setExportPassword(e.target.value)} className="nova-input w-full" placeholder="••••••••" autoComplete="new-password" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t('settings.backup.passwordConfirmLabel')}</label>
+                  <input type="password" value={exportPassword2} onChange={e => setExportPassword2(e.target.value)} className="nova-input w-full" placeholder="••••••••" autoComplete="new-password" />
+                </div>
+                <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-amber-600">{t('settings.backup.passwordWarning')}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 mb-4">
+                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-amber-600">{t('settings.backup.noEncryptWarning')}</p>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button onClick={() => setShowExportModal(false)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors text-sm">{t('common.cancel')}</button>
+              <button onClick={handleExport} disabled={isExporting} className="flex-1 nova-btn-primary py-2.5 text-sm flex items-center justify-center gap-2">
+                {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                {isExporting ? t('settings.backup.exporting') : t('settings.backup.exportBtn')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Import: password modal ───────────────────────────────────────── */}
+      {showImportPassword && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowImportPassword(false)}>
+          <div className="nova-card w-full max-w-[400px] p-5 lg:p-6 animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="nova-heading text-base text-foreground">{t('settings.backup.decryptTitle')}</h2>
+              <button onClick={() => setShowImportPassword(false)} className="p-2 rounded-lg hover:bg-muted"><X className="w-5 h-5 text-muted-foreground" /></button>
+            </div>
+            {pendingMeta && (
+              <p className="text-xs text-muted-foreground mb-3">
+                {t('settings.backup.exportedAt')}: {new Date(pendingMeta.exportedAt).toLocaleString()}
+              </p>
+            )}
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('settings.backup.passwordLabel')}</label>
+              <input
+                type="password"
+                value={importPassword}
+                onChange={e => setImportPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleImportWithPassword()}
+                className="nova-input w-full"
+                placeholder="••••••••"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setShowImportPassword(false)} className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors text-sm">{t('common.cancel')}</button>
+              <button onClick={handleImportWithPassword} className="flex-1 nova-btn-primary py-2.5 text-sm">{t('settings.backup.decryptBtn')}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Import: confirm restore modal ────────────────────────────────── */}
+      {showImportConfirm && pendingData && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="nova-card w-full max-w-[460px] p-5 lg:p-6 animate-scale-in">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+                <RotateCcw className="w-5 h-5 text-destructive" />
+              </div>
+              <div>
+                <h2 className="nova-heading text-base text-foreground">{t('settings.backup.confirmTitle')}</h2>
+                {pendingMeta && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {t('settings.backup.exportedAt')}: {new Date(pendingMeta.exportedAt).toLocaleString()}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Cross-boutique warning */}
+            {pendingMeta && pendingMeta.boutiqueId !== boutiqueId && (
+              <div className="flex items-start gap-2 p-3 mb-4 rounded-lg bg-destructive/10 border border-destructive/20">
+                <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                <p className="text-xs text-destructive">{t('settings.backup.crossBoutiqueWarning')}</p>
+              </div>
+            )}
+
+            {/* Data summary */}
+            <div className="grid grid-cols-2 gap-2 text-xs mb-4">
+              {[
+                ['settings.backup.sumProducts', pendingData.products.length],
+                ['settings.backup.sumSales',    pendingData.sales.length],
+                ['settings.backup.sumCustomers',pendingData.customers.length],
+                ['settings.backup.sumUsers',    pendingData.users.length],
+              ].map(([key, val]) => (
+                <div key={String(key)} className="p-2 rounded-lg bg-muted/40 flex justify-between">
+                  <span className="text-muted-foreground">{t(String(key) as Parameters<typeof t>[0])}</span>
+                  <span className="font-semibold text-foreground">{val}</span>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-sm text-muted-foreground mb-5">{t('settings.backup.confirmWarning')}</p>
+
+            {isRestoring && restoreProgress && (
+              <div className="mb-4">
+                <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                  <span>{t('settings.backup.restoring')}</span>
+                  <span>{restoreProgress.done}/{restoreProgress.total}</span>
+                </div>
+                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary transition-all duration-300"
+                    style={{ width: `${Math.round(restoreProgress.done / restoreProgress.total * 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowImportConfirm(false); setPendingData(null); setPendingMeta(null); }}
+                disabled={isRestoring}
+                className="flex-1 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors text-sm"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={handleRestore}
+                disabled={isRestoring}
+                className="flex-1 py-2.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+              >
+                {isRestoring ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                {isRestoring ? t('settings.backup.restoring') : t('settings.backup.restoreBtn')}
               </button>
             </div>
           </div>
