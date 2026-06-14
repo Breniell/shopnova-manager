@@ -3,9 +3,10 @@
  *
  * Chaque boutique apparaît dès qu'elle a une localisation (IP ou adresse).
  * Marqueurs différenciés :
- *   — Rond plein  : localisation précise (adresse Nominatim, niveau rue)
+ *   — Rond plein  : localisation précise (GPS)
  *   — Rond cerclé : localisation approximative (IP, niveau ville)
- * Cluster, heatmap CA, légende complète.
+ * Cluster, zones d'activité (taille = statut), légende complète.
+ * Aucune donnée financière n'est affichée.
  */
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from '@/i18n';
@@ -17,6 +18,7 @@ import type { RegistryEntry } from '@/services/registryService';
 import { getBoutiqueStatus, STATUS_COLORS } from '@/stores/useSuperAdminStore';
 import { cn } from '@/lib/utils';
 import { MapPin, Wifi } from 'lucide-react';
+import { getCurrentBcp47 } from '@/utils/formatters';
 
 interface Props { boutiques: RegistryEntry[] }
 
@@ -25,12 +27,13 @@ function toDate(v: unknown): Date {
   if (v instanceof Date) return v;
   return new Date(0);
 }
-function fmtFCFA(n: number) { return new Intl.NumberFormat('fr-FR').format(n) + ' FCFA'; }
-function fmtDate(d: Date) { return d.getTime() === 0 ? '—' : d.toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }); }
+
+function fmtDate(d: Date) {
+  return d.getTime() === 0 ? '—' : d.toLocaleString(getCurrentBcp47(), { dateStyle: 'medium', timeStyle: 'short' });
+}
 
 // ─── Marker factories ─────────────────────────────────────────────────────────
 
-/** Solid marker = street-level precision (Nominatim) */
 function createPreciseMarker(color: string): L.DivIcon {
   return L.divIcon({
     className: '',
@@ -56,7 +59,6 @@ function createPreciseMarker(color: string): L.DivIcon {
   });
 }
 
-/** Dashed-border marker = city-level precision (IP geolocation) */
 function createApproxMarker(color: string): L.DivIcon {
   return L.divIcon({
     className: '',
@@ -82,7 +84,7 @@ function createApproxMarker(color: string): L.DivIcon {
   });
 }
 
-function createClusterIcon(cluster: L.MarkerCluster) {
+function createClusterIcon(cluster: { getChildCount(): number }) {
   const count = cluster.getChildCount();
   return L.divIcon({
     className: '',
@@ -103,6 +105,10 @@ function createClusterIcon(cluster: L.MarkerCluster) {
 
 type MapMode = 'markers' | 'heatmap' | 'both';
 
+// Radius by status (metres). IP locations get an extra base since city-level precision
+const STATUS_RADII: Record<string, number> = { active: 20_000, recent: 12_000, inactive: 6_000 };
+const STATUS_OPACITIES: Record<string, number> = { active: 0.18, recent: 0.12, inactive: 0.07 };
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const SAMap: React.FC<Props> = ({ boutiques }) => {
@@ -117,15 +123,10 @@ export const SAMap: React.FC<Props> = ({ boutiques }) => {
     () => boutiques.filter(b => !b.location?.lat),
     [boutiques]
   );
-  const preciseCount = geolocated.filter(b => b.location?.precision === 'street').length;
-  const approxCount  = geolocated.filter(b => b.location?.precision !== 'street').length;
+  const preciseCount = geolocated.filter(b => b.location?.precision === 'gps').length;
+  const approxCount  = geolocated.filter(b => b.location?.precision !== 'gps').length;
 
-  const maxRevenue = useMemo(
-    () => Math.max(...geolocated.map(b => b.stats?.totalRevenue ?? 0), 1),
-    [geolocated]
-  );
-
-  const center: [number, number] = [3.87, 11.52]; // Cameroun
+  const center: [number, number] = [3.87, 11.52];
 
   const modeBtn = (m: MapMode, label: string) => (
     <button
@@ -156,7 +157,7 @@ export const SAMap: React.FC<Props> = ({ boutiques }) => {
         </div>
         <div className="flex gap-2">
           {modeBtn('markers', t('superadmin.mapModeMarkers'))}
-          {modeBtn('heatmap', t('superadmin.mapModeHeatmap'))}
+          {modeBtn('heatmap', t('superadmin.mapModeActivity'))}
           {modeBtn('both',    t('superadmin.mapModeBoth'))}
         </div>
       </div>
@@ -186,7 +187,7 @@ export const SAMap: React.FC<Props> = ({ boutiques }) => {
         {mode !== 'markers' && (
           <div className="flex items-center gap-1.5 ml-auto">
             <div className="w-4 h-4 rounded-full bg-primary/20 border border-primary/40" />
-            <span className="text-[10px] text-muted-foreground">{t('superadmin.mapModeHeatmap')}</span>
+            <span className="text-[10px] text-muted-foreground">{t('superadmin.mapModeActivity')}</span>
           </div>
         )}
       </div>
@@ -209,13 +210,13 @@ export const SAMap: React.FC<Props> = ({ boutiques }) => {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          {/* Heatmap circles (sized by CA) */}
+          {/* Activity zones (sized by status, not revenue) */}
           {(mode === 'heatmap' || mode === 'both') && geolocated.map(b => {
-            const revenue = b.stats?.totalRevenue ?? 0;
-            const isApprox = b.location?.precision !== 'street';
-            const radius = (isApprox ? 8000 : 2000) + (revenue / maxRevenue) * 40_000;
-            const opacity = 0.06 + (revenue / maxRevenue) * 0.18;
-            const color = STATUS_COLORS[getBoutiqueStatus(toDate(b.lastSeen))];
+            const status   = getBoutiqueStatus(toDate(b.lastSeen));
+            const isApprox = b.location?.precision !== 'gps';
+            const radius   = (isApprox ? 5_000 : 0) + (STATUS_RADII[status] ?? 8_000);
+            const opacity  = STATUS_OPACITIES[status] ?? 0.08;
+            const color    = STATUS_COLORS[status];
             return (
               <Circle
                 key={`heat-${b.boutiqueId}`}
@@ -230,10 +231,10 @@ export const SAMap: React.FC<Props> = ({ boutiques }) => {
           {(mode === 'markers' || mode === 'both') && (
             <MarkerClusterGroup iconCreateFunction={createClusterIcon} maxClusterRadius={60} showCoverageOnHover={false}>
               {geolocated.map(b => {
-                const status = getBoutiqueStatus(toDate(b.lastSeen));
-                const color  = STATUS_COLORS[status];
-                const isApprox = b.location?.precision !== 'street';
-                const icon = isApprox ? createApproxMarker(color) : createPreciseMarker(color);
+                const status   = getBoutiqueStatus(toDate(b.lastSeen));
+                const color    = STATUS_COLORS[status];
+                const isApprox = b.location?.precision !== 'gps';
+                const icon     = isApprox ? createApproxMarker(color) : createPreciseMarker(color);
                 const lastSeen = toDate(b.lastSeen);
                 return (
                   <Marker key={b.boutiqueId} position={[b.location!.lat, b.location!.lng]} icon={icon}>
@@ -260,12 +261,26 @@ export const SAMap: React.FC<Props> = ({ boutiques }) => {
                         </div>
 
                         <div className="space-y-1 text-xs text-gray-700 border-t border-gray-100 pt-2">
-                          <div className="flex justify-between"><span className="text-gray-500">{t('superadmin.detailStatRevenue')}</span><span className="font-semibold">{fmtFCFA(b.stats?.totalRevenue ?? 0)}</span></div>
-                          <div className="flex justify-between"><span className="text-gray-500">{t('superadmin.detailStatSales')}</span><span>{(b.stats?.totalVentes ?? 0).toLocaleString()}</span></div>
-                          <div className="flex justify-between"><span className="text-gray-500">{t('superadmin.detailStatUsers')}</span><span>{b.stats?.totalUsers ?? '—'}</span></div>
-                          <div className="flex justify-between"><span className="text-gray-500">{t('superadmin.detailStatProducts')}</span><span>{b.stats?.totalProducts ?? '—'}</span></div>
-                          <div className="flex justify-between"><span className="text-gray-500">{t('superadmin.detailVersionLabel')}</span><span className="font-mono">v{b.version}</span></div>
-                          <div className="flex justify-between"><span className="text-gray-500">{t('superadmin.detailLastSeen')}</span><span>{fmtDate(lastSeen)}</span></div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">{t('superadmin.mapHealthActive')}</span>
+                            <span className="font-semibold">{b.health?.isActive ? '✓' : '—'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">{t('superadmin.mapHealthUsers')}</span>
+                            <span>{b.health?.usersCount ?? '—'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">{t('superadmin.mapHealthLastActivity')}</span>
+                            <span>{b.health?.lastActivityAt ? fmtDate(new Date(b.health.lastActivityAt)) : '—'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">{t('superadmin.detailLastSeen')}</span>
+                            <span>{fmtDate(lastSeen)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">{t('superadmin.detailVersionLabel')}</span>
+                            <span className="font-mono">v{b.version}</span>
+                          </div>
                         </div>
                       </div>
                     </Popup>

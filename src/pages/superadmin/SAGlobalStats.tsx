@@ -1,7 +1,7 @@
 import React from 'react';
 import type { RegistryEntry } from '@/services/registryService';
 import { getBoutiqueStatus } from '@/stores/useSuperAdminStore';
-import { Store, TrendingUp, Users, Package, Activity, Clock, Globe } from 'lucide-react';
+import { Store, Users, Activity, Clock, Globe, CheckCircle } from 'lucide-react';
 import { useTranslation } from '@/i18n';
 
 interface Props {
@@ -16,24 +16,18 @@ function toDate(v: unknown): Date {
   return new Date();
 }
 
-function formatFCFA(n: number): string {
-  return new Intl.NumberFormat('fr-FR').format(n) + ' FCFA';
-}
-
 export const SAGlobalStats: React.FC<Props> = ({ boutiques }) => {
   const { t } = useTranslation();
-  const total = boutiques.length;
+  const total    = boutiques.length;
   const active   = boutiques.filter(b => getBoutiqueStatus(toDate(b.lastSeen)) === 'active').length;
   const recent   = boutiques.filter(b => getBoutiqueStatus(toDate(b.lastSeen)) === 'recent').length;
   const inactive = boutiques.filter(b => getBoutiqueStatus(toDate(b.lastSeen)) === 'inactive').length;
 
-  const totalRevenue  = boutiques.reduce((s, b) => s + (b.stats?.totalRevenue ?? 0), 0);
-  const totalVentes   = boutiques.reduce((s, b) => s + (b.stats?.totalVentes ?? 0), 0);
-  const totalUsers    = boutiques.reduce((s, b) => s + (b.stats?.totalUsers ?? 0), 0);
-  const totalProducts = boutiques.reduce((s, b) => s + (b.stats?.totalProducts ?? 0), 0);
+  const activeThisMonth = boutiques.filter(b => b.health?.isActive === true).length;
+  const totalUsersCount = boutiques.reduce((s, b) => s + (b.health?.usersCount ?? 0), 0);
 
-  const versions = [...new Set(boutiques.map(b => b.version))].join(', ') || '—';
-  const withLocation = boutiques.filter(b => b.location).length;
+  const versions      = [...new Set(boutiques.map(b => b.version))].join(', ') || '—';
+  const withLocation  = boutiques.filter(b => b.location).length;
 
   const cards = [
     {
@@ -45,10 +39,10 @@ export const SAGlobalStats: React.FC<Props> = ({ boutiques }) => {
       bg: 'bg-primary/10',
     },
     {
-      icon: TrendingUp,
-      label: t('superadmin.statsRevenue'),
-      value: formatFCFA(totalRevenue),
-      sub: t('superadmin.statsRevenueSub').replace('{n}', totalVentes.toLocaleString()),
+      icon: CheckCircle,
+      label: t('superadmin.statsActive30j'),
+      value: activeThisMonth.toString(),
+      sub: t('superadmin.statsActive30jSub').replace('{n}', String(total - activeThisMonth)),
       color: 'text-secondary',
       bg: 'bg-secondary/10',
     },
@@ -62,19 +56,11 @@ export const SAGlobalStats: React.FC<Props> = ({ boutiques }) => {
     },
     {
       icon: Users,
-      label: t('superadmin.statsUsersCreated'),
-      value: totalUsers.toString(),
-      sub: t('superadmin.statsUsersSub'),
+      label: t('superadmin.kpiTotalUsers'),
+      value: totalUsersCount.toString(),
+      sub: t('superadmin.kpiTotalUsersSub'),
       color: 'text-[#F59E0B]',
       bg: 'bg-[#F59E0B]/10',
-    },
-    {
-      icon: Package,
-      label: t('superadmin.statsProducts'),
-      value: totalProducts.toLocaleString(),
-      sub: t('superadmin.statsProductsSub'),
-      color: 'text-[#8B5CF6]',
-      bg: 'bg-[#8B5CF6]/10',
     },
     {
       icon: Globe,
@@ -95,7 +81,7 @@ export const SAGlobalStats: React.FC<Props> = ({ boutiques }) => {
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6 gap-3">
       {cards.map((card, i) => (
         <div key={i} className="nova-card p-4 flex flex-col gap-2">
           <div className={`w-8 h-8 rounded-lg ${card.bg} flex items-center justify-center`}>

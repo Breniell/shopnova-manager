@@ -49,10 +49,9 @@ service cloud.firestore {
                    && request.resource.data.telephone.size() <= 50
                    && request.resource.data.version is string
                    && request.resource.data.version.size() <= 20;
-      // Developer reads any entry
+      // Developer reads any entry — verified via Firebase custom claim, not email
       allow read: if request.auth != null
-                  && request.auth.token.email != null
-                  && request.auth.token.email == 'breniellkouda@gmail.com';
+                  && request.auth.token.superadmin == true;
     }
 
     // Security events (login attempts) — boutique writes, no external read

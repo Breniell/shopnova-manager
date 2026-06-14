@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { RegistryEntry } from '@/services/registryService';
 import { getBoutiqueStatus, STATUS_COLORS, STATUS_LABELS } from '@/stores/useSuperAdminStore';
 import { useTranslation } from '@/i18n';
+import { getCurrentBcp47 } from '@/utils/formatters';
 import { Search, ArrowUpDown, Download, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SABoutiqueDetail } from './SABoutiqueDetail';
@@ -20,14 +21,10 @@ function toDate(v: unknown): Date {
 function fmtDate(d: Date): string {
   return d.getTime() === 0
     ? '—'
-    : d.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+    : d.toLocaleString(getCurrentBcp47(), { dateStyle: 'short', timeStyle: 'short' });
 }
 
-function fmtFCFA(n: number): string {
-  return new Intl.NumberFormat('fr-FR').format(n);
-}
-
-type SortKey     = 'nom' | 'lastSeen' | 'totalRevenue' | 'totalVentes' | 'version';
+type SortKey     = 'nom' | 'lastSeen' | 'usersCount' | 'version';
 type StatusFilter = 'all' | 'active' | 'recent' | 'inactive';
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -47,7 +44,6 @@ export const SABoutiqueTable: React.FC<Props> = ({ boutiques }) => {
   const [platformFilter, setPlatformFilter] = useState<string>('all');
   const [selected,       setSelected]       = useState<RegistryEntry | null>(null);
 
-  // Unique platforms present in the data
   const platforms = [
     'all',
     ...new Set(boutiques.map(b => b.platform?.toLowerCase() ?? 'unknown')),
@@ -76,12 +72,11 @@ export const SABoutiqueTable: React.FC<Props> = ({ boutiques }) => {
       let av: string | number;
       let bv: string | number;
       switch (sortKey) {
-        case 'nom':          av = a.nom ?? '';                     bv = b.nom ?? '';                    break;
-        case 'lastSeen':     av = toDate(a.lastSeen).getTime();    bv = toDate(b.lastSeen).getTime();   break;
-        case 'totalRevenue': av = a.stats?.totalRevenue ?? 0;      bv = b.stats?.totalRevenue ?? 0;     break;
-        case 'totalVentes':  av = a.stats?.totalVentes ?? 0;       bv = b.stats?.totalVentes ?? 0;      break;
-        case 'version':      av = a.version ?? '';                 bv = b.version ?? '';                break;
-        default:             av = 0; bv = 0;
+        case 'nom':        av = a.nom ?? '';                     bv = b.nom ?? '';                    break;
+        case 'lastSeen':   av = toDate(a.lastSeen).getTime();    bv = toDate(b.lastSeen).getTime();   break;
+        case 'usersCount': av = a.health?.usersCount ?? 0;       bv = b.health?.usersCount ?? 0;      break;
+        case 'version':    av = a.version ?? '';                 bv = b.version ?? '';                break;
+        default:           av = 0; bv = 0;
       }
       if (av < bv) return sortAsc ? -1 : 1;
       if (av > bv) return sortAsc ? 1 : -1;
@@ -98,8 +93,7 @@ export const SABoutiqueTable: React.FC<Props> = ({ boutiques }) => {
   const exportCSV = () => {
     const headers = [
       t('superadmin.csvNom'), t('superadmin.csvPhone'), t('superadmin.csvAddress'), t('superadmin.csvStatus'),
-      t('superadmin.csvRevenue'), t('superadmin.csvSales'), t('superadmin.csvUsers'), t('superadmin.csvProducts'),
-      t('superadmin.csvCustomers'), t('superadmin.csvSuppliers'),
+      t('superadmin.tableColUsers'), t('superadmin.tableColActive30j'),
       t('superadmin.csvVersion'), t('superadmin.csvPlatform'), t('superadmin.csvLastSeen'), t('superadmin.csvRegistered'),
     ];
     const rows = filtered.map(b => {
@@ -108,12 +102,8 @@ export const SABoutiqueTable: React.FC<Props> = ({ boutiques }) => {
       return [
         b.nom ?? '', b.telephone ?? '', b.adresse ?? '',
         STATUS_LABELS[getBoutiqueStatus(lastSeen)],
-        b.stats?.totalRevenue ?? 0,
-        b.stats?.totalVentes  ?? 0,
-        b.stats?.totalUsers   ?? 0,
-        b.stats?.totalProducts ?? 0,
-        b.stats?.totalCustomers ?? 0,
-        b.stats?.totalSuppliers ?? 0,
+        b.health?.usersCount ?? 0,
+        b.health?.isActive ? '1' : '0',
         b.version ?? '',
         b.platform ?? '',
         fmtDate(lastSeen),
@@ -161,7 +151,7 @@ export const SABoutiqueTable: React.FC<Props> = ({ boutiques }) => {
               />
             </div>
 
-            {/* Platform filter — only shown if more than one platform */}
+            {/* Platform filter */}
             {platforms.length > 2 && (
               <div className="flex items-center gap-1.5">
                 <Filter className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
@@ -198,7 +188,7 @@ export const SABoutiqueTable: React.FC<Props> = ({ boutiques }) => {
             {(['all', 'active', 'recent', 'inactive'] as StatusFilter[]).map(s => {
               const label    = s === 'all' ? t('superadmin.tableFilterAll') : STATUS_LABELS[s];
               const count    = statusCounts[s];
-              const selected = statusFilter === s;
+              const isSelected = statusFilter === s;
               const dotColor = s !== 'all' ? STATUS_COLORS[s] : undefined;
               return (
                 <button
@@ -206,7 +196,7 @@ export const SABoutiqueTable: React.FC<Props> = ({ boutiques }) => {
                   onClick={() => setStatusFilter(s)}
                   className={cn(
                     'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all',
-                    selected
+                    isSelected
                       ? 'bg-primary text-primary-foreground shadow-sm'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted',
                   )}
@@ -214,13 +204,13 @@ export const SABoutiqueTable: React.FC<Props> = ({ boutiques }) => {
                   {dotColor && (
                     <div
                       className="w-1.5 h-1.5 rounded-full shrink-0"
-                      style={{ backgroundColor: selected ? 'currentColor' : dotColor }}
+                      style={{ backgroundColor: isSelected ? 'currentColor' : dotColor }}
                     />
                   )}
                   {label}
                   <span className={cn(
                     'text-[10px] rounded px-1 tabular-nums',
-                    selected ? 'bg-primary-foreground/20' : 'bg-muted text-muted-foreground',
+                    isSelected ? 'bg-primary-foreground/20' : 'bg-muted text-muted-foreground',
                   )}>
                     {count}
                   </span>
@@ -242,13 +232,10 @@ export const SABoutiqueTable: React.FC<Props> = ({ boutiques }) => {
                   </span>
                 </th>
                 <th className="px-4 py-3 text-left"><SortBtn k="lastSeen" label={t('superadmin.tableColSeen')} /></th>
-                <th className="px-4 py-3 text-right"><SortBtn k="totalRevenue" label={t('superadmin.tableColRevenue')} /></th>
-                <th className="px-4 py-3 text-right hidden sm:table-cell">
-                  <SortBtn k="totalVentes" label={t('superadmin.tableColSales')} />
-                </th>
-                <th className="px-4 py-3 text-center hidden lg:table-cell">
+                <th className="px-4 py-3 text-center"><SortBtn k="usersCount" label={t('superadmin.tableColUsers')} /></th>
+                <th className="px-4 py-3 text-center hidden sm:table-cell">
                   <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t('superadmin.kpiUsers')}
+                    {t('superadmin.tableColActive30j')}
                   </span>
                 </th>
                 <th className="px-4 py-3 text-center hidden xl:table-cell">
@@ -264,7 +251,7 @@ export const SABoutiqueTable: React.FC<Props> = ({ boutiques }) => {
             <tbody className="divide-y divide-border/60">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground text-sm">
+                  <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground text-sm">
                     {t('superadmin.tableEmpty')}
                   </td>
                 </tr>
@@ -274,6 +261,7 @@ export const SABoutiqueTable: React.FC<Props> = ({ boutiques }) => {
                   const status   = getBoutiqueStatus(lastSeen);
                   const color    = STATUS_COLORS[status];
                   const location = b.location?.city ?? b.location?.country ?? b.adresse ?? '—';
+                  const isActive30j = b.health?.isActive ?? false;
                   return (
                     <tr
                       key={b.boutiqueId}
@@ -309,14 +297,18 @@ export const SABoutiqueTable: React.FC<Props> = ({ boutiques }) => {
                       <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                         {fmtDate(lastSeen)}
                       </td>
-                      <td className="px-4 py-3 text-right font-mono text-xs font-medium text-foreground">
-                        {fmtFCFA(b.stats?.totalRevenue ?? 0)}
+                      <td className="px-4 py-3 text-center text-xs font-medium text-foreground">
+                        {b.health?.usersCount ?? '—'}
                       </td>
-                      <td className="px-4 py-3 text-right text-xs text-muted-foreground hidden sm:table-cell">
-                        {(b.stats?.totalVentes ?? 0).toLocaleString('fr-FR')}
-                      </td>
-                      <td className="px-4 py-3 text-center text-xs text-muted-foreground hidden lg:table-cell">
-                        {b.stats?.totalUsers ?? '—'}
+                      <td className="px-4 py-3 text-center hidden sm:table-cell">
+                        <span className={cn(
+                          'text-[10px] font-medium px-1.5 py-0.5 rounded-full',
+                          isActive30j
+                            ? 'bg-secondary/15 text-secondary'
+                            : 'bg-muted text-muted-foreground',
+                        )}>
+                          {isActive30j ? '✓' : '—'}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-center hidden xl:table-cell">
                         <span className="text-[10px] font-mono bg-muted/60 px-1.5 py-0.5 rounded text-muted-foreground">

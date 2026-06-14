@@ -111,6 +111,51 @@ Tu devrais voir :
 6. Clique **"Register app"**
 7. **Copie les valeurs** dans l'objet `firebaseConfig` qui s'affiche
 
+### 2.6 Configurer le compte super-admin (développeur uniquement)
+
+Le tableau de bord super-admin permet de surveiller toutes les boutiques enregistrées.
+Il est **exclu du bundle commerçant** par défaut — les marchands ne peuvent pas y accéder même en naviguant vers `/superadmin`.
+
+#### a) Compte dédié
+
+Crée un compte Firebase Auth **Email/Password** dédié à l'administration (ex. `admin-legwan@ton-domaine.com`).
+Ne réutilise **jamais** ton compte personnel et n'utilise jamais le même compte pour les boutiques.
+
+#### b) Attribuer le custom claim
+
+```bash
+# Installer firebase-admin (une seule fois)
+npm install --save-dev firebase-admin
+
+# Télécharger la clé de service depuis Firebase Console →
+# Project settings → Service accounts → Generate new private key
+# Sauvegarder sous service-account.json à la racine du projet (jamais commité)
+
+# Attribuer le claim
+node scripts/set-superadmin-claim.mjs set admin-legwan@ton-domaine.com
+
+# Le compte doit se déconnecter / reconnecter pour que le claim soit effectif.
+
+# Pour révoquer plus tard :
+node scripts/set-superadmin-claim.mjs revoke admin-legwan@ton-domaine.com
+```
+
+> **Rotation des clés** : Si la clé `service-account.json` est compromise (exposée sur GitHub, etc.),
+> va dans Firebase Console → Service accounts → **supprimer la clé exposée** et en générer une nouvelle.
+> Le claim existant reste valide — seule la clé de service est invalidée.
+
+#### c) Build super-admin
+
+Pour un déploiement qui inclut l'interface super-admin, définis ces variables dans `.env` :
+
+```env
+VITE_ENABLE_SUPERADMIN=true
+VITE_SUPERADMIN_EMAIL=admin-legwan@ton-domaine.com
+```
+
+Les builds commerçants **ne définissent pas ces variables** (ou laissent `VITE_ENABLE_SUPERADMIN=false`).
+Vite élimine tout le code super-admin à la compilation : aucun octet du tableau de bord n'est livré aux commerçants.
+
 ---
 
 ## 3. Configuration locale du projet
@@ -445,6 +490,9 @@ Avant de mettre une boutique en production réelle (pas un test) :
 - [ ] Test offline : couper Wi-Fi, faire une vente, rallumer → synchro OK
 - [ ] Backup configuré (manuel ou automatique)
 - [ ] Sentry / monitoring activé (si en prod réelle)
+- [ ] Build commerçant sans `VITE_ENABLE_SUPERADMIN` — vérifier `grep -r superadmin dist/assets/` retourne 0 résultat
+- [ ] Custom claim `superadmin: true` attribué uniquement au compte admin dédié (pas un compte perso)
+- [ ] `service-account.json` absent du dépôt git (`git ls-files service-account*.json` → vide)
 
 ### Métier (boutique pilote)
 - [ ] Catalogue complet saisi (au moins 80% des produits)
@@ -505,6 +553,41 @@ Avant de mettre une boutique en production réelle (pas un test) :
 - Doit être servi en HTTPS (Firebase Hosting le fait automatiquement)
 - Sur localhost, ça marche aussi
 - Sur Safari iOS, l'installation est via "Partager → Sur l'écran d'accueil"
+
+---
+
+## 🔧 Migration v1.5 — Nettoyage registre (Ticket 8)
+
+À partir de la **version 1.5**, le registre super-admin n'enregistre plus de données financières dans les documents Firestore (champ `stats` supprimé). Seul le bloc `health` est désormais écrit.
+
+### Pourquoi migrer ?
+
+Les anciens documents dans `registry/` contiennent encore un champ `stats` avec des données agrégées (CA, nombre de ventes, produits…). Ces données sont **obsolètes** dès que chaque boutique envoie son premier heartbeat v1.5, mais le champ reste présent jusqu'à ce qu'il soit explicitement supprimé.
+
+### Comment migrer
+
+1. **Télécharger** une clé de compte de service Firebase :
+   - Firebase Console → Paramètres du projet → Comptes de service → Générer une nouvelle clé privée
+   - Sauvegarder dans `serviceAccountKey.json` (ne pas committer)
+
+2. **Installer firebase-admin** (si pas déjà installé) :
+   ```bash
+   npm install firebase-admin
+   ```
+
+3. **Test à blanc** (prévisualisation sans écriture) :
+   ```bash
+   GOOGLE_APPLICATION_CREDENTIALS=./serviceAccountKey.json node scripts/migrate-registry.mjs --dry-run
+   ```
+
+4. **Exécuter la migration** :
+   ```bash
+   GOOGLE_APPLICATION_CREDENTIALS=./serviceAccountKey.json node scripts/migrate-registry.mjs
+   ```
+
+5. Vérifier dans Firebase Console → Firestore → `registry` que les documents ne contiennent plus de champ `stats`.
+
+> **Note :** La migration est idempotente — la ré-exécuter sur des documents déjà migrés est sans effet.
 
 ---
 

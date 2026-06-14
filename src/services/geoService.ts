@@ -67,6 +67,55 @@ export function getGPSLocation(timeoutMs = 10_000): Promise<GeoLocation | null> 
   });
 }
 
+/**
+ * Robust GPS capture: watches position for up to `durationMs`,
+ * keeping the best reading (lowest accuracy number = most precise).
+ * Resolves early if `targetAccuracyM` is reached.
+ * Better than getCurrentPosition for indoor/semi-outdoor scenarios.
+ */
+export function getGPSLocationRobust(
+  durationMs = 25_000,
+  targetAccuracyM = 50
+): Promise<GeoLocation | null> {
+  if (typeof navigator === 'undefined' || !navigator.geolocation) return Promise.resolve(null);
+
+  return new Promise(resolve => {
+    let best: GeolocationPosition | null = null;
+    let settled = false;
+    let watchId = -1;
+
+    const fromPos = (pos: GeolocationPosition): GeoLocation => ({
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude,
+      accuracy: pos.coords.accuracy,
+      source: 'gps',
+      precision: 'gps',
+    });
+
+    const finish = (geo: GeoLocation | null) => {
+      if (settled) return;
+      settled = true;
+      try { navigator.geolocation.clearWatch(watchId); } catch { /* ignore */ }
+      clearTimeout(timer);
+      resolve(geo);
+    };
+
+    const timer = setTimeout(() => finish(best ? fromPos(best) : null), durationMs);
+
+    watchId = navigator.geolocation.watchPosition(
+      pos => {
+        if (!best || pos.coords.accuracy < best.coords.accuracy) best = pos;
+        if (pos.coords.accuracy <= targetAccuracyM) finish(fromPos(pos));
+      },
+      err => {
+        console.warn('[geo] watchPosition error:', err.message);
+        finish(best ? fromPos(best) : null);
+      },
+      { enableHighAccuracy: true, timeout: durationMs, maximumAge: 0 }
+    );
+  });
+}
+
 // ─── IP geolocation fallback ──────────────────────────────────────────────────
 
 interface IpResult { lat: number; lng: number; city?: string; country?: string }

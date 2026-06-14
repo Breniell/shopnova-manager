@@ -13,8 +13,8 @@ import { collection, getDocs } from 'firebase/firestore';
 import { getSuperAdminFirebase } from '@/lib/firebase';
 import type { RegistryEntry } from '@/services/registryService';
 
-// The only email allowed to access the super-admin dashboard
-const SUPERADMIN_EMAIL = 'breniellkouda@gmail.com';
+// Injected at build time — never hardcoded in source
+const SUPERADMIN_EMAIL = import.meta.env.VITE_SUPERADMIN_EMAIL as string;
 
 interface SuperAdminState {
   isAuthenticated: boolean;
@@ -59,10 +59,6 @@ export const useSuperAdminStore = create<SuperAdminState>((set, get) => ({
     try {
       const firebase = getSuperAdminFirebase();
       if (!firebase) throw new Error('Firebase non configuré.');
-
-      if (email.trim().toLowerCase() !== SUPERADMIN_EMAIL) {
-        throw new Error('Accès non autorisé.');
-      }
 
       const cred = await signInWithEmailAndPassword(
         firebase.saAuth,

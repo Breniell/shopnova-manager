@@ -56,7 +56,7 @@ export const SALogin: React.FC = () => {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 className="nova-input w-full"
-                placeholder="breniellkouda@gmail.com"
+                placeholder={import.meta.env.VITE_SUPERADMIN_EMAIL ?? 'admin@exemple.com'}
                 autoComplete="email"
                 autoFocus
                 required

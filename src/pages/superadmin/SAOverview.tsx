@@ -3,7 +3,7 @@ import type { RegistryEntry } from '@/services/registryService';
 import { getBoutiqueStatus, STATUS_COLORS } from '@/stores/useSuperAdminStore';
 import { useTranslation } from '@/i18n';
 import {
-  Store, TrendingUp, Users, Package, Activity, Globe, ShoppingBag, BarChart2,
+  Store, Users, Activity, Globe, BarChart2, CheckCircle,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -21,12 +21,6 @@ function toDate(v: unknown): Date {
   return new Date();
 }
 
-function fmtFCFA(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M FCFA';
-  if (n >= 1_000) return Math.round(n / 1_000) + 'k FCFA';
-  return new Intl.NumberFormat('fr-FR').format(n) + ' FCFA';
-}
-
 export const SAOverview: React.FC<Props> = ({ boutiques }) => {
   const { t } = useTranslation();
 
@@ -41,29 +35,28 @@ export const SAOverview: React.FC<Props> = ({ boutiques }) => {
     if (days < 30) return t('superadmin.timeDayAgo').replace('{n}', String(days));
     return t('superadmin.timeMonthAgo').replace('{n}', String(Math.floor(days / 30)));
   }
-  const total     = boutiques.length;
-  const active    = boutiques.filter(b => getBoutiqueStatus(toDate(b.lastSeen)) === 'active').length;
-  const recent    = boutiques.filter(b => getBoutiqueStatus(toDate(b.lastSeen)) === 'recent').length;
-  const inactive  = boutiques.filter(b => getBoutiqueStatus(toDate(b.lastSeen)) === 'inactive').length;
 
-  const totalRevenue   = boutiques.reduce((s, b) => s + (b.stats?.totalRevenue ?? 0), 0);
-  const totalVentes    = boutiques.reduce((s, b) => s + (b.stats?.totalVentes ?? 0), 0);
-  const totalUsers     = boutiques.reduce((s, b) => s + (b.stats?.totalUsers ?? 0), 0);
-  const totalProducts  = boutiques.reduce((s, b) => s + (b.stats?.totalProducts ?? 0), 0);
-  const totalCustomers = boutiques.reduce((s, b) => s + (b.stats?.totalCustomers ?? 0), 0);
-  const withLocation   = boutiques.filter(b => b.location).length;
+  const total    = boutiques.length;
+  const active   = boutiques.filter(b => getBoutiqueStatus(toDate(b.lastSeen)) === 'active').length;
+  const recent   = boutiques.filter(b => getBoutiqueStatus(toDate(b.lastSeen)) === 'recent').length;
+  const inactive = boutiques.filter(b => getBoutiqueStatus(toDate(b.lastSeen)) === 'inactive').length;
 
-  const topBoutiques = useMemo(() =>
-    [...boutiques]
-      .sort((a, b) => (b.stats?.totalRevenue ?? 0) - (a.stats?.totalRevenue ?? 0))
+  const activeThisMonth = boutiques.filter(b => b.health?.isActive === true).length;
+  const totalUsersCount = boutiques.reduce((s, b) => s + (b.health?.usersCount ?? 0), 0);
+  const withLocation    = boutiques.filter(b => b.location).length;
+
+  // Top countries by boutique count
+  const topCountries = useMemo(() => {
+    const counts: Record<string, number> = {};
+    boutiques.forEach(b => {
+      const country = b.location?.country ?? (b.location ? 'Autre' : null);
+      if (country) counts[country] = (counts[country] ?? 0) + 1;
+    });
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
       .slice(0, 8)
-      .map(b => ({
-        name: (b.nom ?? '—').substring(0, 14),
-        ca: Math.round(b.stats?.totalRevenue ?? 0),
-        color: STATUS_COLORS[getBoutiqueStatus(toDate(b.lastSeen))],
-      })),
-    [boutiques],
-  );
+      .map(([name, count]) => ({ name: name.substring(0, 14), count }));
+  }, [boutiques]);
 
   const statusData = useMemo(() =>
     [
@@ -95,28 +88,16 @@ export const SAOverview: React.FC<Props> = ({ boutiques }) => {
       color: 'text-[#2B6954]', bg: 'bg-[#2B6954]/10',
     },
     {
-      icon: TrendingUp, label: t('superadmin.kpiRevenue'),
-      value: fmtFCFA(totalRevenue),
-      sub: t('superadmin.kpiRevenueSub').replace('{n}', totalVentes.toLocaleString()),
+      icon: CheckCircle, label: t('superadmin.kpiActive30j'),
+      value: String(activeThisMonth),
+      sub: t('superadmin.kpiActive30jSub').replace('{n}', String(total - activeThisMonth)),
       color: 'text-secondary', bg: 'bg-secondary/10',
     },
     {
-      icon: ShoppingBag, label: t('superadmin.kpiTotalSales'),
-      value: totalVentes.toLocaleString(),
-      sub: t('superadmin.kpiSalesCompleted'),
+      icon: Users, label: t('superadmin.kpiTotalUsers'),
+      value: String(totalUsersCount),
+      sub: t('superadmin.kpiTotalUsersSub'),
       color: 'text-[#F59E0B]', bg: 'bg-[#F59E0B]/10',
-    },
-    {
-      icon: Users, label: t('superadmin.kpiUsers'),
-      value: String(totalUsers),
-      sub: String(totalCustomers.toLocaleString()),
-      color: 'text-[#8B5CF6]', bg: 'bg-[#8B5CF6]/10',
-    },
-    {
-      icon: Package, label: t('superadmin.kpiProducts'),
-      value: totalProducts.toLocaleString(),
-      sub: t('superadmin.kpiAllCatalogs'),
-      color: 'text-[#EC4899]', bg: 'bg-[#EC4899]/10',
     },
     {
       icon: Globe, label: t('superadmin.kpiGeolocated'),
@@ -134,8 +115,8 @@ export const SAOverview: React.FC<Props> = ({ boutiques }) => {
 
   return (
     <div className="space-y-5">
-      {/* KPI grid — 8 cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
+      {/* KPI grid — 6 cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
         {kpis.map((k, i) => (
           <div key={i} className="nova-card p-4 flex flex-col gap-2">
             <div className={`w-8 h-8 rounded-lg ${k.bg} flex items-center justify-center`}>
@@ -150,15 +131,15 @@ export const SAOverview: React.FC<Props> = ({ boutiques }) => {
 
       {/* Charts row */}
       <div className="grid lg:grid-cols-3 gap-4">
-        {/* Top boutiques by CA */}
+        {/* Boutiques by country */}
         <div className="lg:col-span-2 nova-card p-4">
-          <p className="text-sm font-semibold text-foreground mb-0.5">{t('superadmin.chartTopTitle')}</p>
-          <p className="text-xs text-muted-foreground mb-4">{t('superadmin.chartTopSub')}</p>
-          {topBoutiques.length === 0 ? (
+          <p className="text-sm font-semibold text-foreground mb-0.5">{t('superadmin.chartCountryTitle')}</p>
+          <p className="text-xs text-muted-foreground mb-4">{t('superadmin.chartCountrySub')}</p>
+          {topCountries.length === 0 ? (
             <div className="h-48 flex items-center justify-center text-xs text-muted-foreground">{t('superadmin.noData')}</div>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={topBoutiques} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <BarChart data={topCountries} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                 <XAxis
                   dataKey="name"
@@ -166,23 +147,18 @@ export const SAOverview: React.FC<Props> = ({ boutiques }) => {
                   axisLine={false} tickLine={false}
                 />
                 <YAxis
-                  tickFormatter={v =>
-                    v >= 1_000_000 ? `${(v / 1_000_000).toFixed(0)}M` :
-                    v >= 1000 ? `${Math.round(v / 1000)}k` : String(v)
-                  }
+                  allowDecimals={false}
                   tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                  axisLine={false} tickLine={false} width={44}
+                  axisLine={false} tickLine={false} width={28}
                 />
                 <Tooltip
-                  formatter={(v: number) => [new Intl.NumberFormat('fr-FR').format(v) + ' FCFA', 'CA']}
+                  formatter={(v: number) => [v, t('superadmin.kpiInstallations')]}
                   contentStyle={{
                     borderRadius: '8px', border: '1px solid hsl(var(--border))',
                     fontSize: '12px', background: 'hsl(var(--card))',
                   }}
                 />
-                <Bar dataKey="ca" radius={[4, 4, 0, 0]}>
-                  {topBoutiques.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                </Bar>
+                <Bar dataKey="count" radius={[4, 4, 0, 0]} fill="#A93200" />
               </BarChart>
             </ResponsiveContainer>
           )}

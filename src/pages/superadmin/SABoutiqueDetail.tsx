@@ -3,11 +3,11 @@ import type { RegistryEntry } from '@/services/registryService';
 import { getBoutiqueStatus, STATUS_COLORS, STATUS_LABELS } from '@/stores/useSuperAdminStore';
 import {
   X, Phone, MapPin, Calendar, Clock, Shield, Package, Users,
-  ShoppingBag, TrendingUp, Wifi, Monitor, Tag, CreditCard,
-  Receipt, ClipboardList, Copy, CheckCircle2,
+  Activity, Wifi, Monitor, Copy, CheckCircle2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/i18n';
+import { getCurrentBcp47 } from '@/utils/formatters';
 
 interface Props {
   boutique: RegistryEntry | null;
@@ -23,11 +23,7 @@ function toDate(v: unknown): Date {
 
 function fmtDate(d: Date): string {
   if (d.getTime() === 0) return '—';
-  return d.toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' });
-}
-
-function fmtFCFA(n: number): string {
-  return new Intl.NumberFormat('fr-FR').format(n) + ' FCFA';
+  return d.toLocaleString(getCurrentBcp47(), { dateStyle: 'long', timeStyle: 'short' });
 }
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -67,11 +63,7 @@ export const SABoutiqueDetail: React.FC<Props> = ({ boutique, onClose }) => {
   const registeredAt = toDate(boutique.registeredAt);
   const status       = getBoutiqueStatus(lastSeen);
   const color        = STATUS_COLORS[status];
-
-  const stats = boutique.stats ?? {
-    totalVentes: 0, totalRevenue: 0, totalProducts: 0, totalUsers: 0,
-    totalCustomers: 0, totalSuppliers: 0, totalExpenses: 0, totalSessions: 0,
-  };
+  const health       = boutique.health;
 
   return (
     <>
@@ -156,28 +148,46 @@ export const SABoutiqueDetail: React.FC<Props> = ({ boutique, onClose }) => {
             </div>
           </div>
 
-          {/* Stats grid */}
+          {/* Health & activity */}
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-              {t('superadmin.detailSectionStats')}
+              {t('superadmin.detailSectionHealth')}
             </p>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { icon: TrendingUp,    label: t('superadmin.detailStatRevenue'),   value: fmtFCFA(stats.totalRevenue), color: 'text-secondary' },
-                { icon: ShoppingBag,   label: t('superadmin.detailStatSales'),     value: stats.totalVentes.toLocaleString(), color: 'text-[#F59E0B]' },
-                { icon: Users,         label: t('superadmin.detailStatUsers'),     value: String(stats.totalUsers), color: 'text-[#8B5CF6]' },
-                { icon: Tag,           label: t('superadmin.detailStatCustomers'), value: stats.totalCustomers.toLocaleString(), color: 'text-[#EC4899]' },
-                { icon: Package,       label: t('superadmin.detailStatProducts'),  value: stats.totalProducts.toLocaleString(), color: 'text-primary' },
-                { icon: CreditCard,    label: t('superadmin.detailStatSuppliers'), value: String(stats.totalSuppliers), color: 'text-[#06B6D4]' },
-                { icon: Receipt,       label: t('superadmin.detailStatExpenses'),  value: String(stats.totalExpenses), color: 'text-destructive' },
-                { icon: ClipboardList, label: t('superadmin.detailStatSessions'),  value: String(stats.totalSessions), color: 'text-muted-foreground' },
+                {
+                  icon: Users,
+                  label: t('superadmin.detailHealthUsers'),
+                  value: health?.usersCount != null ? String(health.usersCount) : '—',
+                  color: 'text-[#8B5CF6]',
+                },
+                {
+                  icon: Activity,
+                  label: t('superadmin.detailHealthActive'),
+                  value: health == null ? '—' : health.isActive ? t('superadmin.detailHealthActiveYes') : t('superadmin.detailHealthActiveNo'),
+                  color: health?.isActive ? 'text-secondary' : 'text-muted-foreground',
+                },
+                {
+                  icon: Clock,
+                  label: t('superadmin.detailHealthLastActivity'),
+                  value: health?.lastActivityAt
+                    ? fmtDate(new Date(health.lastActivityAt))
+                    : t('superadmin.detailHealthNever'),
+                  color: 'text-[#F59E0B]',
+                },
+                {
+                  icon: Package,
+                  label: t('superadmin.detailVersionLabel'),
+                  value: health?.appVersion ? `v${health.appVersion}` : boutique.version ? `v${boutique.version}` : '—',
+                  color: 'text-primary',
+                },
               ].map((s, i) => (
                 <div key={i} className="p-3 rounded-lg bg-muted/30">
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <s.icon className={cn('w-3.5 h-3.5', s.color)} />
                     <span className="text-[10px] text-muted-foreground">{s.label}</span>
                   </div>
-                  <p className="text-sm font-bold text-foreground">{s.value}</p>
+                  <p className="text-sm font-bold text-foreground leading-snug">{s.value}</p>
                 </div>
               ))}
             </div>
@@ -239,7 +249,7 @@ export const SABoutiqueDetail: React.FC<Props> = ({ boutique, onClose }) => {
                 },
                 {
                   icon: Package,
-                  label: t('superadmin.detailVersionLabel'),
+                  label: 'Version app',
                   value: boutique.version ? `v${boutique.version}` : '—',
                   mono: true,
                 },
