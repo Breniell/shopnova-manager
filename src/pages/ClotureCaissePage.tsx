@@ -212,7 +212,7 @@ const ClotureCaissePage: React.FC = () => {
 
   return (
     <div className="p-4 lg:p-8 animate-fade-in">
-      <h1 className="text-headline-lg nova-heading text-foreground mb-6">{t('cloture.title')}</h1>
+      <h1 className="text-2xl nova-heading text-foreground mb-6">{t('cloture.title')}</h1>
 
       <div className="flex gap-1 mb-6 bg-muted rounded-lg p-1 w-fit">
         <button onClick={() => setActiveTab('cloture')} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2', activeTab === 'cloture' ? 'bg-card text-foreground ' : 'text-muted-foreground')}>
@@ -347,7 +347,7 @@ const ClotureCaissePage: React.FC = () => {
                     <div className="flex justify-between items-center">
                       <span className="text-base font-semibold text-foreground">{t('cloture.gap')}</span>
                       <span className={cn(
-                        'text-headline-lg font-bold tabular-nums',
+                        'money text-2xl',
                         ecart === 0 ? 'text-emerald-400' : ecart > 0 ? 'text-amber-400' : 'text-destructive'
                       )}>
                         {ecart >= 0 ? '+' : ''}{formatFCFA(ecart)}

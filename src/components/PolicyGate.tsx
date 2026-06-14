@@ -14,7 +14,7 @@ import { setGeoConsent } from '@/lib/consent';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { fr, en, es, pt, de, tr, ar, ja, zh } from '@/i18n';
 import type { Translations } from '@/i18n/fr';
-import { ALL_LOCALES, LOCALE_LABELS } from '@/i18n/types';
+import { ALL_LOCALES, LOCALE_LABELS, LOCALE_TO_BCP47 } from '@/i18n/types';
 import type { SupportedLocale } from '@/i18n/types';
 
 const POLICY_VERSION    = '1.4.2';
@@ -115,7 +115,7 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
   const [pinError, setPinError]             = useState(false);
   const [isCreating, setIsCreating]         = useState(false);
 
-  const today = new Date().toLocaleDateString(locale === 'en' ? 'en-GB' : 'fr-FR', {
+  const today = new Date().toLocaleDateString(LOCALE_TO_BCP47[locale as SupportedLocale] ?? 'fr-FR', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   });
 
@@ -441,6 +441,13 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
               </div>
               <span className="text-sm text-muted-foreground">{T.geoConsent}</span>
             </label>
+          )}
+
+          {scrolledToBottom && (
+            <div className="p-3 rounded-lg bg-muted/20 border border-border/40 space-y-1">
+              <p className="text-[11px] font-semibold text-muted-foreground">{T.geoTransparencyTitle}</p>
+              <p className="text-[11px] font-medium text-[#2B6954]">{T.geoTransparencyNone}</p>
+            </div>
           )}
 
           <button onClick={handlePolicyAccept} disabled={!canSubmitPolicy}

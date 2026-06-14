@@ -9,9 +9,9 @@ import { useProductStore } from '@/stores/useProductStore';
 import { useSaleStore } from '@/stores/useSaleStore';
 import { getStockStatus } from '@/lib/utils';
 import { productImages } from '@/assets/productImages';
-import { DollarSign, ShoppingCart, AlertTriangle, Package, Plus, ArrowRight } from 'lucide-react';
+import { DollarSign, ShoppingCart, AlertTriangle, Package, Plus, ArrowRight, ShoppingBag } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, CartesianGrid } from 'recharts';
-import { formatPrice, formatFCFA, formatTime } from '@/utils/formatters';
+import { formatPrice, formatFCFA, formatTime, getCurrentBcp47 } from '@/utils/formatters';
 import { useTranslation } from '@/i18n';
 
 const DashboardPage: React.FC = () => {
@@ -62,7 +62,7 @@ const DashboardPage: React.FC = () => {
       return sd >= dayStart && sd < dayEnd;
     });
     return {
-      name: d.toLocaleDateString('fr-FR', { weekday: 'short' }),
+      name: d.toLocaleDateString(getCurrentBcp47(), { weekday: 'short' }),
       total: daySales.reduce((sum, s) => sum + s.total, 0),
     };
   });
@@ -91,6 +91,24 @@ const DashboardPage: React.FC = () => {
       <TopBar />
 
       <div className="px-4 sm:px-6 lg:px-8 pb-8 space-y-6">
+        {/* Quick actions */}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => navigate('/caisse')}
+            className="nova-btn-primary flex-col h-[72px] text-sm"
+          >
+            <ShoppingBag className="w-6 h-6" />
+            <span>{t('dashboard.newSale')}</span>
+          </button>
+          <button
+            onClick={() => navigate('/produits')}
+            className="nova-btn-secondary flex-col h-[72px] text-sm"
+          >
+            <Plus className="w-6 h-6" />
+            <span>{t('dashboard.addProduct')}</span>
+          </button>
+        </div>
+
         {/* KPI Row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
           <StatCard

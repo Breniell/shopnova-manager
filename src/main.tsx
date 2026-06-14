@@ -1,3 +1,5 @@
+import '@fontsource-variable/nunito-sans';
+import '@fontsource/jetbrains-mono/700.css';
 import ErrorBoundary from './components/ErrorBoundary';
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";

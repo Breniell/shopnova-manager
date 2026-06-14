@@ -63,7 +63,7 @@ export const PinInput: React.FC<PinInputProps> = ({ length = 4, onComplete, erro
             value={val}
             onChange={e => handleChange(i, e.target.value)}
             onKeyDown={e => handleKeyDown(i, e)}
-            className="w-full h-full bg-transparent text-center text-headline-lg font-bold text-foreground outline-none"
+            className="w-full h-full bg-transparent text-center text-2xl font-bold text-foreground outline-none"
           />
         </div>
       ))}

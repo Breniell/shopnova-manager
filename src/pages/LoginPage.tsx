@@ -203,7 +203,7 @@ const LoginPage: React.FC = () => {
               <line x1="20" y1="60" x2="34" y2="60" stroke="white" strokeWidth="5" strokeLinecap="round"/>
             </svg>
             <div>
-              <h1 className="text-display-md font-bold text-foreground tracking-tight">Legwan</h1>
+              <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Legwan</h1>
               <p className="text-sm text-muted-foreground">{t('dashboard.taglinePunct')}</p>
             </div>
           </div>
@@ -234,7 +234,7 @@ const LoginPage: React.FC = () => {
                   <Cloud className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h2 className="nova-heading text-title-lg text-foreground">{t('login.restoreTitle')}</h2>
+                  <h2 className="nova-heading text-lg text-foreground">{t('login.restoreTitle')}</h2>
                   <p className="text-sm text-muted-foreground">{t('login.restoreSubtitle')}</p>
                 </div>
               </div>
@@ -291,7 +291,7 @@ const LoginPage: React.FC = () => {
             </div>
           ) : !selectedUser ? (
             <>
-              <h2 className="nova-heading text-title-lg text-foreground mb-2">{t('login.title')}</h2>
+              <h2 className="nova-heading text-xl text-foreground mb-2">{t('login.title')}</h2>
               <p className="text-sm text-muted-foreground mb-8">{t('login.subtitle')}</p>
 
               <div className="grid grid-cols-1 gap-grid">
@@ -300,23 +300,22 @@ const LoginPage: React.FC = () => {
                     key={user.id}
                     onClick={() => handleUserSelect(user)}
                     className="flex items-center gap-4 p-4 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 transition-all duration-150 text-left group"
+                    style={{ minHeight: '72px' }}
                   >
                     <div
-                      className="w-12 h-12 rounded-lg flex items-center justify-center text-base font-semibold text-white shrink-0 transition-transform duration-150 group-hover:scale-105"
+                      className="w-12 h-12 rounded-full flex items-center justify-center text-base font-bold text-white shrink-0 transition-transform duration-150 group-hover:scale-105"
                       style={{ backgroundColor: user.color }}
                     >
                       {user.prenom[0]}{user.nom[0]}
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium text-foreground">{user.prenom} {user.nom}</p>
-                      <span className={cn(
-                        'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium mt-1',
-                        user.role === 'gérant'
-                          ? 'bg-primary/20 text-primary'
-                          : 'bg-secondary/20 text-secondary'
+                      <p className="text-base font-semibold text-foreground">{user.prenom} {user.nom}</p>
+                      <p className={cn(
+                        'text-[13px] font-medium mt-0.5',
+                        user.role === 'gérant' ? 'text-primary' : 'text-secondary'
                       )}>
                         {user.role === 'gérant' ? t('login.role.gerant') : t('login.role.caissier')}
-                      </span>
+                      </p>
                     </div>
                   </button>
                 ))}
@@ -348,7 +347,7 @@ const LoginPage: React.FC = () => {
 
               <div className="text-center mb-8">
                 <div
-                  className="w-16 h-16 rounded-lg flex items-center justify-center text-title-lg font-semibold text-white mx-auto mb-4"
+                  className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold text-white mx-auto mb-4"
                   style={{ backgroundColor: selectedUser.color }}
                 >
                   {selectedUser.prenom[0]}{selectedUser.nom[0]}
@@ -374,7 +373,7 @@ const LoginPage: React.FC = () => {
                       <div
                         key={i}
                         className={cn(
-                          'w-4 h-4 rounded-full transition-all duration-150',
+                          'w-[14px] h-[14px] rounded-full transition-all duration-150',
                           i < pin.length
                             ? error ? 'bg-destructive scale-110' : 'bg-primary scale-110'
                             : 'bg-muted-foreground/30'
@@ -387,7 +386,7 @@ const LoginPage: React.FC = () => {
                     <p className="text-center text-sm text-destructive mb-4 animate-fade-in">{t('login.wrongPin')}</p>
                   )}
 
-                  <div className="grid grid-cols-3 gap-grid max-w-[240px] mx-auto">
+                  <div className="grid grid-cols-3 gap-3 max-w-[260px] mx-auto">
                     {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '←'].map((key, i) => {
                       if (key === '') return <div key={i} />;
                       return (
@@ -395,7 +394,7 @@ const LoginPage: React.FC = () => {
                           key={i}
                           onClick={() => key === '←' ? handleBackspace() : handlePinDigit(key)}
                           disabled={isLoggingIn}
-                          className="w-16 h-16 rounded-xl bg-muted border border-border text-foreground text-title-lg font-medium hover:bg-muted/80 active:scale-95 transition-all duration-100 mx-auto flex items-center justify-center disabled:opacity-50"
+                          className="w-[64px] h-[64px] rounded-xl bg-muted border border-border text-foreground text-xl font-semibold hover:bg-primary/10 hover:border-primary/30 active:scale-95 transition-all duration-100 mx-auto flex items-center justify-center disabled:opacity-50"
                         >
                           {key}
                         </button>
