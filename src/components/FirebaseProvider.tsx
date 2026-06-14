@@ -130,6 +130,21 @@ export async function buildDefaultUsers(): Promise<User[]> {
   ];
 }
 
+// ─── Registry heartbeat (fire-and-forget) ────────────────────────────────────
+
+/**
+ * Kicks off the platform registry heartbeat without blocking the caller.
+ * Intentionally synchronous (void, not async): startup completes before the
+ * network round-trip resolves.  Called once per bootstrap, whichever path is
+ * taken (first launch OR subsequent launches), so there is never a double-send.
+ */
+function scheduleHeartbeat(): void {
+  import('@/services/boutiqueService')
+    .then(m => m.getBoutiqueRecoveryStatus())
+    .then(s => sendRegistryHeartbeat(!!s.isRecoveryEnabled))
+    .catch(() => {});
+}
+
 // ─── Seed local demo data (no Firebase) ──────────────────────────────────────
 
 async function seedLocalMode(): Promise<void> {
@@ -268,7 +283,8 @@ function subscribeToRealtime(bid: string): Array<() => void> {
 
 // ─── Main bootstrap ─────────────────────────────────────────────────────────────
 
-async function bootstrapFirebase(): Promise<void> {
+/** Exported for integration-testing only — do not call from application code. */
+export async function bootstrapFirebase(): Promise<void> {
   // 1. Authenticate + get boutiqueId
   const boutiqueId = await initBoutique();
 
@@ -297,6 +313,7 @@ async function bootstrapFirebase(): Promise<void> {
 
     useAuthStore.getState()._setUsers(defaultUsers);
     useSettingsStore.getState()._setSettings(defaultShopSettings);
+    scheduleHeartbeat(); // first-ever registration: boutique appears in registry immediately
     return;
   }
 
@@ -360,11 +377,7 @@ async function bootstrapFirebase(): Promise<void> {
   if (typeof saleCounter === 'number' && saleCounter > 0) useSaleStore.getState()._setSaleCounter(saleCounter);
 
   // 5. Send platform registry heartbeat (fire-and-forget, never blocks startup)
-  const isRecoveryEnabled = !!(await import('@/services/boutiqueService')
-    .then(m => m.getBoutiqueRecoveryStatus())
-    .then(s => s.isRecoveryEnabled)
-    .catch(() => false));
-  sendRegistryHeartbeat(isRecoveryEnabled).catch(() => {});
+  scheduleHeartbeat();
 }
 
 async function trySeedLocalMode(): Promise<boolean> {

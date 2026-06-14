@@ -60,6 +60,23 @@ function verify(
   });
 }
 
+/**
+ * Returns a licence string whose signature is guaranteed to be cryptographically invalid.
+ *
+ * WHY NOT the last character: Ed25519 produces 64-byte signatures → 86 base64url chars.
+ * The 86th char encodes only 2 real bits + 4 zero-padding bits (512 bits / 6 = 85.33).
+ * Flipping just those lower 4 padding bits (e.g. 'A'→'B') produces a string that
+ * decodes to the SAME 64 bytes, so crypto.subtle.verify still returns true.
+ *
+ * Flipping the FIRST char of the sig part always changes actual data bits.
+ */
+function tamperSig(lic: string): string {
+  const dot = lic.lastIndexOf('.');
+  const sig = lic.slice(dot + 1);
+  const c   = sig[0];
+  return lic.slice(0, dot + 1) + (c === 'A' ? 'B' : 'A') + sig.slice(1);
+}
+
 // ─── verifyLicenseRaw ─────────────────────────────────────────────────────────
 
 describe('verifyLicenseRaw', () => {
@@ -72,10 +89,8 @@ describe('verifyLicenseRaw', () => {
   });
 
   it('tampered signature → bad_signature', async () => {
-    const lic = await signPayload(basePayload());
-    // Flip the last character of the signature (guaranteed to break it)
-    const last   = lic[lic.length - 1];
-    const tampered = lic.slice(0, -1) + (last === 'A' ? 'B' : 'A');
+    const lic     = await signPayload(basePayload());
+    const tampered = tamperSig(lic);
     const res = await verify(tampered);
     expect(res.valid).toBe(false);
     expect(res.reason).toBe('bad_signature');
@@ -122,16 +137,15 @@ describe('verifyLicenseRaw', () => {
   });
 
   it('signature check happens BEFORE expiry — expired + bad sig → bad_signature', async () => {
-    const expired = await signPayload({ ...basePayload(), expiresAt: Date.now() - 1 });
-    // Tamper signature of an already-expired licence
-    const tampered = expired.slice(0, -1) + (expired.at(-1) === 'A' ? 'B' : 'A');
+    const expired  = await signPayload({ ...basePayload(), expiresAt: Date.now() - 1 });
+    const tampered = tamperSig(expired);
     const res = await verify(tampered, { now: Date.now() });
     expect(res.reason).toBe('bad_signature'); // NOT 'expired'
   });
 
   it('signature check happens BEFORE boutique check — wrong boutique + bad sig → bad_signature', async () => {
     const lic      = await signPayload(basePayload());
-    const tampered = lic.slice(0, -1) + (lic.at(-1) === 'A' ? 'B' : 'A');
+    const tampered = tamperSig(lic);
     const res = await verify(tampered, { boutiqueId: 'other-boutique' });
     expect(res.reason).toBe('bad_signature'); // NOT 'wrong_boutique'
   });
