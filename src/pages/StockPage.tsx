@@ -156,7 +156,7 @@ const StockPage: React.FC = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
-        <h1 className="text-headline-lg nova-heading text-foreground">{t('stock.title')}</h1>
+        <h1 className="text-2xl nova-heading text-foreground">{t('stock.title')}</h1>
         <div className="flex gap-2">
           {alertProducts.length > 0 && (
             <button
@@ -223,7 +223,7 @@ const StockPage: React.FC = () => {
                       <td className="p-3 text-sm font-medium text-foreground">{p.nom}</td>
                       <td className="p-3 text-sm text-muted-foreground hidden sm:table-cell">{p.categorie}</td>
                       <td className="p-3 text-sm text-right font-medium text-foreground tabular-nums">{p.stock}</td>
-                      <td className="p-3 text-sm text-right text-muted-foreground tabular-nums hidden sm:table-cell">{p.seuilAlerte}</td>
+                      <td className="p-3 money text-right text-muted-foreground hidden sm:table-cell">{p.seuilAlerte}</td>
                       <td className="p-3 text-center"><StatusBadge status={getStockStatus(p.stock, p.seuilAlerte)} /></td>
                     </tr>
                   ))}
@@ -267,7 +267,7 @@ const StockPage: React.FC = () => {
                       <td className={cn('p-3 text-sm text-right font-medium tabular-nums', m.quantity > 0 ? 'text-emerald-400' : 'text-red-400')}>
                         {m.quantity > 0 ? '+' : ''}{m.quantity}
                       </td>
-                      <td className="p-3 text-sm text-right text-muted-foreground tabular-nums hidden md:table-cell">{m.stockBefore}</td>
+                      <td className="p-3 money text-right text-muted-foreground hidden md:table-cell">{m.stockBefore}</td>
                       <td className="p-3 text-sm text-right text-foreground tabular-nums hidden md:table-cell">{m.stockAfter}</td>
                       <td className="p-3 text-sm text-muted-foreground hidden sm:table-cell">{m.userName}</td>
                       <td className="p-3 text-sm text-muted-foreground hidden lg:table-cell">{m.supplier || m.notes || '—'}</td>
@@ -325,7 +325,7 @@ const StockPage: React.FC = () => {
                             <td className="p-3 text-sm font-medium text-foreground">{p.nom}</td>
                             <td className="p-3 text-sm text-muted-foreground hidden sm:table-cell">{p.categorie}</td>
                             <td className="p-3 text-sm text-right font-bold text-destructive tabular-nums">{p.stock}</td>
-                            <td className="p-3 text-sm text-right text-muted-foreground tabular-nums">{p.seuilAlerte}</td>
+                            <td className="p-3 money text-right text-muted-foreground">{p.seuilAlerte}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -355,7 +355,7 @@ const StockPage: React.FC = () => {
                             <td className="p-3 text-sm font-medium text-foreground">{p.nom}</td>
                             <td className="p-3 text-sm text-muted-foreground hidden sm:table-cell">{p.categorie}</td>
                             <td className="p-3 text-sm text-right font-bold text-amber-400 tabular-nums">{p.stock}</td>
-                            <td className="p-3 text-sm text-right text-muted-foreground tabular-nums">{p.seuilAlerte}</td>
+                            <td className="p-3 money text-right text-muted-foreground">{p.seuilAlerte}</td>
                           </tr>
                         ))}
                       </tbody>

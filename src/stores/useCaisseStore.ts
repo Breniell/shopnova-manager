@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { getBoutiqueId } from '@/services/boutiqueService';
 import { fsSaveCloture } from '@/services/firestoreService';
+import { enqueue } from '@/lib/outbox';
+import { toast } from 'sonner';
 
 export interface ClotureCaisse {
   id: string;
@@ -37,7 +39,11 @@ export const useCaisseStore = create<CaisseState>()((set) => ({
     const id = 'cl' + Date.now();
     const newCloture: ClotureCaisse = { ...cloture, id };
     set(state => ({ clotures: [newCloture, ...state.clotures] }));
-    fsSaveCloture(getBoutiqueId(), newCloture).catch(console.error);
+    fsSaveCloture(getBoutiqueId(), newCloture).catch((err) => {
+      enqueue('cloture', newCloture);
+      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      console.warn('[outbox] cloture enqueued:', err);
+    });
   },
 
   setFondDeCaisse: (amount) => set({ fondDeCaisse: amount }),

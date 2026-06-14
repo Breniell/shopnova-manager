@@ -38,9 +38,15 @@ export const deleteDoc = async () => {};
 
 export const writeBatch = () => ({
   set: () => {},
+  update: () => {},
   delete: () => {},
   commit: async () => {},
 });
+
+export const increment = (n: number) => ({ __increment: n });
+
+export const where = () => ({});
+export const limit = () => ({});
 
 export const Timestamp = {
   now: () => ({ toDate: () => new Date(), seconds: 0, nanoseconds: 0 }),

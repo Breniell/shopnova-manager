@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { getBoutiqueId } from '@/services/boutiqueService';
 import { fsSaveMovement } from '@/services/firestoreService';
+import { enqueue } from '@/lib/outbox';
+import { toast } from 'sonner';
 
 export type MovementType = 'entrée' | 'vente' | 'ajustement';
 
@@ -70,7 +72,11 @@ export const useStockStore = create<StockState>()((set) => ({
     const id = 'm' + Date.now() + Math.random().toString(36).slice(2, 7);
     const newMovement: StockMovement = { ...movement, id };
     set(state => ({ movements: [newMovement, ...state.movements] }));
-    fsSaveMovement(getBoutiqueId(), newMovement).catch(console.error);
+    fsSaveMovement(getBoutiqueId(), newMovement).catch((err) => {
+      enqueue('stockMovement', newMovement);
+      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      console.warn('[outbox] stockMovement enqueued:', err);
+    });
     return newMovement;
   },
 }));

@@ -10,7 +10,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Receipt, Search, Eye, Printer, CalendarIcon, Download, XCircle, AlertTriangle } from 'lucide-react';
+import { Receipt, Search, Eye, Printer, CalendarIcon, Download, XCircle, AlertTriangle, ShoppingCart } from 'lucide-react';
 import { exportCSV, exportPDF } from '@/lib/export';
 import { toast } from 'sonner';
 import { formatPrice, formatFCFA, formatTime, formatDateShort, formatDate } from '@/utils/formatters';
@@ -95,7 +95,7 @@ const VentesPage: React.FC = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
-        <h1 className="text-headline-lg nova-heading text-foreground">{t('ventes.title')}</h1>
+        <h1 className="text-2xl nova-heading text-foreground">{t('ventes.title')}</h1>
         <div className="flex gap-1 shrink-0">
           <button onClick={() => {
             const headers = [t('ventes.colId'), 'Date', 'Heure', t('ventes.colCashier'), t('ventes.colItems'), t('ventes.colTotal'), t('ventes.colPayment'), t('ventes.colStatus')];
@@ -206,7 +206,12 @@ const VentesPage: React.FC = () => {
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState icon={<Receipt className="w-12 h-12" />} title={t('ventes.noSale')} description={t('ventes.noSaleDesc')} />
+        <EmptyState
+          icon={<Receipt className="w-12 h-12" />}
+          title={t('ventes.noSale')}
+          description={t('ventes.noSaleDesc')}
+          action={<a href="/caisse" className="nova-btn-primary px-5 mt-4 inline-flex items-center gap-2"><ShoppingCart className="w-4 h-4" />{t('dashboard.newSale')}</a>}
+        />
       ) : (
         <>
           <div className="nova-card overflow-hidden">

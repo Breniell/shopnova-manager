@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { getBoutiqueId } from '@/services/boutiqueService';
-import { fsSaveProduct, fsDeleteProduct } from '@/services/firestoreService';
+import { fsSaveProduct, fsDeleteProduct, fsAdjustStock, fsUpdateProductFields } from '@/services/firestoreService';
+import { enqueue } from '@/lib/outbox';
+import { toast } from 'sonner';
 
 export type Category =
   | 'Alimentation'
@@ -54,6 +56,7 @@ export const useProductStore = create<ProductState>()((set, get) => ({
     const id = 'p' + Date.now();
     const newProduct: Product = { ...product, id };
     set(state => ({ products: [...state.products, newProduct] }));
+    // New doc: full setDoc is correct here
     fsSaveProduct(getBoutiqueId(), newProduct).catch(console.error);
   },
 
@@ -62,7 +65,10 @@ export const useProductStore = create<ProductState>()((set, get) => ({
     if (!current) return;
     const updated = { ...current, ...data };
     set(state => ({ products: state.products.map(p => p.id === id ? updated : p) }));
-    fsSaveProduct(getBoutiqueId(), updated).catch(console.error);
+    // Never write stock via updateProduct — stock moves through fsAdjustStock (increment).
+    // Destructure stock out so the Firestore doc only receives the edited fields.
+    const { stock: _omit, id: _id, ...fields } = updated;
+    fsUpdateProductFields(getBoutiqueId(), id, fields).catch(console.error);
   },
 
   deleteProduct: (id) => {
@@ -75,7 +81,12 @@ export const useProductStore = create<ProductState>()((set, get) => ({
     if (!current) return;
     const updated = { ...current, stock: current.stock + quantity };
     set(state => ({ products: state.products.map(p => p.id === id ? updated : p) }));
-    fsSaveProduct(getBoutiqueId(), updated).catch(console.error);
+    // Use increment() so multi-register merges never overwrite each other's deltas.
+    fsAdjustStock(getBoutiqueId(), id, quantity).catch((err) => {
+      enqueue('stockAdjust', { productId: id, delta: quantity });
+      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      console.warn('[outbox] stockAdjust enqueued:', err);
+    });
   },
 
   getProductByBarcode: (barcode) => get().products.find(p => p.codeBarre === barcode),

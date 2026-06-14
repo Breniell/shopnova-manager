@@ -21,7 +21,7 @@ import { useCashSessionStore } from '@/stores/useCashSessionStore';
 import { NovaCard } from '@/components/ui/NovaCard';
 import { StatCard } from '@/components/ui/StatCard';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { formatFCFA, formatDateShort } from '@/utils/formatters';
+import { formatFCFA, formatDateShort, getCurrentBcp47 } from '@/utils/formatters';
 import { exportCSV } from '@/lib/export';
 import { expenseSchema } from '@/lib/validations';
 import { cn } from '@/lib/utils';
@@ -226,7 +226,7 @@ const DepensesPage: React.FC = () => {
                 userId: expense.userId,
                 userName: expense.userName,
               });
-              toast.info(t('depenses.cashOutRecorded').replace('{n}', expense.montant.toLocaleString('fr-FR')));
+              toast.info(t('depenses.cashOutRecorded').replace('{n}', expense.montant.toLocaleString(getCurrentBcp47())));
             } catch (err) {
               console.warn('Échec de la création du CashOut lié à la dépense:', err);
             }
@@ -293,7 +293,7 @@ const DepensesPage: React.FC = () => {
   return (
     <div className="p-4 lg:p-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-grid">
-        <h1 className="text-headline-lg nova-heading text-foreground">{t('depenses.title')}</h1>
+        <h1 className="text-2xl nova-heading text-foreground">{t('depenses.title')}</h1>
         <div className="flex flex-wrap items-center gap-grid">
           <div className="flex gap-1 bg-muted rounded-lg p-1">
             {(['today', 'week', 'month', 'all'] as Period[]).map(p => (

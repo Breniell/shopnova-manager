@@ -22,7 +22,7 @@ import {
   getRemainingBalance, getCustomerOutstanding, getAllOpenCreditSales,
   getCustomerOpenCreditSales, getCreditAgeBucket, getCreditAgeInDays,
 } from '@/lib/credit';
-import { formatFCFA, formatDateShort } from '@/utils/formatters';
+import { formatFCFA, formatDateShort, getCurrentBcp47 } from '@/utils/formatters';
 import { cn } from '@/lib/utils';
 import {
   Receipt, Users, History, ChevronDown, ChevronRight, X,
@@ -176,7 +176,7 @@ const CreditPage: React.FC = () => {
 
   return (
     <div className="p-4 lg:p-8 animate-fade-in">
-      <h1 className="text-headline-lg nova-heading text-foreground mb-6">{t('credit.title')}</h1>
+      <h1 className="text-2xl nova-heading text-foreground mb-6">{t('credit.title')}</h1>
 
       {/* KPI */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-grid mb-6">
@@ -317,7 +317,7 @@ const CreditPage: React.FC = () => {
                               </div>
                               <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
                                 <span>{formatDateShort(new Date(sale.date))}</span>
-                                {sale.dueDate && <span>{t('credit.dueDate').replace('{date}', new Date(sale.dueDate).toLocaleDateString())}</span>}
+                                {sale.dueDate && <span>{t('credit.dueDate').replace('{date}', new Date(sale.dueDate).toLocaleDateString(getCurrentBcp47()))}</span>}
                                 {(sale.amountPaid ?? 0) > 0 && <span>{t('credit.saleAmountPaid').replace('{n}', formatFCFA(sale.amountPaid ?? 0))}</span>}
                               </div>
                             </div>

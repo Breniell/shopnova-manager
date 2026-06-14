@@ -21,6 +21,8 @@
 import { create } from 'zustand';
 import { getBoutiqueId } from '@/services/boutiqueService';
 import { fsSaveCashSession, fsSaveCashOut, fsDeleteCashOut } from '@/services/firestoreService';
+import { enqueue } from '@/lib/outbox';
+import { toast } from 'sonner';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -158,7 +160,11 @@ export const useCashSessionStore = create<CashSessionState>()((set, get) => ({
       sessions: [session, ...state.sessions],
       currentSessionId: id,
     }));
-    fsSaveCashSession(getBoutiqueId(), session).catch(console.error);
+    fsSaveCashSession(getBoutiqueId(), session).catch((err) => {
+      enqueue('cashSession', session);
+      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      console.warn('[outbox] cashSession enqueued:', err);
+    });
     return session;
   },
 
@@ -181,7 +187,11 @@ export const useCashSessionStore = create<CashSessionState>()((set, get) => ({
       sessions: state.sessions.map(s => s.id === sessionId ? closed : s),
       currentSessionId: state.currentSessionId === sessionId ? null : state.currentSessionId,
     }));
-    fsSaveCashSession(getBoutiqueId(), closed).catch(console.error);
+    fsSaveCashSession(getBoutiqueId(), closed).catch((err) => {
+      enqueue('cashSession', closed);
+      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      console.warn('[outbox] cashSession (close) enqueued:', err);
+    });
   },
 
   addCashOut: (data) => {
@@ -191,7 +201,11 @@ export const useCashSessionStore = create<CashSessionState>()((set, get) => ({
     const id = 'co' + Date.now() + Math.random().toString(36).slice(2, 7);
     const cashOut: CashOut = { ...data, id };
     set(state => ({ cashOuts: [cashOut, ...state.cashOuts] }));
-    fsSaveCashOut(getBoutiqueId(), cashOut).catch(console.error);
+    fsSaveCashOut(getBoutiqueId(), cashOut).catch((err) => {
+      enqueue('cashOut', cashOut);
+      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      console.warn('[outbox] cashOut enqueued:', err);
+    });
     return cashOut;
   },
 

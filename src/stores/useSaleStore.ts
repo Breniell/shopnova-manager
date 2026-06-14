@@ -1,12 +1,13 @@
 import { create } from 'zustand';
 import { getBoutiqueId, getRegisterCode } from '@/services/boutiqueService';
-import { fsUpdateSale, fsCommitSale, fsCommitCreditPayment, fsSaveSaleCounter } from '@/services/firestoreService';
+import { fsCommitSale, fsCommitRefund, fsCommitCreditPayment, fsSaveSaleCounter } from '@/services/firestoreService';
+import { enqueue } from '@/lib/outbox';
+import { toast } from 'sonner';
 import { usePaymentStore } from '@/stores/usePaymentStore';
 import type { Payment } from '@/stores/usePaymentStore';
 import { useCashSessionStore } from '@/stores/useCashSessionStore';
 import { useProductStore } from '@/stores/useProductStore';
 import { useStockStore } from '@/stores/useStockStore';
-import type { Product } from '@/stores/useProductStore';
 import type { StockMovement } from '@/stores/useStockStore';
 
 export type SaleStatus = 'completed' | 'refunded';
@@ -51,6 +52,8 @@ export interface Sale {
   paymentMode: PaymentMode;
   mobileOperator?: MobileOperator;
   mobileReference?: string;
+  momoMerchantCode?: string;
+  confirmationAcknowledged?: boolean;
   amountReceived?: number;
   changeGiven?: number;
   userId: string;
@@ -235,43 +238,57 @@ export const useSaleStore = create<SaleState>()((set, get) => ({
     if (!sale || sale.status === 'refunded') return;
 
     const now = new Date().toISOString();
-    const update = {
+    const saleUpdate = {
       status: 'refunded' as const,
       refundedAt: now,
       refundReason: reason,
       refundedBy: userName,
     };
 
+    // ── Mise à jour optimiste en mémoire ─────────────────────────────────────
     set(state => ({
-      sales: state.sales.map(s => s.id === saleId ? { ...s, ...update } : s),
+      sales: state.sales.map(s => s.id === saleId ? { ...s, ...saleUpdate } : s),
     }));
 
-    // Reverse stock for each item in the cancelled sale
-    const bid = getBoutiqueId();
-    sale.items.forEach(item => {
-      // Dynamically import stores to avoid circular imports at module load time
-      import('@/stores/useProductStore').then(({ useProductStore }) => {
-        const product = useProductStore.getState().products.find(p => p.id === item.productId);
-        const stockBefore = product?.stock ?? 0;
-        useProductStore.getState().updateStock(item.productId, item.quantity);
+    const products = useProductStore.getState().products;
+    const stockDeltas: Array<{ productId: string; delta: number }> = [];
+    const movements: StockMovement[] = [];
+    const movDate = new Date();
 
-        import('@/stores/useStockStore').then(({ useStockStore }) => {
-          useStockStore.getState().addMovement({
-            date: new Date(),
-            productId: item.productId,
-            productName: item.nom,
-            type: 'entrée',
-            quantity: item.quantity,
-            stockBefore,
-            stockAfter: stockBefore + item.quantity,
-            userId,
-            userName,
-          });
-        });
+    for (const item of sale.items) {
+      const product = products.find(p => p.id === item.productId);
+      const stockBefore = product?.stock ?? 0;
+      // Restore stock in memory
+      useProductStore.setState(s => ({
+        products: s.products.map(p =>
+          p.id === item.productId ? { ...p, stock: p.stock + item.quantity } : p
+        ),
+      }));
+      stockDeltas.push({ productId: item.productId, delta: item.quantity });
+      movements.push({
+        id: 'm' + Date.now() + Math.random().toString(36).slice(2, 7),
+        date: movDate,
+        productId: item.productId,
+        productName: item.nom,
+        type: 'entrée',
+        quantity: item.quantity,
+        // stockBefore/After reflect the local view at refund time
+        stockBefore,
+        stockAfter: stockBefore + item.quantity,
+        userId,
+        userName,
       });
-    });
+    }
 
-    fsUpdateSale(bid, saleId, update).catch(console.error);
+    useStockStore.setState(s => ({ movements: [...movements, ...s.movements] }));
+
+    // ── Persistance atomique : vente + stocks + mouvements en un seul batch ──
+    const bid = getBoutiqueId();
+    fsCommitRefund(bid, { saleId, saleUpdate, stockDeltas, movements }).catch((err) => {
+      enqueue('refund', { saleId, saleUpdate, stockDeltas, movements });
+      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      console.warn('[outbox] refund enqueued:', err);
+    });
   },
 
   applyCreditPayment: (saleId, payment) => {
@@ -328,7 +345,11 @@ export const useSaleStore = create<SaleState>()((set, get) => ({
 
     // Persistance atomique : Payment + MAJ vente dans un seul batch.
     const bid = getBoutiqueId();
-    fsCommitCreditPayment(bid, { payment: newPayment, saleId, saleUpdate: update }).catch(console.error);
+    fsCommitCreditPayment(bid, { payment: newPayment, saleId, saleUpdate: update }).catch((err) => {
+      enqueue('creditPayment', { payment: newPayment, saleId, saleUpdate: update });
+      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      console.warn('[outbox] creditPayment enqueued:', err);
+    });
   },
 
   completeSale: (saleData) => {
@@ -365,10 +386,13 @@ export const useSaleStore = create<SaleState>()((set, get) => ({
     };
 
     // ── Conséquences sur le stock, calculées ici pour un commit ATOMIQUE ──────
-    // La vente, les nouveaux stocks et les mouvements forment un tout : ils sont
-    // appliqués ensemble en mémoire puis écrits dans un unique batch Firestore.
+    // La vente, les deltas de stock et les mouvements forment un tout : appliqués
+    // ensemble en mémoire puis écrits dans un unique batch Firestore via increment().
+    // Chaque caisse envoie un delta — jamais une valeur absolue — pour éviter le
+    // last-write-wins qui corrompait le stock à la resynchronisation multi-caisses.
     const products = useProductStore.getState().products;
-    const updatedProducts: Product[] = [];
+    const stockDeltas: Array<{ productId: string; delta: number }> = [];
+    const updatedProductsInMemory: Array<{ id: string; stock: number }> = [];
     const movements: StockMovement[] = [];
     const movDate = new Date();
     for (const item of items) {
@@ -376,7 +400,8 @@ export const useSaleStore = create<SaleState>()((set, get) => ({
       if (!product) continue; // produit inconnu → vente enregistrée sans ligne de stock
       const stockBefore = product.stock;
       const stockAfter = stockBefore - item.quantity;
-      updatedProducts.push({ ...product, stock: stockAfter });
+      stockDeltas.push({ productId: item.productId, delta: -item.quantity });
+      updatedProductsInMemory.push({ id: item.productId, stock: stockAfter });
       movements.push({
         id: 'm' + Date.now() + Math.random().toString(36).slice(2, 7),
         date: movDate,
@@ -384,6 +409,7 @@ export const useSaleStore = create<SaleState>()((set, get) => ({
         productName: item.nom,
         type: 'vente',
         quantity: -item.quantity,
+        // stockBefore/After : vue locale au moment de la vente (pas authoritative sur Firestore)
         stockBefore,
         stockAfter,
         userId: sale.userId,
@@ -393,18 +419,24 @@ export const useSaleStore = create<SaleState>()((set, get) => ({
 
     // ── Mise à jour en mémoire (optimiste — l'UI réagit immédiatement) ────────
     set(s => ({ sales: [sale, ...s.sales], cart: [], discount: 0, saleCounter: newCounter }));
-    if (updatedProducts.length) {
-      const byId = new Map(updatedProducts.map(p => [p.id, p]));
-      useProductStore.setState(s => ({ products: s.products.map(p => byId.get(p.id) ?? p) }));
+    if (updatedProductsInMemory.length) {
+      const byId = new Map(updatedProductsInMemory.map(p => [p.id, p.stock]));
+      useProductStore.setState(s => ({
+        products: s.products.map(p => byId.has(p.id) ? { ...p, stock: byId.get(p.id)! } : p),
+      }));
     }
     if (movements.length) {
       useStockStore.setState(s => ({ movements: [...movements, ...s.movements] }));
     }
     persistLocalCounter(newCounter);
 
-    // ── Persistance atomique : vente + stocks + mouvements en un seul batch ───
+    // ── Persistance atomique : vente + deltas stock + mouvements en un seul batch ──
     const bid = getBoutiqueId();
-    fsCommitSale(bid, { sale, products: updatedProducts, movements }).catch(console.error);
+    fsCommitSale(bid, { sale, stockDeltas, movements }).catch((err) => {
+      enqueue('sale', { sale, stockDeltas, movements });
+      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      console.warn('[outbox] sale enqueued:', err);
+    });
     fsSaveSaleCounter(bid, newCounter).catch(() => {});
     return sale;
   },

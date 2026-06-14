@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { useProductStore } from '@/stores/useProductStore';
 import type { Product } from '@/stores/useProductStore';
+import * as firestoreService from '@/services/firestoreService';
 
 // Seed products used across tests
 const seedProducts: Product[] = [
@@ -136,5 +137,27 @@ describe('useProductStore — getProductByBarcode', () => {
 
   it('returns undefined for an unknown barcode', () => {
     expect(useProductStore.getState().getProductByBarcode('0000000000000')).toBeUndefined();
+  });
+});
+
+// ─── updateProduct ne persiste jamais le champ stock ──────────────────────────
+describe('useProductStore — updateProduct never persists stock', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('calls fsUpdateProductFields without a stock field', () => {
+    const spy = vi.spyOn(firestoreService, 'fsUpdateProductFields');
+    const { updateProduct, products } = useProductStore.getState();
+    updateProduct(products[0].id, { prixVente: 9999 });
+
+    expect(spy).toHaveBeenCalledOnce();
+    const fields = spy.mock.calls[0][2] as Record<string, unknown>;
+    expect(fields).not.toHaveProperty('stock');
+    expect(fields).not.toHaveProperty('id');
+  });
+
+  it('never calls fsSaveProduct during updateProduct', () => {
+    const saveSpy = vi.spyOn(firestoreService, 'fsSaveProduct');
+    useProductStore.getState().updateProduct(useProductStore.getState().products[0].id, { prixVente: 500 });
+    expect(saveSpy).not.toHaveBeenCalled();
   });
 });

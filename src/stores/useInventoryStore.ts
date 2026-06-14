@@ -24,6 +24,8 @@ import {
   fsSaveInventorySession,
   fsDeleteInventorySession,
 } from '@/services/firestoreService';
+import { enqueue } from '@/lib/outbox';
+import { toast } from 'sonner';
 import type { Product } from '@/stores/useProductStore';
 import type { AdjustmentReason } from '@/stores/useStockStore';
 
@@ -187,7 +189,11 @@ export const useInventoryStore = create<InventoryState>()((set, get) => ({
     };
 
     set(state => ({ sessions: [session, ...state.sessions] }));
-    fsSaveInventorySession(getBoutiqueId(), session).catch(console.error);
+    fsSaveInventorySession(getBoutiqueId(), session).catch((err) => {
+      enqueue('inventorySession', session);
+      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      console.warn('[outbox] inventorySession enqueued:', err);
+    });
     return session;
   },
 
@@ -213,7 +219,11 @@ export const useInventoryStore = create<InventoryState>()((set, get) => ({
     };
 
     set(state => ({ sessions: state.sessions.map(s => s.id === sessionId ? updated : s) }));
-    fsSaveInventorySession(getBoutiqueId(), updated).catch(console.error);
+    fsSaveInventorySession(getBoutiqueId(), updated).catch((err) => {
+      enqueue('inventorySession', updated);
+      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      console.warn('[outbox] inventorySession enqueued:', err);
+    });
   },
 
   updateNotes: (sessionId, notes) => {
@@ -222,7 +232,11 @@ export const useInventoryStore = create<InventoryState>()((set, get) => ({
     if (session.status === 'validated' || session.status === 'cancelled') return;
     const updated = { ...session, notes };
     set(state => ({ sessions: state.sessions.map(s => s.id === sessionId ? updated : s) }));
-    fsSaveInventorySession(getBoutiqueId(), updated).catch(console.error);
+    fsSaveInventorySession(getBoutiqueId(), updated).catch((err) => {
+      enqueue('inventorySession', updated);
+      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      console.warn('[outbox] inventorySession enqueued:', err);
+    });
   },
 
   cancelSession: (sessionId, userId) => {
@@ -238,7 +252,11 @@ export const useInventoryStore = create<InventoryState>()((set, get) => ({
       cancelledBy: userId,
     };
     set(state => ({ sessions: state.sessions.map(s => s.id === sessionId ? updated : s) }));
-    fsSaveInventorySession(getBoutiqueId(), updated).catch(console.error);
+    fsSaveInventorySession(getBoutiqueId(), updated).catch((err) => {
+      enqueue('inventorySession', updated);
+      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      console.warn('[outbox] inventorySession enqueued:', err);
+    });
   },
 
   validateSession: (sessionId, userId, userName, deps) => {
@@ -289,7 +307,11 @@ export const useInventoryStore = create<InventoryState>()((set, get) => ({
     };
 
     set(state => ({ sessions: state.sessions.map(s => s.id === sessionId ? validated : s) }));
-    fsSaveInventorySession(getBoutiqueId(), validated).catch(console.error);
+    fsSaveInventorySession(getBoutiqueId(), validated).catch((err) => {
+      enqueue('inventorySession', validated);
+      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      console.warn('[outbox] inventorySession enqueued:', err);
+    });
     return { success: true, session: validated };
   },
 

@@ -17,6 +17,8 @@
 import { create } from 'zustand';
 import { getBoutiqueId } from '@/services/boutiqueService';
 import { fsSaveExpense, fsDeleteExpense } from '@/services/firestoreService';
+import { enqueue } from '@/lib/outbox';
+import { toast } from 'sonner';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -118,7 +120,11 @@ export const useExpenseStore = create<ExpenseState>()((set, get) => ({
     const id = 'exp' + Date.now() + Math.random().toString(36).slice(2, 7);
     const newExpense: Expense = { ...data, id };
     set(state => ({ expenses: [newExpense, ...state.expenses] }));
-    fsSaveExpense(getBoutiqueId(), newExpense).catch(console.error);
+    fsSaveExpense(getBoutiqueId(), newExpense).catch((err) => {
+      enqueue('expense', newExpense);
+      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      console.warn('[outbox] expense enqueued:', err);
+    });
     return newExpense;
   },
 
@@ -127,7 +133,11 @@ export const useExpenseStore = create<ExpenseState>()((set, get) => ({
       expenses: state.expenses.map(e => e.id === id ? { ...e, ...data } : e),
     }));
     const updated = get().expenses.find(e => e.id === id);
-    if (updated) fsSaveExpense(getBoutiqueId(), updated).catch(console.error);
+    if (updated) fsSaveExpense(getBoutiqueId(), updated).catch((err) => {
+      enqueue('expense', updated);
+      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      console.warn('[outbox] expense (update) enqueued:', err);
+    });
   },
 
   deleteExpense: (id) => {

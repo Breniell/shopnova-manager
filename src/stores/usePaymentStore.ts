@@ -13,6 +13,8 @@
 import { create } from 'zustand';
 import { getBoutiqueId } from '@/services/boutiqueService';
 import { fsSavePayment, fsDeletePayment } from '@/services/firestoreService';
+import { enqueue } from '@/lib/outbox';
+import { toast } from 'sonner';
 
 export type PaymentChannel = 'especes' | 'mobile_money';
 
@@ -63,7 +65,11 @@ export const usePaymentStore = create<PaymentState>()((set, get) => ({
     const id = 'pay' + Date.now() + Math.random().toString(36).slice(2, 7);
     const newPayment: Payment = { ...data, id };
     set(state => ({ payments: [newPayment, ...state.payments] }));
-    fsSavePayment(getBoutiqueId(), newPayment).catch(console.error);
+    fsSavePayment(getBoutiqueId(), newPayment).catch((err) => {
+      enqueue('payment', newPayment);
+      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      console.warn('[outbox] payment enqueued:', err);
+    });
     return newPayment;
   },
 

@@ -59,7 +59,7 @@ const FournisseursPage: React.FC = () => {
   return (
     <div className="p-4 lg:p-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-grid">
-        <h1 className="text-headline-lg nova-heading text-foreground">{t('fournisseurs.title')}</h1>
+        <h1 className="text-2xl nova-heading text-foreground">{t('fournisseurs.title')}</h1>
         <button onClick={openAdd} className="nova-btn-primary flex items-center gap-2 px-5 py-2.5">
           <Plus className="w-4 h-4" /> {t('fournisseurs.addBtn')}
         </button>

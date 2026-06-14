@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { useSaleStore } from '@/stores/useSaleStore';
 import { useProductStore } from '@/stores/useProductStore';
 import { useStockStore } from '@/stores/useStockStore';
+import * as firestoreService from '@/services/firestoreService';
 
 const INITIAL_STATE = useSaleStore.getState();
 
@@ -336,5 +337,40 @@ describe('useSaleStore — completeSale (stock atomique)', () => {
     });
     expect(sale.items).toHaveLength(1);
     expect(useStockStore.getState().movements).toHaveLength(0);
+  });
+});
+
+// ─── fsCommitSale reçoit des deltas négatifs (pas des produits complets) ───────
+describe('useSaleStore — fsCommitSale payload uses stockDeltas', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('fsCommitSale is called with negative stockDeltas — never with absolute product values', () => {
+    localStorage.clear();
+    useStockStore.setState({ movements: [] });
+    useProductStore.setState({
+      products: [
+        { id: 'p1', nom: 'Bière', categorie: 'Boissons', codeBarre: '111',
+          prixAchat: 400, prixVente: 600, stock: 10, seuilAlerte: 5 },
+      ],
+    });
+    useSaleStore.setState({ cart: [], discount: 0, saleCounter: 0 });
+
+    const spy = vi.spyOn(firestoreService, 'fsCommitSale');
+
+    const { addToCart, updateCartQuantity, completeSale } = useSaleStore.getState();
+    addToCart({ productId: 'p1', nom: 'Bière', prixVente: 600 });
+    updateCartQuantity('p1', 3);
+    completeSale({ paymentMode: 'especes', amountReceived: 1800, changeGiven: 0, userId: 'u1', userName: 'Test' });
+
+    expect(spy).toHaveBeenCalledOnce();
+    const payload = spy.mock.calls[0][1];
+    // Must carry stockDeltas, not products
+    expect(payload).toHaveProperty('stockDeltas');
+    expect((payload as { stockDeltas: unknown[] }).stockDeltas).toHaveLength(1);
+    const delta = (payload as { stockDeltas: Array<{ productId: string; delta: number }> }).stockDeltas[0];
+    expect(delta.productId).toBe('p1');
+    expect(delta.delta).toBe(-3); // negative — decrement
+    // Must NOT contain a 'products' key
+    expect(payload).not.toHaveProperty('products');
   });
 });

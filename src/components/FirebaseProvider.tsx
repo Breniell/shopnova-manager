@@ -14,9 +14,11 @@
  * If Firebase is not configured (missing env vars), runs in pure-local mode.
  */
 import React, { useState, useEffect } from 'react';
+import { AlertTriangle } from 'lucide-react';
+import { onSnapshot, collection, doc, query, where, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { useTranslation } from '@/i18n';
-import { initBoutique } from '@/services/boutiqueService';
-import { isFirebaseConfigured } from '@/lib/firebase';
+import { initBoutique, getBoutiqueId } from '@/services/boutiqueService';
+import { db, isFirebaseConfigured } from '@/lib/firebase';
 import {
   fsIsBoutiqueInitialized,
   fsInitializeBoutique,
@@ -50,6 +52,7 @@ import { useSettingsStore, defaultShopSettings, type ShopSettings } from '@/stor
 import { hashPin, generateSalt } from '@/lib/crypto';
 import type { User } from '@/stores/useAuthStore';
 import { sendRegistryHeartbeat } from '@/services/registryService';
+import { retryAll } from '@/lib/outbox';
 
 const PENDING_ADMIN_KEY = 'legwan-pending-admin';
 
@@ -167,8 +170,8 @@ const ErrorScreen: React.FC<{ error: string }> = ({ error }) => {
   const { t } = useTranslation();
   return (
     <div className="fixed inset-0 bg-background flex flex-col items-center justify-center gap-4 p-6 z-[9999]">
-      <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
-        <span className="text-2xl">⚠️</span>
+      <div className="w-16 h-16 rounded-xl bg-destructive/10 flex items-center justify-center">
+        <AlertTriangle className="w-8 h-8 text-destructive" />
       </div>
       <h2 className="text-lg font-semibold text-foreground text-center">
         {t('common.firebaseError')}
@@ -186,6 +189,78 @@ const ErrorScreen: React.FC<{ error: string }> = ({ error }) => {
     </div>
   );
 };
+
+// ─── Real-time listeners ──────────────────────────────────────────────────────
+// Products, sales, users, customers, and settings get live updates via
+// onSnapshot so the UI reflects changes made on other devices (or other
+// browser tabs) without a page reload.
+//
+// Movements, expenses, sessions, payments, cashSessions, cashOuts,
+// inventorySessions, and clotures remain point-in-time getDocs: they are
+// append-only or low-frequency, and we don't need sub-second freshness there.
+
+function subscribeToRealtime(bid: string): Array<() => void> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 90);
+
+  const unsubProducts = onSnapshot(
+    collection(db, `boutiques/${bid}/products`),
+    snap => {
+      const products = snap.docs.map(d => ({ ...(d.data() as Product), id: d.id }));
+      useProductStore.getState()._setProducts(products);
+    },
+    err => console.warn('[onSnapshot] products:', err),
+  );
+
+  const unsubSales = onSnapshot(
+    query(
+      collection(db, `boutiques/${bid}/sales`),
+      where('date', '>=', Timestamp.fromDate(cutoff)),
+      orderBy('date', 'desc'),
+      limit(2000),
+    ),
+    snap => {
+      const sales = snap.docs.map(d => {
+        const data = d.data();
+        const ts = data.date;
+        const date = ts instanceof Timestamp ? ts.toDate()
+                   : ts instanceof Date      ? ts
+                   : new Date(ts as string);
+        return { ...(data as Sale), id: d.id, date };
+      });
+      useSaleStore.getState()._setSales(sales);
+    },
+    err => console.warn('[onSnapshot] sales:', err),
+  );
+
+  const unsubUsers = onSnapshot(
+    collection(db, `boutiques/${bid}/users`),
+    snap => {
+      const users = snap.docs.map(d => ({ ...(d.data() as User), id: d.id }));
+      if (users.length) useAuthStore.getState()._setUsers(users);
+    },
+    err => console.warn('[onSnapshot] users:', err),
+  );
+
+  const unsubCustomers = onSnapshot(
+    collection(db, `boutiques/${bid}/customers`),
+    snap => {
+      const customers = snap.docs.map(d => ({ ...(d.data() as Customer), id: d.id }));
+      useCustomerStore.getState()._setCustomers(customers);
+    },
+    err => console.warn('[onSnapshot] customers:', err),
+  );
+
+  const unsubSettings = onSnapshot(
+    doc(db, `boutiques/${bid}/settings/main`),
+    snap => {
+      if (snap.exists()) useSettingsStore.getState()._setSettings(snap.data() as ShopSettings);
+    },
+    err => console.warn('[onSnapshot] settings:', err),
+  );
+
+  return [unsubProducts, unsubSales, unsubUsers, unsubCustomers, unsubSettings];
+}
 
 // ─── Main bootstrap ─────────────────────────────────────────────────────────────
 
@@ -224,7 +299,7 @@ async function bootstrapFirebase(): Promise<void> {
   // 3. Load all data from Firestore (IndexedDB cache → instant offline)
   let results: BootstrapData;
   try {
-    results = await Promise.all([
+    results = (await Promise.all([
       fsLoadSettings(boutiqueId),
       fsLoadUsers(boutiqueId),
       fsLoadProducts(boutiqueId),
@@ -239,7 +314,7 @@ async function bootstrapFirebase(): Promise<void> {
       fsLoadInventorySessions(boutiqueId),
       fsLoadClotures(boutiqueId),
       fsLoadSaleCounter(boutiqueId),
-    ]);
+    ])) as unknown as BootstrapData;
   } catch (err) {
     console.warn('Firebase bootstrap offline fallback (data load failed):', err);
     if (!await trySeedLocalMode()) {
@@ -308,12 +383,27 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return;
     }
 
+    let realtimeUnsubs: Array<() => void> = [];
+
     bootstrapFirebase()
-      .then(() => setReady(true))
+      .then(() => {
+        setReady(true);
+        // Retry any writes that were rejected before this session started.
+        retryAll().catch(() => {});
+        // Start real-time listeners now that auth is established.
+        realtimeUnsubs = subscribeToRealtime(getBoutiqueId());
+      })
       .catch((err: unknown) => {
         console.error('Firebase bootstrap error:', err);
         setError(err instanceof Error ? err.message : 'Erreur inconnue');
       });
+
+    const handleOnline = () => retryAll().catch(() => {});
+    window.addEventListener('online', handleOnline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      realtimeUnsubs.forEach(fn => fn());
+    };
   }, []);
 
   if (error) return <ErrorScreen error={error} />;

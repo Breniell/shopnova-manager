@@ -25,6 +25,7 @@ import {
   orderBy,
   where,
   limit,
+  increment,
   Timestamp,
   type DocumentData,
 } from 'firebase/firestore';
@@ -202,17 +203,15 @@ export async function fsUpdateSale(bid: string, saleId: string, data: Partial<Sa
 /**
  * Commit atomique d'une vente et de ses conséquences sur le stock.
  *
- * La vente, la mise à jour du stock de chaque produit vendu et les mouvements
- * de stock correspondants sont écrits dans un **unique writeBatch** : soit tout
- * réussit, soit rien n'est écrit. Cela élimine le risque d'une vente enregistrée
- * sans décrément de stock (ou l'inverse) en cas d'interruption.
- *
- * En mode hors-ligne, le SDK Firestore met le batch en file dans IndexedDB et
- * le synchronise atomiquement au retour du réseau.
+ * Utilise increment() pour les mises à jour de stock — chaque caisse envoie
+ * un DELTA (−quantité), jamais une valeur absolue. Cela élimine le
+ * last-write-wins qui corrompait le stock lors d'une resynchronisation
+ * multi-caisses hors-ligne.
  */
 export interface SaleCommitPayload {
   sale: Sale;
-  products: Product[];          // produits avec leur stock DÉJÀ mis à jour
+  /** Deltas de stock : delta est négatif (décrément) pour une vente. */
+  stockDeltas: Array<{ productId: string; delta: number }>;
   movements: StockMovement[];
 }
 
@@ -226,8 +225,60 @@ export async function fsCommitSale(bid: string, payload: SaleCommitPayload): Pro
     date: toTimestamp(payload.sale.date),
   });
 
-  for (const product of payload.products) {
-    batch.set(doc(db, p.product(bid, product.id)), product);
+  for (const { productId, delta } of payload.stockDeltas) {
+    batch.update(doc(db, p.product(bid, productId)), { stock: increment(delta) });
+  }
+
+  for (const movement of payload.movements) {
+    const { id: movId, ...movData } = movement;
+    batch.set(doc(db, p.movement(bid, movId)), {
+      ...movData,
+      date: toTimestamp(movement.date),
+    });
+  }
+
+  await batch.commit();
+}
+
+/** Ajuste le stock d'un produit d'un delta (positif = entrée, négatif = sortie). */
+export async function fsAdjustStock(bid: string, productId: string, delta: number): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  await updateDoc(doc(db, p.product(bid, productId)), { stock: increment(delta) });
+}
+
+/**
+ * Met à jour les champs non-stock d'un produit (prix, nom, seuil…).
+ * N'écrit jamais le champ stock — les ajustements passent par fsAdjustStock.
+ */
+export async function fsUpdateProductFields(
+  bid: string,
+  productId: string,
+  fields: Partial<Omit<Product, 'id' | 'stock'>>
+): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  await updateDoc(doc(db, p.product(bid, productId)), fields as DocumentData);
+}
+
+export interface RefundCommitPayload {
+  saleId: string;
+  saleUpdate: Partial<Sale>;
+  /** Deltas positifs — le remboursement rend le stock. */
+  stockDeltas: Array<{ productId: string; delta: number }>;
+  movements: StockMovement[];
+}
+
+/**
+ * Commit atomique d'un remboursement : MAJ vente + incréments stock + mouvements.
+ * Un seul batch — impossible d'avoir la vente remboursée sans les stocks restitués.
+ */
+export async function fsCommitRefund(bid: string, payload: RefundCommitPayload): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  const batch = writeBatch(db);
+
+  batch.update(doc(db, p.sale(bid, payload.saleId)), payload.saleUpdate as DocumentData);
+
+  for (const { productId, delta } of payload.stockDeltas) {
+    batch.update(doc(db, p.product(bid, productId)), { stock: increment(delta) });
   }
 
   for (const movement of payload.movements) {

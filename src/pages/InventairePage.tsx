@@ -230,7 +230,7 @@ const InventairePage: React.FC = () => {
     <div className="p-4 lg:p-8 animate-fade-in">
       {/* En-tête */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-grid">
-        <h1 className="text-headline-lg nova-heading text-foreground">{t('inventaire.title')}</h1>
+        <h1 className="text-2xl nova-heading text-foreground">{t('inventaire.title')}</h1>
         {openSessions.length > 0 && tab !== 'edit' && (
           <div className="text-xs px-3 py-1.5 rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/30">
             {openSessions.length > 1
