@@ -12,9 +12,21 @@ export interface User {
   prenom: string;
   nom: string;
   role: UserRole;
-  pin: string;         // hex hash
-  salt?: string;       // per-user random salt
-  hashAlgo?: HashAlgo; // undefined = legacy sha256
+  pin: string;     // hex hash — ALWAYS set alongside hashAlgo
+  salt?: string;   // per-user random 128-bit hex salt (required when hashAlgo === 'pbkdf2')
+  /**
+   * Identifies which algorithm produced `pin`.
+   *
+   * - 'pbkdf2' : PBKDF2-SHA-256 with 200 000 iterations + per-user `salt` (v1.4.2+).
+   * - 'sha256'  : legacy SHA-256, salt optional (v1.4.1 and earlier).
+   * - undefined : treated as legacy sha256 (Firestore documents from before the field existed).
+   *
+   * INVARIANT: every User object created in application code MUST set this field.
+   * The only valid source of undefined is old documents already in Firestore.
+   * Keeping it optional (vs required) avoids breaking Firestore-loaded legacy users
+   * that pre-date the field — they are migrated to PBKDF2 silently on next login.
+   */
+  hashAlgo?: HashAlgo;
   color: string;
 }
 
@@ -44,7 +56,8 @@ interface AuthState {
 const MAX_ATTEMPTS   = 5;
 const LOCK_DURATION_MS = 5 * 60 * 1000;
 
-async function verifyPin(pin: string, user: User): Promise<boolean> {
+/** Exported for unit-testing only — do not call from application code. */
+export async function verifyPin(pin: string, user: User): Promise<boolean> {
   if (user.hashAlgo === 'pbkdf2' && user.salt) {
     const hash = await hashPinPbkdf2(pin, user.salt);
     return hash === user.pin;

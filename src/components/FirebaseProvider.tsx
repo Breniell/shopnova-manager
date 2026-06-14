@@ -81,7 +81,8 @@ type BootstrapData = [
  * Priority 1: legwan-pending-admin set by PolicyGate (real owner account).
  * Priority 2: demo accounts for dev/local mode when no admin was configured.
  */
-async function buildDefaultUsers(): Promise<User[]> {
+/** Exported for integration-testing only — do not call from application code. */
+export async function buildDefaultUsers(): Promise<User[]> {
   const pendingRaw = localStorage.getItem(PENDING_ADMIN_KEY);
   if (pendingRaw) {
     try {
@@ -97,6 +98,7 @@ async function buildDefaultUsers(): Promise<User[]> {
           role: 'gérant',
           pin: hashedPin,
           salt,
+          hashAlgo: 'pbkdf2' as const, // PolicyGate always uses hashPin(pin, salt) → PBKDF2
           color: '#A93200',
         }];
       }
@@ -114,15 +116,17 @@ async function buildDefaultUsers(): Promise<User[]> {
     return [];
   }
 
+  // One random salt per demo user so hashAlgo and salt always travel together.
+  const [saltMarie, saltPaul, saltFatou] = [generateSalt(), generateSalt(), generateSalt()];
   const [pinMarie, pinPaul, pinFatou] = await Promise.all([
-    hashPin('1234'),
-    hashPin('5678'),
-    hashPin('0000'),
+    hashPin('1234', saltMarie),
+    hashPin('5678', saltPaul),
+    hashPin('0000', saltFatou),
   ]);
   return [
-    { id: 'u-marie', prenom: 'Marie', nom: 'Nguema', role: 'gérant',   pin: pinMarie, color: '#A93200' },
-    { id: 'u-paul',  prenom: 'Paul',  nom: 'Mbarga', role: 'caissier', pin: pinPaul,  color: '#00D4AA' },
-    { id: 'u-fatou', prenom: 'Fatou', nom: 'Diallo', role: 'caissier', pin: pinFatou, color: '#F59E0B' },
+    { id: 'u-marie', prenom: 'Marie', nom: 'Nguema', role: 'gérant',   pin: pinMarie, salt: saltMarie, hashAlgo: 'pbkdf2' as const, color: '#A93200' },
+    { id: 'u-paul',  prenom: 'Paul',  nom: 'Mbarga', role: 'caissier', pin: pinPaul,  salt: saltPaul,  hashAlgo: 'pbkdf2' as const, color: '#00D4AA' },
+    { id: 'u-fatou', prenom: 'Fatou', nom: 'Diallo', role: 'caissier', pin: pinFatou, salt: saltFatou, hashAlgo: 'pbkdf2' as const, color: '#F59E0B' },
   ];
 }
 
