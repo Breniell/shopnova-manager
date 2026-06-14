@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { useProductStore, Product, Category } from '@/stores/useProductStore';
 import { useSaleStore } from '@/stores/useSaleStore';
 import { useTranslation } from '@/i18n';
-import { formatPrice, formatFCFA, formatDate, formatTime } from '@/utils/formatters';
+import { formatFCFA } from '@/utils/formatters';
 
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/ui/EmptyState';
-import {  getStockStatus, generateEAN13, cn } from '@/lib/utils';
+import { BarcodeScanner } from '@/components/ui/BarcodeScanner';
+import { LabelPrint } from '@/components/ui/LabelPrint';
+import { getStockStatus, generateInternalBarcode, isValidEAN13, cn } from '@/lib/utils';
 import { productImages } from '@/assets/productImages';
-import { Search, Plus, Edit, Trash2, Package, X } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Package, X, Camera, Hash, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ProduitsPage: React.FC = () => {
@@ -21,6 +23,8 @@ const ProduitsPage: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [showScanner, setShowScanner] = useState(false);
+  const [labelProduct, setLabelProduct] = useState<Product | null>(null);
 
   const [form, setForm] = useState({
     nom: '', categorie: 'Alimentation' as Category, codeBarre: '', prixAchat: '',
@@ -51,11 +55,26 @@ const ProduitsPage: React.FC = () => {
     setShowModal(true);
   };
 
+  // Non-blocking EAN-13 validation (only when field is non-empty)
+  const barcodeWarning = form.codeBarre.trim() && !isValidEAN13(form.codeBarre.trim())
+    ? t('produits.barcodeInvalid')
+    : null;
+
+  // Duplicate check: same code on a different product
+  const barcodeDuplicate = form.codeBarre.trim()
+    ? products.find(p => p.codeBarre === form.codeBarre.trim() && p.id !== editingProduct?.id) ?? null
+    : null;
+
   const handleSubmit = () => {
     if (!form.nom || !form.prixAchat || !form.prixVente) {
       toast.error(t('produits.requiredFields'));
       return;
     }
+    if (barcodeDuplicate) {
+      toast.error(t('produits.barcodeDuplicate').replace('{name}', barcodeDuplicate.nom));
+      return;
+    }
+
     const prixAchatNum = parseInt(form.prixAchat, 10) || 0;
     const prixVenteNum = parseInt(form.prixVente, 10) || 0;
     const prixCibleNum = form.prixCible ? parseInt(form.prixCible, 10) : undefined;
@@ -76,8 +95,11 @@ const ProduitsPage: React.FC = () => {
       }
     }
 
+    // Auto-generate an internal code (prefix '2') only when left empty
+    const codeBarre = form.codeBarre.trim() || generateInternalBarcode();
+
     const data = {
-      nom: form.nom, categorie: form.categorie, codeBarre: form.codeBarre || generateEAN13(),
+      nom: form.nom, categorie: form.categorie, codeBarre,
       prixAchat: prixAchatNum, prixVente: prixVenteNum,
       prixCible: form.negociable ? prixCibleNum : undefined,
       prixPlancher: form.negociable ? prixPlancherNum : undefined,
@@ -121,7 +143,7 @@ const ProduitsPage: React.FC = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
-        <h1 className="text-headline-lg nova-heading text-foreground">{t('produits.title')}</h1>
+        <h1 className="text-2xl nova-heading text-foreground">{t('produits.title')}</h1>
         <button onClick={openAdd} className="nova-btn-primary flex items-center gap-2 px-5 py-2.5 shrink-0">
           <Plus className="w-4 h-4" /> {t('produits.addBtn')}
         </button>
@@ -147,7 +169,12 @@ const ProduitsPage: React.FC = () => {
 
       {/* Table */}
       {filtered.length === 0 ? (
-        <EmptyState icon={<Package className="w-12 h-12" />} title={t('produits.noProduct')} description={t('produits.noProductDesc')} />
+        <EmptyState
+          icon={<Package className="w-12 h-12" />}
+          title={t('produits.noProduct')}
+          description={t('produits.noProductDesc')}
+          action={<button onClick={openAdd} className="nova-btn-primary px-5 mt-4"><Plus className="w-4 h-4" />{t('produits.addBtn')}</button>}
+        />
       ) : (
         <div className="nova-card overflow-hidden">
           <div className="overflow-x-auto">
@@ -169,6 +196,7 @@ const ProduitsPage: React.FC = () => {
                 {filtered.map((p, i) => {
                   const status = getStockStatus(p.stock, p.seuilAlerte);
                   const margin = ((p.prixVente - p.prixAchat) / p.prixAchat * 100);
+                  const isInternal = p.codeBarre.startsWith('2');
                   return (
                     <tr key={p.id} className="border-t border-border hover:bg-muted/30 transition-colors group">
                       <td className="p-3 text-sm text-muted-foreground">{i + 1}</td>
@@ -187,11 +215,19 @@ const ProduitsPage: React.FC = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="p-3 text-sm font-mono text-muted-foreground cursor-pointer hover:text-foreground hidden md:table-cell" onClick={() => { navigator.clipboard.writeText(p.codeBarre); toast.success(t('produits.copied')); }}>
-                        {p.codeBarre}
+                      <td
+                        className="p-3 text-sm font-mono text-muted-foreground cursor-pointer hover:text-foreground hidden md:table-cell"
+                        onClick={() => { navigator.clipboard.writeText(p.codeBarre); toast.success(t('produits.copied')); }}
+                      >
+                        <span className="flex items-center gap-1.5">
+                          {p.codeBarre}
+                          {isInternal && (
+                            <span className="text-[9px] bg-amber-500/15 text-amber-600 px-1 py-0.5 rounded font-sans">vrac</span>
+                          )}
+                        </span>
                       </td>
-                      <td className="p-3 text-sm text-right text-muted-foreground tabular-nums hidden sm:table-cell">{formatFCFA(p.prixAchat)}</td>
-                      <td className="p-3 text-sm text-right text-foreground font-medium tabular-nums">{formatFCFA(p.prixVente)}</td>
+                      <td className="p-3 money text-right text-muted-foreground hidden sm:table-cell">{formatFCFA(p.prixAchat)}</td>
+                      <td className="p-3 money text-right text-foreground">{formatFCFA(p.prixVente)}</td>
                       <td className={cn('p-3 text-sm text-right font-medium tabular-nums hidden sm:table-cell', margin >= 20 ? 'text-emerald-400' : margin >= 10 ? 'text-amber-400' : 'text-red-400')}>
                         {margin.toFixed(1)}%
                       </td>
@@ -201,9 +237,18 @@ const ProduitsPage: React.FC = () => {
                           <span className="text-sm tabular-nums text-foreground">{p.stock}</span>
                         </div>
                       </td>
-                      <td className="p-3 text-sm text-right text-muted-foreground tabular-nums hidden md:table-cell">{p.seuilAlerte}</td>
+                      <td className="p-3 money text-right text-muted-foreground hidden md:table-cell">{p.seuilAlerte}</td>
                       <td className="p-3 text-right">
                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {isInternal && (
+                            <button
+                              onClick={() => setLabelProduct(p)}
+                              title={t('produits.labelPrintBtn')}
+                              className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                            >
+                              <Tag className="w-4 h-4" />
+                            </button>
+                          )}
                           <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
                             <Edit className="w-4 h-4" />
                           </button>
@@ -243,13 +288,52 @@ const ProduitsPage: React.FC = () => {
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
+
+              {/* ── Code-barres ─────────────────────────────────────────── */}
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">{t('produits.labelBarcode')}</label>
                 <div className="flex gap-2">
-                  <input type="text" value={form.codeBarre} onChange={e => setForm({ ...form, codeBarre: e.target.value })} className="nova-input flex-1" placeholder="EAN-13" />
-                  <button onClick={() => setForm({ ...form, codeBarre: generateEAN13() })} className="nova-btn-primary px-3 text-sm shrink-0">{t('produits.generate')}</button>
+                  <input
+                    type="text"
+                    value={form.codeBarre}
+                    onChange={e => setForm({ ...form, codeBarre: e.target.value })}
+                    className={cn('nova-input flex-1', barcodeWarning && 'border-amber-500/60')}
+                    placeholder="EAN-13"
+                    maxLength={13}
+                  />
+                  {/* Camera scan — for packaged products with a manufacturer barcode */}
+                  <button
+                    type="button"
+                    onClick={() => setShowScanner(true)}
+                    title={t('produits.scanBtn')}
+                    className="px-3 rounded-lg border border-border bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                  >
+                    <Camera className="w-4 h-4" />
+                  </button>
+                  {/* Generate internal code — for bulk/loose products without a factory barcode */}
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, codeBarre: generateInternalBarcode() })}
+                    title={t('produits.generateVracHint')}
+                    className="px-2 rounded-lg border border-border bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors shrink-0 flex items-center gap-1 text-xs whitespace-nowrap"
+                  >
+                    <Hash className="w-3.5 h-3.5" />
+                    {t('produits.generateVrac')}
+                  </button>
                 </div>
+                {barcodeWarning && !barcodeDuplicate && (
+                  <p className="text-[11px] text-amber-500 mt-1">{barcodeWarning}</p>
+                )}
+                {barcodeDuplicate && (
+                  <p className="text-[11px] text-destructive mt-1">
+                    {t('produits.barcodeDuplicate').replace('{name}', barcodeDuplicate.nom)}
+                  </p>
+                )}
+                {!form.codeBarre.trim() && (
+                  <p className="text-[11px] text-muted-foreground mt-1">{t('produits.barcodeAutoGenerate')}</p>
+                )}
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">{t('produits.labelPurchasePrice')}</label>
@@ -352,6 +436,19 @@ const ProduitsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Camera barcode scanner — for reading manufacturer codes on packaged products */}
+      <BarcodeScanner
+        open={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScan={code => { setForm(f => ({ ...f, codeBarre: code })); }}
+      />
+
+      {/* Label print — only shown for internal (prefix '2') products */}
+      <LabelPrint
+        product={labelProduct}
+        onClose={() => setLabelProduct(null)}
+      />
     </div>
   );
 };

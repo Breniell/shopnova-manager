@@ -7,6 +7,7 @@
  * - PDF: all cell values are HTML-escaped before injection into the print
  *   window to prevent XSS via product names or customer data.
  */
+import { getCurrentBcp47 } from '@/utils/formatters';
 
 // ─── CSV helpers ─────────────────────────────────────────────────────────────
 
@@ -66,7 +67,7 @@ export function exportPDF(title: string, headers: string[], rows: string[][], su
   @media print { body { padding: 12px; } }
 </style></head><body>
 <h1>${safeTitle}</h1>
-<div class="subtitle">Exporté le ${new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })} à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</div>
+<div class="subtitle">Exporté le ${new Date().toLocaleDateString(getCurrentBcp47(), { day: '2-digit', month: 'long', year: 'numeric' })} à ${new Date().toLocaleTimeString(getCurrentBcp47(), { hour: '2-digit', minute: '2-digit' })}</div>
 ${safeSummary ? `<div class="summary">${safeSummary.map(s => `<div class="summary-item">${s}</div>`).join('')}</div>` : ''}
 <table><thead><tr>${safeHeaders.map(h => `<th>${h}</th>`).join('')}</tr></thead>
 <tbody>${safeRows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>
