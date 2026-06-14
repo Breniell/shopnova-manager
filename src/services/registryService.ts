@@ -1,36 +1,60 @@
 /**
  * Legwan Platform Registry
  *
- * Sends aggregate stats + automatic geolocation to registry/{boutiqueId}.
- * Geolocation is handled by geoService (GPS → IP fallback).
+ * Sends health signals + automatic geolocation to registry/{boutiqueId}.
+ * No financial data is ever transmitted (no revenue, sales amounts, product counts, etc.).
+ * Geolocation uses a GPS lock strategy: once a precise GPS fix is obtained,
+ * it is stored in localStorage and reused on every subsequent startup.
+ *
+ * Data transmitted per boutique:
+ *   - name, address, phone (from shop settings)
+ *   - app version, platform
+ *   - isActive (boolean: any completed sale in the last 30 days)
+ *   - usersCount (number of user accounts)
+ *   - lastActivityAt (date of most recent sale — no amounts)
+ *   - location (lat/lng/city/country — only with explicit geo consent)
+ *
+ * NOT transmitted: revenue, sale amounts, products, customers, suppliers, expenses.
  */
-import { doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '@/lib/firebase';
 import { getBoutiqueId } from '@/services/boutiqueService';
-import { getBestLocation, getAddressFromCoords } from '@/services/geoService';
+import {
+  getGPSLocationRobust,
+  getIPLocation,
+  getAddressFromCoords,
+  reverseGeocode,
+} from '@/services/geoService';
 import { hasGeoConsent } from '@/lib/consent';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { useProductStore } from '@/stores/useProductStore';
 import { useSaleStore } from '@/stores/useSaleStore';
-import { useCustomerStore } from '@/stores/useCustomerStore';
-import { useSupplierStore } from '@/stores/useSupplierStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
-import { useExpenseStore } from '@/stores/useExpenseStore';
-import { useCashSessionStore } from '@/stores/useCashSessionStore';
 import type { LocationSource, LocationPrecision } from '@/services/geoService';
 
 const APP_VERSION = '1.5.0';
 
 export type { LocationSource, LocationPrecision };
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 export interface RegistryLocation {
   lat: number;
   lng: number;
+  accuracy?: number;
   geocodedAt: string;
+  capturedAt: string;
   source: LocationSource;
   precision: LocationPrecision;
   city?: string;
   country?: string;
+  locked: boolean;
+}
+
+export interface RegistryHealth {
+  isActive: boolean;
+  usersCount: number;
+  lastActivityAt: string | null;
+  appVersion: string;
 }
 
 export interface RegistryEntry {
@@ -43,18 +67,13 @@ export interface RegistryEntry {
   registeredAt: Timestamp;
   lastSeen: Timestamp;
   isRecoveryEnabled: boolean;
-  stats: {
-    totalVentes: number;
-    totalRevenue: number;
-    totalProducts: number;
-    totalUsers: number;
-    totalCustomers: number;
-    totalSuppliers: number;
-    totalExpenses: number;
-    totalSessions: number;
-  };
+  health: RegistryHealth;
   location: RegistryLocation | null;
+  // Legacy field — present in pre-migration Firestore docs; never written from this version
+  stats?: Record<string, number>;
 }
+
+// ─── Platform helper ──────────────────────────────────────────────────────────
 
 function getPlatform(): string {
   if (typeof navigator === 'undefined') return 'unknown';
@@ -65,9 +84,27 @@ function getPlatform(): string {
   return 'web';
 }
 
+// ─── GPS lock — localStorage persistence ─────────────────────────────────────
+
+const GEO_LOCK_KEY = 'legwan-geo-lock';
+
+function loadLockedPosition(): RegistryLocation | null {
+  try {
+    const raw = localStorage.getItem(GEO_LOCK_KEY);
+    return raw ? (JSON.parse(raw) as RegistryLocation) : null;
+  } catch { return null; }
+}
+
+function saveLockedPosition(loc: RegistryLocation): void {
+  try { localStorage.setItem(GEO_LOCK_KEY, JSON.stringify(loc)); } catch { /* ignore */ }
+}
+
+// ─── Heartbeat ────────────────────────────────────────────────────────────────
+
 /**
- * Sends a heartbeat to registry/{boutiqueId}.
- * GPS is tried first; if unavailable, IP geolocation is used as fallback.
+ * Sends a health heartbeat to registry/{boutiqueId}.
+ * No financial data is included.
+ * Geo lock strategy: reuse localStorage lock → try GPS → IP fallback.
  * Fire-and-forget — never throws.
  */
 export async function sendRegistryHeartbeat(isRecoveryEnabled: boolean): Promise<void> {
@@ -79,66 +116,87 @@ export async function sendRegistryHeartbeat(isRecoveryEnabled: boolean): Promise
 
     const settings = useSettingsStore.getState().shop;
     const users    = useAuthStore.getState().users;
-    const products = useProductStore.getState().products;
     const { sales } = useSaleStore.getState();
-    const customers = useCustomerStore.getState().customers;
-    const suppliers = useSupplierStore.getState().suppliers;
-    const expenses  = useExpenseStore.getState().expenses;
-    const sessions  = useCashSessionStore.getState().sessions;
 
-    const totalRevenue = sales
-      .filter(s => s.status === 'completed')
-      .reduce((sum, s) => sum + (s.total ?? s.subtotal ?? 0), 0);
+    // Health: activity signals only — no financial data
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const completedSales = sales.filter(s => s.status === 'completed');
+    const isActive = completedSales.some(s => new Date(s.date).getTime() >= thirtyDaysAgo);
+    const latestSale = completedSales.reduce<typeof completedSales[0] | null>((acc, s) => {
+      if (!acc) return s;
+      return new Date(s.date) > new Date(acc.date) ? s : acc;
+    }, null);
 
-    // Geolocation: only if the user has explicitly consented (separate opt-in).
-    // Without consent, no GPS/IP request is made and no location is transmitted.
+    const health: RegistryHealth = {
+      isActive,
+      usersCount: users.length,
+      lastActivityAt: latestSale?.date instanceof Date ? latestSale.date.toISOString() : (latestSale?.date ?? null),
+      appVersion: APP_VERSION,
+    };
+
+    // Geolocation — only if the user has explicitly consented
     let location: RegistryLocation | null = null;
     if (hasGeoConsent()) {
-      try {
-        const snap = await getDoc(docRef);
-        const existing = snap.exists() ? (snap.data() as RegistryEntry) : null;
-
-        // Keep existing GPS-precision location (don't re-request GPS every startup)
-        if (existing?.location?.precision === 'gps') {
-          location = existing.location;
-        } else {
-          const geo = await getBestLocation();
-          if (geo) {
-            location = {
-              lat: geo.lat,
-              lng: geo.lng,
-              geocodedAt: new Date().toISOString(),
-              source: geo.source,
-              precision: geo.precision,
-              city: geo.city,
-              country: geo.country,
-            };
-
-            // Auto-fill boutique address from GPS if not yet set
-            if (geo.precision === 'gps' && !settings.adresse?.trim()) {
-              const addr = await getAddressFromCoords(geo.lat, geo.lng);
-              if (addr) {
-                useSettingsStore.getState().updateShop({ adresse: addr });
-              }
-            }
-          } else {
-            location = existing?.location ?? null;
-          }
-        }
-      } catch {
-        const geo = await getBestLocation().catch(() => null);
-        if (geo) {
-          location = {
-            lat: geo.lat, lng: geo.lng,
-            geocodedAt: new Date().toISOString(),
-            source: geo.source, precision: geo.precision,
-            city: geo.city, country: geo.country,
+      // 1. Reuse locked GPS position from localStorage — never re-query once locked
+      const stored = loadLockedPosition();
+      if (stored?.locked) {
+        location = stored;
+      } else {
+        // 2. Try robust GPS (watchPosition up to 25 s, stop early at < 50 m accuracy)
+        const gps = await getGPSLocationRobust(25_000, 50);
+        if (gps) {
+          const now = new Date().toISOString();
+          const newLoc: RegistryLocation = {
+            lat: gps.lat,
+            lng: gps.lng,
+            accuracy: gps.accuracy,
+            geocodedAt: now,
+            capturedAt: now,
+            source: 'gps',
+            precision: 'gps',
+            locked: true,
           };
+
+          // Enrich with city/country via reverse geocode
+          try {
+            const geocoded = await reverseGeocode(gps.lat, gps.lng);
+            if (geocoded) {
+              newLoc.city = geocoded.city;
+              newLoc.country = geocoded.country;
+            }
+          } catch { /* non-fatal */ }
+
+          // Auto-fill boutique address if not set
+          if (!settings.adresse?.trim()) {
+            try {
+              const addr = await getAddressFromCoords(gps.lat, gps.lng);
+              if (addr) useSettingsStore.getState().updateShop({ adresse: addr });
+            } catch { /* non-fatal */ }
+          }
+
+          saveLockedPosition(newLoc);
+          location = newLoc;
+        } else {
+          // 3. IP fallback — locked: false so GPS is retried next startup
+          const ip = await getIPLocation();
+          if (ip) {
+            location = {
+              lat: ip.lat,
+              lng: ip.lng,
+              geocodedAt: new Date().toISOString(),
+              capturedAt: new Date().toISOString(),
+              source: 'ip',
+              precision: 'city',
+              city: ip.city,
+              country: ip.country,
+              locked: false,
+            };
+          }
         }
       }
     }
 
-    const entry: Omit<RegistryEntry, 'registeredAt'> = {
+    const entry: Omit<RegistryEntry, 'registeredAt' | 'stats'> = {
       boutiqueId,
       nom: settings.nom || 'Boutique sans nom',
       adresse: settings.adresse || '',
@@ -147,21 +205,11 @@ export async function sendRegistryHeartbeat(isRecoveryEnabled: boolean): Promise
       platform: getPlatform(),
       lastSeen: Timestamp.now(),
       isRecoveryEnabled,
-      stats: {
-        totalVentes: sales.filter(s => s.status === 'completed').length,
-        totalRevenue,
-        totalProducts: products.length,
-        totalUsers: users.length,
-        totalCustomers: customers.filter(c => !c.archived).length,
-        totalSuppliers: suppliers.length,
-        totalExpenses: expenses.length,
-        totalSessions: sessions.length,
-      },
+      health,
       location,
     };
 
     await setDoc(docRef, { ...entry, registeredAt: Timestamp.now() }, { merge: true });
-    await setDoc(docRef, { lastSeen: Timestamp.now() }, { merge: true });
 
   } catch (err) {
     console.warn('[registry] heartbeat failed:', err);

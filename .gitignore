@@ -55,4 +55,13 @@ build/
 release/
 screenshots/
 __bb_backup__/
+demo-report/
+
+# Firebase admin credentials — NEVER commit
+service-account*.json
+
+# Licence — clé privée Ed25519 : JAMAIS dans le dépôt
+*.pem
+license-private.pem
+scripts/license-gen/*.pem
 

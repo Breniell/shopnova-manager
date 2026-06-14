@@ -18,22 +18,6 @@ type UpdateState =
   | { phase: 'downloading';  percent: number }
   | { phase: 'ready';        version: string };
 
-declare global {
-  interface Window {
-    legwan?: {
-      isElectron?: boolean;
-      version?: string;
-      platform?: string;
-      onUpdateAvailable?:        (cb: (info: { version: string }) => void) => void;
-      onUpdateNotAvailable?:     (cb: () => void) => void;
-      onUpdateDownloadProgress?: (cb: (p: { percent: number }) => void) => void;
-      onUpdateDownloaded?:       (cb: (info: { version: string }) => void) => void;
-      startUpdateDownload?:      () => void;
-      quitAndInstall?:           () => void;
-    };
-  }
-}
-
 export const UpdateBanner: React.FC = () => {
   const { t } = useTranslation();
   const [state, setState] = useState<UpdateState>({ phase: 'idle' });
