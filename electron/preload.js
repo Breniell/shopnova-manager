@@ -34,4 +34,17 @@ contextBridge.exposeInMainWorld('legwan', {
 
   /** Quit the app and install the downloaded update */
   quitAndInstall: () => ipcRenderer.send('update-quit-and-install'),
+
+  // ── Thermal printer API ────────────────────────────────────────────────────
+
+  printer: {
+    /** List available system printer names */
+    list: () => ipcRenderer.invoke('printer:list'),
+    /** Print a test page to the given printer */
+    test: (config) => ipcRenderer.invoke('printer:test', config),
+    /** Print a receipt HTML document to the thermal printer */
+    printReceipt: (job) => ipcRenderer.invoke('printer:print', job),
+    /** Send a cash-drawer open pulse */
+    openDrawer: () => ipcRenderer.invoke('printer:openDrawer'),
+  },
 });

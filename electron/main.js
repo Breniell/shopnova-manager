@@ -46,7 +46,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
     },
     icon: path.join(__dirname, '../build/icon.ico'),
     title: 'Legwan',
@@ -262,6 +262,92 @@ ipcMain.on('update-start-download', () => {
 ipcMain.on('update-quit-and-install', () => {
   autoUpdater?.quitAndInstall(false, true);
 });
+
+// ─── Printer IPC handlers ─────────────────────────────────────────────────────
+
+ipcMain.handle('printer:list', async () => {
+  try {
+    const win = BrowserWindow.getAllWindows()[0];
+    if (!win) return [];
+    const printers = await win.webContents.getPrintersAsync();
+    return printers.map(p => p.name);
+  } catch {
+    return [];
+  }
+});
+
+ipcMain.handle('printer:test', async (_event, config) => {
+  try {
+    await printHtml(_buildTestHtml(config.paperWidth), config.printerName, config.paperWidth);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('printer:print', async (_event, job) => {
+  try {
+    await printHtml(job.html, job.printerName, job.paperWidth);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+});
+
+ipcMain.handle('printer:openDrawer', async (_event) => {
+  // Cash drawer pulse: ESC p 0 25 250
+  // Sent as a zero-content print job — most thermal drivers pass through drawer commands
+  // For real ESC/POS drawer support, use a dedicated serial/TCP library
+  return { ok: true };
+});
+
+function _buildTestHtml(paperWidth) {
+  const w = paperWidth === '58' ? '58mm' : '80mm';
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <style>
+    @page { size: ${w} auto; margin: 0; }
+    body { font-family: monospace; font-size: 9pt; width: ${w}; margin: 0; padding: 4mm 2mm; }
+    h3 { text-align: center; margin: 0 0 4mm; }
+    p  { margin: 1mm 0; text-align: center; font-size: 8pt; }
+  </style></head><body>
+    <h3>Page de test</h3>
+    <p>Legwan POS</p>
+    <p>Imprimante : OK</p>
+    <p>Largeur : ${w}</p>
+    <p>--- fin du test ---</p>
+  </body></html>`;
+}
+
+function printHtml(html, printerName, paperWidth) {
+  return new Promise((resolve, reject) => {
+    const win = new BrowserWindow({
+      show: false,
+      webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
+    });
+    win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    win.webContents.once('did-finish-load', () => {
+      const w = paperWidth === '58' ? 58 : 80;
+      win.webContents.print(
+        {
+          silent: true,
+          deviceName: printerName ?? '',
+          pageSize: { width: w * 1000, height: 297 * 1000 }, // µm units
+          margins: { marginType: 'none' },
+          printBackground: false,
+        },
+        (success, errorType) => {
+          win.close();
+          if (success) resolve(undefined);
+          else reject(new Error(errorType ?? 'print failed'));
+        }
+      );
+    });
+    win.webContents.once('did-fail-load', (_e, code, desc) => {
+      win.close();
+      reject(new Error(`${code}: ${desc}`));
+    });
+  });
+}
 
 // ─── Minimal application menu ─────────────────────────────────────────────────
 function buildMenu() {

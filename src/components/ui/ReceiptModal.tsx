@@ -3,8 +3,10 @@ import { cn } from '@/lib/utils';
 import { Sale } from '@/stores/useSaleStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { X, Printer } from 'lucide-react';
-import { formatPrice, formatFCFA, formatDate, formatTime, formatDateShort } from '@/utils/formatters';
+import { formatPrice, formatFCFA, formatDate, formatTime, formatDateShort, getCurrentBcp47 } from '@/utils/formatters';
 import { useTranslation } from '@/i18n';
+import { isThermalAvailable, buildReceiptHtml } from '@/lib/thermalPrint';
+import { toast } from 'sonner';
 
 interface ReceiptModalProps {
   sale: Sale | null;
@@ -18,20 +20,36 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ sale, open, onClose 
 
   if (!open || !sale) return null;
 
-  const handlePrint = () => window.print();
-
   const paymentLabel = sale.paymentMode === 'especes'
     ? t('receipt.payEspeces')
     : sale.paymentMode === 'mobile_money'
       ? t('receipt.payMobile')
       : t('receipt.payCredit');
 
+  const handlePrint = async () => {
+    if (isThermalAvailable() && shop.printerName) {
+      try {
+        const html = buildReceiptHtml(sale, shop, paymentLabel);
+        const result = await window.legwan!.printer!.printReceipt({ html, printerName: shop.printerName, paperWidth: shop.paperWidth });
+        if (!result.ok) window.print();
+      } catch {
+        window.print();
+      }
+    } else {
+      window.print();
+    }
+  };
+
+  const handleOpenDrawer = () => {
+    window.legwan!.printer!.openDrawer().catch(() => toast.error(t('receipt.openDrawerFail')));
+  };
+
   return (
     <>
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center" onClick={onClose}>
         <div className="animate-scale-in" onClick={e => e.stopPropagation()}>
           {/* Receipt */}
-          <div className="receipt-print bg-white text-gray-900 w-[320px] rounded-xl overflow-hidden shadow-2xl">
+          <div className="receipt-print bg-white text-gray-900 w-[320px] rounded-xl overflow-hidden shadow-2xl" data-paper-width={shop.paperWidth}>
             <div className="p-6 text-center border-b border-dashed -gray-300">
               <h2 className="font-bold text-lg">{shop.nom}</h2>
               <p className="text-xs text-gray-500 mt-1">{shop.adresse}</p>
@@ -76,16 +94,16 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ sale, open, onClose 
                           {isNegotiated ? (
                             <>
                               <span className="line-through text-gray-400 mr-1">
-                                {item.prixVente.toLocaleString('fr-FR')}
+                                {item.prixVente.toLocaleString(getCurrentBcp47())}
                               </span>
-                              {item.quantity} × {applied.toLocaleString('fr-FR')}
+                              {item.quantity} × {applied.toLocaleString(getCurrentBcp47())}
                             </>
                           ) : (
-                            <>{item.quantity} × {applied.toLocaleString('fr-FR')}</>
+                            <>{item.quantity} × {applied.toLocaleString(getCurrentBcp47())}</>
                           )}
                         </td>
                         <td className="py-1.5 text-right font-medium">
-                          {(item.quantity * applied).toLocaleString('fr-FR')}
+                          {(item.quantity * applied).toLocaleString(getCurrentBcp47())}
                         </td>
                       </tr>
                     );
@@ -115,6 +133,22 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ sale, open, onClose 
                   {paymentLabel}
                 </span>
               </div>
+              {sale.paymentMode === 'mobile_money' && (sale.mobileOperator || sale.mobileReference) && (
+                <div className="space-y-0.5 mt-0.5">
+                  {sale.mobileOperator && (
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>{t('receipt.momoOperator')}</span>
+                      <span className="font-medium">{sale.mobileOperator === 'mtn' ? 'MTN MoMo' : 'Orange Money'}</span>
+                    </div>
+                  )}
+                  {sale.mobileReference && (
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>{t('receipt.momoReference')}</span>
+                      <span className="font-mono break-all">{sale.mobileReference}</span>
+                    </div>
+                  )}
+                </div>
+              )}
               {sale.amountReceived && (
                 <>
                   <div className="flex justify-between text-xs text-gray-500">
@@ -141,7 +175,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ sale, open, onClose 
                   {sale.dueDate && (
                     <div className="flex justify-between text-[11px] text-gray-600">
                       <span>{t('receipt.dueDate')}</span>
-                      <span>{new Date(sale.dueDate).toLocaleDateString('fr-FR')}</span>
+                      <span>{new Date(sale.dueDate).toLocaleDateString(getCurrentBcp47())}</span>
                     </div>
                   )}
                 </div>
@@ -161,10 +195,15 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ sale, open, onClose 
           </div>
 
           {/* Action buttons */}
-          <div className="flex gap-grid mt-4 justify-center">
+          <div className="flex flex-wrap gap-2 mt-4 justify-center">
             <button onClick={handlePrint} className="nova-btn-primary flex items-center gap-2 px-6 py-3">
               <Printer className="w-4 h-4" /> {t('receipt.print')}
             </button>
+            {isThermalAvailable() && shop.openDrawerOnSale && (
+              <button onClick={handleOpenDrawer} className="px-4 py-3 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors flex items-center gap-2 text-sm">
+                {t('receipt.openDrawer')}
+              </button>
+            )}
             <button onClick={onClose} className="px-6 py-3 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors flex items-center gap-2">
               <X className="w-4 h-4" /> {t('receipt.close')}
             </button>
