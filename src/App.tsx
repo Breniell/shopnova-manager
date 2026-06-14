@@ -9,6 +9,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { FirebaseProvider } from "@/components/FirebaseProvider";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { PolicyGate } from "@/components/PolicyGate";
+import { LicenseGate } from "@/components/LicenseGate";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 // Pages are code-split: each route loads its own chunk on demand, keeping the
@@ -29,7 +30,13 @@ const DepensesPage         = lazy(() => import("./pages/DepensesPage"));
 const OuvertureSessionPage = lazy(() => import("./pages/OuvertureSessionPage"));
 const InventairePage       = lazy(() => import("./pages/InventairePage"));
 const CreditPage           = lazy(() => import("./pages/CreditPage"));
-const SuperAdminPage       = lazy(() => import("./pages/superadmin/SuperAdminPage"));
+
+// Super-admin console — only bundled when VITE_ENABLE_SUPERADMIN=true.
+// Vite eliminates the import() branch at build time when the flag is absent.
+const SUPERADMIN_ENABLED = import.meta.env.VITE_ENABLE_SUPERADMIN === 'true';
+const SuperAdminPage = SUPERADMIN_ENABLED
+  ? lazy(() => import("./pages/superadmin/SuperAdminPage"))
+  : null;
 
 const queryClient = new QueryClient();
 
@@ -51,6 +58,7 @@ const App = () => (
       <TooltipProvider>
         <Sonner position="top-right" theme="dark" />
       <HashRouter>
+      <LicenseGate>
         <Suspense fallback={<LoadingSpinner />}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -70,11 +78,12 @@ const App = () => (
             <Route path="/rapports" element={<ProtectedRoute allowedRoles={['gérant']}><RapportsPage /></ProtectedRoute>} />
             <Route path="/parametres" element={<ProtectedRoute allowedRoles={['gérant']}><ParametresPage /></ProtectedRoute>} />
           </Route>
-          {/* Super-admin console — not in AppLayout, handles its own auth */}
-          <Route path="/superadmin" element={<SuperAdminPage />} />
+          {/* Super-admin console — only mounted when VITE_ENABLE_SUPERADMIN=true */}
+          {SuperAdminPage && <Route path="/superadmin" element={<SuperAdminPage />} />}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
         </Suspense>
+      </LicenseGate>
       </HashRouter>
       </TooltipProvider>
     </QueryClientProvider>
