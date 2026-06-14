@@ -9,7 +9,7 @@ import { DollarSign, ShoppingCart, TrendingUp, Percent, Download, TrendingDown, 
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid } from 'recharts';
 import { exportCSV, exportPDF } from '@/lib/export';
 import { toast } from 'sonner';
-import { formatPrice } from '@/utils/formatters';
+import { formatPrice, getCurrentBcp47 } from '@/utils/formatters';
 import { useTranslation } from '@/i18n';
 
 type Period = 'today' | 'week' | 'month';
@@ -55,7 +55,7 @@ const RapportsPage: React.FC = () => {
     const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const dayEnd = new Date(dayStart); dayEnd.setDate(dayEnd.getDate() + 1);
     const daySales = activeSales.filter(s => { const sd = new Date(s.date); return sd >= dayStart && sd < dayEnd; });
-    return { name: d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }), total: daySales.reduce((sum, s) => sum + s.total, 0) };
+    return { name: d.toLocaleDateString(getCurrentBcp47(), { day: '2-digit', month: '2-digit' }), total: daySales.reduce((sum, s) => sum + s.total, 0) };
   });
 
   // Top 10 products
@@ -89,7 +89,7 @@ const RapportsPage: React.FC = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
-        <h1 className="text-headline-lg nova-heading text-foreground">{t('rapports.title')}</h1>
+        <h1 className="text-2xl nova-heading text-foreground">{t('rapports.title')}</h1>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex gap-1">
             <button onClick={() => {
@@ -173,7 +173,7 @@ const RapportsPage: React.FC = () => {
                   <td className="p-2 text-sm text-foreground">{p.nom}</td>
                   <td className="p-2 text-sm text-right text-foreground tabular-nums">{p.qty}</td>
                   <td className="p-2 text-sm text-right font-medium text-foreground tabular-nums">{formatPrice(p.revenue)}</td>
-                  <td className="p-2 text-sm text-right text-muted-foreground tabular-nums">{totalRevenue > 0 ? (p.revenue / totalRevenue * 100).toFixed(1) : '0'}%</td>
+                  <td className="p-2 money text-right text-muted-foreground">{totalRevenue > 0 ? (p.revenue / totalRevenue * 100).toFixed(1) : '0'}%</td>
                 </tr>
               ))}
             </tbody>
@@ -222,7 +222,7 @@ const RapportsPage: React.FC = () => {
                 <tr key={p.id} className="border-t border-border">
                   <td className="p-2 text-sm text-foreground">{p.nom}</td>
                   <td className={cn('p-2 text-sm text-right tabular-nums', p.stock <= 0 ? 'text-destructive' : 'text-amber-400')}>{p.stock}</td>
-                  <td className="p-2 text-sm text-right text-muted-foreground tabular-nums">{p.seuilAlerte}</td>
+                  <td className="p-2 money text-right text-muted-foreground">{p.seuilAlerte}</td>
                   <td className="p-2 text-sm text-right font-medium text-primary tabular-nums">{p.recommended}</td>
                 </tr>
               ))}

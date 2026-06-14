@@ -1,72 +1,52 @@
-/**
- * Utilitaires de formatage pour Legwan Manager
- * @module utils/formatters
- */
+import { useSettingsStore } from '@/stores/useSettingsStore';
+import { LOCALE_TO_BCP47 } from '@/i18n/types';
 
-/**
- * Formate un montant en FCFA
- * @param amount - Montant à formater
- * @returns Montant formaté avec séparateurs de milliers et " FCFA"
- * @example formatPrice(12500) // "12,500 FCFA"
- */
+/** Returns the BCP 47 locale string for the current app language. */
+export function getCurrentBcp47(): string {
+  const langue = useSettingsStore.getState().shop.langue;
+  return LOCALE_TO_BCP47[langue] ?? 'fr-FR';
+}
+
 export function formatPrice(amount: number | string): string {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount;
   if (isNaN(num)) return '0 FCFA';
-  return new Intl.NumberFormat('fr-FR').format(num) + ' FCFA';
+  return new Intl.NumberFormat(getCurrentBcp47()).format(num) + ' FCFA';
 }
 
-/**
- * Alias de formatPrice pour compatibilité
- */
 export const formatFCFA = formatPrice;
 
-/**
- * Formate une date
- */
 export function formatDate(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return new Intl.DateTimeFormat('fr-FR').format(d);
+  return new Intl.DateTimeFormat(getCurrentBcp47()).format(d);
 }
 
-/**
- * Formate une date avec heure
- */
 export function formatDateTime(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return new Intl.DateTimeFormat('fr-FR', {
+  return new Intl.DateTimeFormat(getCurrentBcp47(), {
     dateStyle: 'short',
     timeStyle: 'short',
   }).format(d);
 }
 
-/**
- * Formate l'heure uniquement
- */
 export function formatTime(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return new Intl.DateTimeFormat('fr-FR', {
+  return new Intl.DateTimeFormat(getCurrentBcp47(), {
     timeStyle: 'short',
   }).format(d);
 }
 
-/**
- * Formate une date courte (JJ/MM/AAAA)
- */
 export function formatDateShort(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return new Intl.DateTimeFormat('fr-FR', {
+  return new Intl.DateTimeFormat(getCurrentBcp47(), {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
   }).format(d);
 }
 
-/**
- * Formate une date longue (jour de la semaine, jour mois année)
- */
 export function formatDateLong(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return new Intl.DateTimeFormat('fr-FR', {
+  return new Intl.DateTimeFormat(getCurrentBcp47(), {
     weekday: 'long',
     day: 'numeric',
     month: 'long',

@@ -15,3 +15,8 @@ export const LOCALE_LABELS: Record<SupportedLocale, string> = {
   ja: '日本語',
   zh: '中文',
 };
+
+export const LOCALE_TO_BCP47: Record<SupportedLocale, string> = {
+  fr: 'fr-FR', en: 'en-US', es: 'es-ES', pt: 'pt-PT', de: 'de-DE',
+  tr: 'tr-TR', ar: 'ar',    ja: 'ja-JP', zh: 'zh-CN',
+};
