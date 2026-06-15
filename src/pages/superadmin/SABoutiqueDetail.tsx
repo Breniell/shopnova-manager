@@ -3,7 +3,7 @@ import type { RegistryEntry } from '@/services/registryService';
 import { getBoutiqueStatus, STATUS_COLORS, STATUS_LABELS } from '@/stores/useSuperAdminStore';
 import {
   X, Phone, MapPin, Calendar, Clock, Shield, Package, Users,
-  Activity, Wifi, Monitor, Copy, CheckCircle2,
+  Activity, Wifi, Monitor, Copy, CheckCircle2, ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/i18n';
@@ -201,20 +201,34 @@ export const SABoutiqueDetail: React.FC<Props> = ({ boutique, onClose }) => {
             {boutique.location ? (
               <div className="p-3 rounded-lg bg-muted/30 space-y-2">
                 <div className="flex items-center gap-2">
-                  {boutique.location.precision === 'gps' ? (
+                  {boutique.location.source === 'manual' ? (
+                    <MapPin className="w-3.5 h-3.5 text-green-600" />
+                  ) : boutique.location.precision === 'gps' ? (
                     <MapPin className="w-3.5 h-3.5 text-[#2B6954]" />
                   ) : (
                     <Wifi className="w-3.5 h-3.5 text-[#F59E0B]" />
                   )}
                   <span className="text-xs font-medium text-foreground">
-                    {boutique.location.precision === 'gps' ? t('superadmin.detailGpsLabel') : t('superadmin.detailIpLabel')}
+                    {boutique.location.source === 'manual'
+                      ? t('superadmin.detailManualLabel')
+                      : boutique.location.precision === 'gps'
+                        ? t('superadmin.detailGpsLabel')
+                        : t('superadmin.detailIpLabel')}
                   </span>
-                  {boutique.location.source && (
-                    <span className="text-[10px] bg-muted rounded px-1 text-muted-foreground ml-auto">
-                      {boutique.location.source.toUpperCase()}
-                    </span>
-                  )}
+                  <span className="text-[10px] bg-muted rounded px-1 text-muted-foreground ml-auto">
+                    {boutique.location.source.toUpperCase()}
+                  </span>
                 </div>
+                {boutique.location.quartier && (
+                  <p className="text-xs text-foreground font-medium">
+                    {t('superadmin.detailQuartierLabel').replace('{q}', boutique.location.quartier)}
+                  </p>
+                )}
+                {boutique.location.pointDeRepere && (
+                  <p className="text-xs text-muted-foreground">
+                    {t('superadmin.detailPointLabel').replace('{p}', boutique.location.pointDeRepere)}
+                  </p>
+                )}
                 {boutique.location.city && (
                   <p className="text-xs text-muted-foreground">{t('superadmin.detailCityLabel').replace('{city}', boutique.location.city)}</p>
                 )}
@@ -224,6 +238,15 @@ export const SABoutiqueDetail: React.FC<Props> = ({ boutique, onClose }) => {
                 <p className="text-[10px] font-mono text-muted-foreground">
                   {boutique.location.lat.toFixed(5)}, {boutique.location.lng.toFixed(5)}
                 </p>
+                <a
+                  href={`https://www.google.com/maps?q=${boutique.location.lat},${boutique.location.lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  {t('superadmin.mapItinerary')}
+                </a>
               </div>
             ) : (
               <div className="p-3 rounded-lg bg-muted/20 flex items-start gap-2.5">

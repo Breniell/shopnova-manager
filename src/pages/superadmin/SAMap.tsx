@@ -17,7 +17,7 @@ import 'leaflet/dist/leaflet.css';
 import type { RegistryEntry } from '@/services/registryService';
 import { getBoutiqueStatus, STATUS_COLORS } from '@/stores/useSuperAdminStore';
 import { cn } from '@/lib/utils';
-import { MapPin, Wifi } from 'lucide-react';
+import { MapPin, Wifi, ExternalLink } from 'lucide-react';
 import { getCurrentBcp47 } from '@/utils/formatters';
 
 interface Props { boutiques: RegistryEntry[] }
@@ -123,8 +123,9 @@ export const SAMap: React.FC<Props> = ({ boutiques }) => {
     () => boutiques.filter(b => !b.location?.lat),
     [boutiques]
   );
-  const preciseCount = geolocated.filter(b => b.location?.precision === 'gps').length;
-  const approxCount  = geolocated.filter(b => b.location?.precision !== 'gps').length;
+  const manualCount  = geolocated.filter(b => b.location?.source === 'manual').length;
+  const preciseCount = geolocated.filter(b => b.location?.source !== 'ip').length; // manual + GPS
+  const approxCount  = geolocated.filter(b => b.location?.source === 'ip').length;
 
   const center: [number, number] = [3.87, 11.52];
 
@@ -150,7 +151,8 @@ export const SAMap: React.FC<Props> = ({ boutiques }) => {
             {t('superadmin.mapLocated').replace('{located}', String(geolocated.length)).replace('{total}', String(boutiques.length))}
             {geolocated.length > 0 && (
               <span className="ml-2">
-                · {t('superadmin.mapStreet').replace('{n}', String(preciseCount))} · {t('superadmin.mapCity').replace('{n}', String(approxCount))}
+                {manualCount > 0 && `· ${manualCount} ${t('superadmin.mapManualBadge').toLowerCase()} `}
+                · {t('superadmin.mapStreet').replace('{n}', String(preciseCount - manualCount))} · {t('superadmin.mapCity').replace('{n}', String(approxCount))}
               </span>
             )}
           </p>
@@ -177,6 +179,10 @@ export const SAMap: React.FC<Props> = ({ boutiques }) => {
           </div>
         ))}
         <div className="flex items-center gap-1.5 ml-2 pl-2 border-l border-border/60">
+          <MapPin className="w-3 h-3 text-green-600" />
+          <span className="text-[10px] text-muted-foreground">{t('superadmin.mapManualBadge')}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
           <MapPin className="w-3 h-3 text-primary" />
           <span className="text-[10px] text-muted-foreground">{t('superadmin.mapPrecise')}</span>
         </div>
@@ -213,7 +219,7 @@ export const SAMap: React.FC<Props> = ({ boutiques }) => {
           {/* Activity zones (sized by status, not revenue) */}
           {(mode === 'heatmap' || mode === 'both') && geolocated.map(b => {
             const status   = getBoutiqueStatus(toDate(b.lastSeen));
-            const isApprox = b.location?.precision !== 'gps';
+            const isApprox = b.location?.source === 'ip'; // manual and GPS are street-level
             const radius   = (isApprox ? 5_000 : 0) + (STATUS_RADII[status] ?? 8_000);
             const opacity  = STATUS_OPACITIES[status] ?? 0.08;
             const color    = STATUS_COLORS[status];
@@ -233,13 +239,16 @@ export const SAMap: React.FC<Props> = ({ boutiques }) => {
               {geolocated.map(b => {
                 const status   = getBoutiqueStatus(toDate(b.lastSeen));
                 const color    = STATUS_COLORS[status];
-                const isApprox = b.location?.precision !== 'gps';
+                const src      = b.location?.source;
+                const isApprox = src === 'ip'; // manual and GPS are street-level
+                const isManual = src === 'manual';
                 const icon     = isApprox ? createApproxMarker(color) : createPreciseMarker(color);
                 const lastSeen = toDate(b.lastSeen);
+                const mapsUrl  = `https://www.google.com/maps?q=${b.location!.lat},${b.location!.lng}`;
                 return (
                   <Marker key={b.boutiqueId} position={[b.location!.lat, b.location!.lng]} icon={icon}>
-                    <Popup maxWidth={290}>
-                      <div className="min-w-[230px]">
+                    <Popup maxWidth={300}>
+                      <div className="min-w-[240px]">
                         <div className="flex items-center gap-2 mb-2">
                           <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: color + '25' }}>
                             <svg width="16" height="16" viewBox="0 0 80 80" fill="none">
@@ -254,11 +263,37 @@ export const SAMap: React.FC<Props> = ({ boutiques }) => {
                           </div>
                         </div>
 
-                        {/* Location precision badge */}
-                        <div className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full mb-2 ${isApprox ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'}`}>
-                          {isApprox ? <Wifi className="w-2.5 h-2.5" /> : <MapPin className="w-2.5 h-2.5" />}
-                          {isApprox ? `${t('superadmin.mapApproxBadge')}${b.location?.city ? ` — ${b.location.city}` : ''}` : t('superadmin.mapPreciseBadge')}
-                        </div>
+                        {/* Source badge */}
+                        {isManual ? (
+                          <div className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full mb-2 bg-green-50 text-green-700">
+                            <MapPin className="w-2.5 h-2.5" />
+                            {t('superadmin.mapManualBadge')}
+                          </div>
+                        ) : isApprox ? (
+                          <div className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full mb-2 bg-amber-50 text-amber-700">
+                            <Wifi className="w-2.5 h-2.5" />
+                            {`${t('superadmin.mapApproxBadge')}${b.location?.city ? ` — ${b.location.city}` : ''}`}
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full mb-2 bg-blue-50 text-blue-700">
+                            <MapPin className="w-2.5 h-2.5" />
+                            {t('superadmin.mapPreciseBadge')}
+                          </div>
+                        )}
+
+                        {/* Manual text fields */}
+                        {b.location?.quartier && (
+                          <p className="text-[10px] text-gray-600 mb-0.5">
+                            <span className="text-gray-400">{t('superadmin.detailQuartierLabel').split(':')[0]}: </span>
+                            {b.location.quartier}
+                          </p>
+                        )}
+                        {b.location?.pointDeRepere && (
+                          <p className="text-[10px] text-gray-600 mb-1.5">
+                            <span className="text-gray-400">{t('superadmin.detailPointLabel').split(':')[0]}: </span>
+                            {b.location.pointDeRepere}
+                          </p>
+                        )}
 
                         <div className="space-y-1 text-xs text-gray-700 border-t border-gray-100 pt-2">
                           <div className="flex justify-between">
@@ -282,6 +317,17 @@ export const SAMap: React.FC<Props> = ({ boutiques }) => {
                             <span className="font-mono">v{b.version}</span>
                           </div>
                         </div>
+
+                        {/* Navigation link */}
+                        <a
+                          href={mapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 flex items-center justify-center gap-1 text-[11px] text-blue-600 hover:underline border-t border-gray-100 pt-2"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          {t('superadmin.mapItinerary')}
+                        </a>
                       </div>
                     </Popup>
                   </Marker>

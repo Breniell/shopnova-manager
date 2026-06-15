@@ -11,8 +11,8 @@
  * reverseGeocode()            — (lat, lng) → street address via OpenStreetMap Nominatim
  */
 
-export type LocationSource    = 'gps' | 'ip';
-export type LocationPrecision = 'gps' | 'city';
+export type LocationSource    = 'gps' | 'ip' | 'manual';
+export type LocationPrecision = 'gps' | 'city' | 'street';
 
 export interface GeoLocation {
   lat: number;

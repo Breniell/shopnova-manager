@@ -48,6 +48,10 @@ export interface RegistryLocation {
   city?: string;
   country?: string;
   locked: boolean;
+  /** Neighbourhood name entered by the merchant (manual placement only). */
+  quartier?: string;
+  /** Nearby landmark entered by the merchant (manual placement only). */
+  pointDeRepere?: string;
 }
 
 export interface RegistryHealth {
@@ -137,9 +141,12 @@ export async function sendRegistryHeartbeat(isRecoveryEnabled: boolean): Promise
     // Geolocation — only if the user has explicitly consented
     let location: RegistryLocation | null = null;
     if (hasGeoConsent()) {
-      // 1. Reuse locked GPS position from localStorage — never re-query once locked
       const stored = loadLockedPosition();
-      if (stored?.locked) {
+      // 1. Manual placement: merchant placed the pin themselves — always authoritative
+      if (stored?.source === 'manual') {
+        location = stored;
+      // 2. Reuse locked GPS position from localStorage — never re-query once locked
+      } else if (stored?.locked) {
         location = stored;
       } else {
         // 2. Try robust GPS (watchPosition up to 25 s, stop early at < 50 m accuracy)
@@ -214,4 +221,35 @@ export async function sendRegistryHeartbeat(isRecoveryEnabled: boolean): Promise
   } catch (err) {
     console.warn('[registry] heartbeat failed:', err);
   }
+}
+
+// ─── Manual location helpers (used by boutique settings) ─────────────────────
+
+/** Returns the currently stored location (manual pin, GPS lock, or null). */
+export function getStoredLocation(): RegistryLocation | null {
+  return loadLockedPosition();
+}
+
+/**
+ * Persists a manually placed boutique location.
+ * source:'manual' + locked:true ensures it is never overwritten by auto-detection.
+ */
+export function saveManualBoutiqueLocation(
+  lat: number,
+  lng: number,
+  extra?: { quartier?: string; pointDeRepere?: string },
+): void {
+  const now = new Date().toISOString();
+  const loc: RegistryLocation = {
+    lat,
+    lng,
+    geocodedAt: now,
+    capturedAt: now,
+    source:    'manual',
+    precision: 'street',
+    locked:    true,
+    ...(extra?.quartier      ? { quartier:      extra.quartier }      : {}),
+    ...(extra?.pointDeRepere ? { pointDeRepere: extra.pointDeRepere } : {}),
+  };
+  saveLockedPosition(loc);
 }

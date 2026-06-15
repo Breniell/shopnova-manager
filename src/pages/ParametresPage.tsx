@@ -3,8 +3,15 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useAuthStore, User } from '@/stores/useAuthStore';
 import { NovaCard } from '@/components/ui/NovaCard';
 import { cn } from '@/lib/utils';
-import { Store, Users, KeyRound, Trash2, Plus, X, Copy, Check, Cloud, Mail, Pencil, MapPin, LocateFixed, Loader2, PenLine, Smartphone, Printer, HardDrive, Download, Upload, ShieldCheck, ShieldOff, AlertTriangle, RotateCcw } from 'lucide-react';
+import { Store, Users, KeyRound, Trash2, Plus, X, Copy, Check, Cloud, Mail, Pencil, MapPin, LocateFixed, Loader2, PenLine, Smartphone, Printer, HardDrive, Download, Upload, ShieldCheck, ShieldOff, AlertTriangle, RotateCcw, Navigation } from 'lucide-react';
 import { isThermalAvailable } from '@/lib/thermalPrint';
+import LocationPicker from '@/components/LocationPicker';
+import {
+  getStoredLocation,
+  saveManualBoutiqueLocation,
+  sendRegistryHeartbeat,
+  type RegistryLocation,
+} from '@/services/registryService';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n';
 import { ALL_LOCALES, LOCALE_LABELS } from '@/i18n/types';
@@ -54,6 +61,10 @@ const ParametresPage: React.FC = () => {
   const [isDetectingAddress, setIsDetectingAddress] = useState(false);
   const [addressPrecision, setAddressPrecision] = useState<LocationPrecision | null>(null);
   const [showManualAddress, setShowManualAddress] = useState(false);
+
+  // Manual map location
+  const [manualLocation, setManualLocation] = useState<RegistryLocation | null>(() => getStoredLocation());
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
 
   // Backup / restore
   const [showExportModal, setShowExportModal]   = useState(false);
@@ -264,6 +275,18 @@ const ParametresPage: React.FC = () => {
     } catch (err) {
       toast.error(getBoutiqueRecoveryErrorMessage(err));
     }
+  };
+
+  const handleConfirmLocation = (lat: number, lng: number, quartier?: string, pointDeRepere?: string) => {
+    saveManualBoutiqueLocation(lat, lng, { quartier, pointDeRepere });
+    // Confirming the location = explicit geo consent
+    setGeoConsent(true);
+    setGeoConsentOn(true);
+    setManualLocation(getStoredLocation());
+    setShowLocationPicker(false);
+    toast.success(t('settings.location.confirmed'));
+    // Transmit to registry immediately (fire-and-forget)
+    sendRegistryHeartbeat(recoveryStatus?.isRecoveryEnabled ?? false);
   };
 
   const handleSaveShop = () => {
@@ -687,6 +710,69 @@ const ParametresPage: React.FC = () => {
             <p className="text-[11px] font-semibold text-muted-foreground">{t('settings.boutique.geoTransparencyTitle')}</p>
             <p className="text-[11px] text-muted-foreground leading-relaxed">{t('settings.boutique.geoTransparencyList')}</p>
             <p className="text-[11px] font-medium text-[#2B6954] mt-0.5">{t('settings.boutique.geoTransparencyNone')}</p>
+          </div>
+        </NovaCard>
+
+        {/* ── Emplacement sur la carte ────────────────────────────────────── */}
+        <NovaCard className="w-full max-w-2xl mt-4">
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                <Navigation className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground text-sm">{t('settings.location.title')}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t('settings.location.subtitle')}</p>
+              </div>
+            </div>
+
+            {/* Current status */}
+            {manualLocation?.source === 'manual' ? (
+              <div className="p-2.5 rounded-lg bg-secondary/10 border border-secondary/20 flex items-start gap-2">
+                <MapPin className="w-3.5 h-3.5 text-secondary shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-secondary">{t('settings.location.statusManual')}</p>
+                  {manualLocation.quartier && (
+                    <p className="text-[10px] text-muted-foreground truncate">{manualLocation.quartier}</p>
+                  )}
+                  {manualLocation.capturedAt && (
+                    <p className="text-[10px] text-muted-foreground">
+                      {t('settings.location.confirmedAt').replace('{date}', new Date(manualLocation.capturedAt).toLocaleDateString())}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowLocationPicker(v => !v)}
+                  className="shrink-0 text-[11px] text-primary hover:underline"
+                >
+                  {t('settings.location.editBtn')}
+                </button>
+              </div>
+            ) : (
+              <div className="p-2.5 rounded-lg bg-muted/30 border border-border/40">
+                <p className="text-xs text-muted-foreground">{t('settings.location.statusNone')}</p>
+                {!showLocationPicker && (
+                  <button
+                    type="button"
+                    onClick={() => setShowLocationPicker(true)}
+                    className="mt-2 text-xs text-primary hover:underline flex items-center gap-1.5"
+                  >
+                    <MapPin className="w-3 h-3" />
+                    {t('settings.location.setBtn')}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Picker (conditionally mounted — each mount = fresh Leaflet instance) */}
+            {showLocationPicker && (
+              <LocationPicker
+                initialLocation={manualLocation}
+                onConfirm={handleConfirmLocation}
+                onCancel={() => setShowLocationPicker(false)}
+              />
+            )}
           </div>
         </NovaCard>
 

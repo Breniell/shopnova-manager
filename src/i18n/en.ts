@@ -194,6 +194,23 @@ const en: Translations = {
       error_wrong_password:  "Incorrect password",
       error_unknown:         "Unknown error reading file",
     },
+    location: {
+      title:               'Location on map',
+      subtitle:            'Place your boutique on the map for precise field visits and support.',
+      setBtn:              'Place my boutique on the map',
+      editBtn:             'Edit',
+      mapHint:             'Estimated approximate position — drag the marker exactly to your boutique.',
+      quartierLabel:       'Neighbourhood',
+      quartierPlaceholder: 'e.g. Bastos, Melen, Nlongkak…',
+      pointLabel:          'Landmark',
+      pointPlaceholder:    'e.g. Near the central market, next to the pharmacy…',
+      confirmBtn:          'Confirm location',
+      confirmedAt:         'Confirmed on {date}',
+      consentNote:         'Confirming your location grants consent to share your position.',
+      statusManual:        'Location confirmed manually',
+      statusNone:          'Location not yet set — automatic (IP) position is used if consent is active.',
+      confirmed:           'Location saved and transmitted to registry.',
+    },
   },
 
   common: {
@@ -1250,6 +1267,11 @@ const en: Translations = {
     mapHealthActive:         'Active 30d',
     mapHealthUsers:          'Accounts',
     mapHealthLastActivity:   'Last activity',
+    mapManualBadge:          'Confirmed location (manual)',
+    mapItinerary:            'Get directions',
+    detailManualLabel:       'Manual location',
+    detailQuartierLabel:     'Neighbourhood: {q}',
+    detailPointLabel:        'Landmark: {p}',
   },
 
   license: {

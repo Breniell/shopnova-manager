@@ -195,6 +195,23 @@ const fr = {
       error_wrong_password:  "Mot de passe incorrect",
       error_unknown:         "Erreur inconnue lors de la lecture du fichier",
     },
+    location: {
+      title:               'Emplacement sur la carte',
+      subtitle:            'Placez votre boutique sur la carte pour des visites et un support terrain précis.',
+      setBtn:              'Placer ma boutique sur la carte',
+      editBtn:             'Modifier',
+      mapHint:             'Position estimée approximative — déplacez le repère exactement sur votre boutique.',
+      quartierLabel:       'Quartier',
+      quartierPlaceholder: 'ex. Bastos, Melen, Nlongkak…',
+      pointLabel:          'Point de repère',
+      pointPlaceholder:    'ex. Près du marché central, à côté de la pharmacie…',
+      confirmBtn:          'Confirmer l\'emplacement',
+      confirmedAt:         'Confirmé le {date}',
+      consentNote:         'Confirmer l\'emplacement vaut consentement au partage de votre position.',
+      statusManual:        'Emplacement confirmé manuellement',
+      statusNone:          'Emplacement non encore défini — la position automatique (IP) est utilisée si le consentement est actif.',
+      confirmed:           'Emplacement enregistré et transmis au registre.',
+    },
   },
 
   // Common
@@ -1282,6 +1299,11 @@ const fr = {
     mapHealthActive:         'Actif 30j',
     mapHealthUsers:          'Postes',
     mapHealthLastActivity:   'Dernière activité',
+    mapManualBadge:          'Position confirmée (manuelle)',
+    mapItinerary:            'Itinéraire',
+    detailManualLabel:       'Position manuelle',
+    detailQuartierLabel:     'Quartier : {q}',
+    detailPointLabel:        'Repère : {p}',
   },
 
   license: {
