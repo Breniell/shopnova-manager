@@ -139,6 +139,34 @@ describe('computeGateStatus — revocation', () => {
   });
 });
 
+// ─── Activation during trial ─────────────────────────────────────────────────
+//
+// Key acceptance criterion: activating a valid licence while the app is in
+// 'trial' state must immediately yield 'valid' — the user should not have to
+// wait for the trial to expire before the licence takes effect.
+
+describe('computeGateStatus — activation during trial', () => {
+  it('no licence within trial → trial', () => {
+    expect(gate(null, 5)).toBe('trial');
+  });
+
+  it('activating a valid licence while in trial → valid immediately', () => {
+    // User is 5 days into the trial (no licence) — normally 'trial'.
+    // As soon as a valid licence is supplied, status flips to 'valid'.
+    expect(gate(validResult(), 5)).toBe('valid');
+  });
+
+  it('valid licence overrides trial regardless of days remaining', () => {
+    expect(gate(validResult(), 1)).toBe('valid');   // 1 day in
+    expect(gate(validResult(), 29)).toBe('valid');  // 1 day left
+  });
+
+  it('valid licence overrides even after trial would have expired', () => {
+    // 40 days since install (trial over → normally 'missing') but licence is valid
+    expect(gate(validResult(), 40)).toBe('valid');
+  });
+});
+
 // ─── isBlocked ────────────────────────────────────────────────────────────────
 
 describe('isBlocked', () => {

@@ -31,11 +31,16 @@ import {
 import { exportBackup, daysSinceLastBackup } from '@/lib/backup/export';
 import { parseBackupFile, restoreBackupData, type ParseResult } from '@/lib/backup/import';
 import type { BackupData } from '@/lib/backup/types';
+import { useLicenseGate } from '@/components/LicenseGate';
+import { LicenseActivationForm } from '@/components/LicenseActivationForm';
+
+const SUPPORT_CONTACT = import.meta.env.VITE_SUPPORT_CONTACT ?? 'contact@legwan.com';
 
 const ParametresPage: React.FC = () => {
   const { shop, updateShop } = useSettingsStore();
   const { users, addUser, updateUserPin, updateUserInfo, deleteUser } = useAuthStore();
   const { t } = useTranslation();
+  const licenseGate = useLicenseGate();
   const [activeTab, setActiveTab] = useState<'boutique' | 'users'>('boutique');
   const [geoConsentOn, setGeoConsentOn] = useState<boolean>(hasGeoConsent());
   const [showUserModal, setShowUserModal] = useState(false);
@@ -825,6 +830,71 @@ const ParametresPage: React.FC = () => {
           <p className="text-[11px] text-muted-foreground mt-3">
             {t('settings.backup.usbHint')}
           </p>
+        </NovaCard>
+
+        {/* ── Licence ──────────────────────────────────────────────────────── */}
+        <NovaCard className="w-full max-w-2xl mt-4">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                <KeyRound className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground text-sm">{t('license.settingsTitle')}</p>
+                <p className="text-xs text-muted-foreground">{t('license.settingsSubtitle')}</p>
+              </div>
+            </div>
+
+            {/* Current status badge */}
+            {licenseGate && (() => {
+              const { status, trialLeft, graceLeft, expiresAt } = licenseGate;
+              if (status === 'trial') {
+                return (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-700 text-xs font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+                    {t('license.statusTrial').replace('{days}', String(trialLeft))}
+                  </div>
+                );
+              }
+              if (status === 'valid') {
+                return (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 text-green-700 text-xs font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+                    {expiresAt
+                      ? t('license.statusValid').replace('{date}', new Date(expiresAt).toLocaleDateString())
+                      : t('license.statusValidNoExp')}
+                  </div>
+                );
+              }
+              if (status === 'grace') {
+                return (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-destructive/10 text-destructive text-xs font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-destructive shrink-0" />
+                    {t('license.statusGrace').replace('{days}', String(graceLeft))}
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+            {/* Boutique ID + contact */}
+            <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
+              <p className="text-xs text-muted-foreground">{t('license.boutiqueIdLabel')}</p>
+              <p className="font-mono text-xs font-semibold select-all break-all text-foreground">{boutiqueId}</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium">{t('license.contactLabel')} </span>
+              <span className="font-semibold text-foreground">{SUPPORT_CONTACT}</span>
+            </p>
+
+            {/* Activation form */}
+            <div className="pt-1 border-t border-border/40">
+              <p className="text-xs text-muted-foreground mb-3">{t('license.settingsActivateHint')}</p>
+              <LicenseActivationForm
+                onActivated={() => { licenseGate?.recheck(); }}
+              />
+            </div>
+          </div>
         </NovaCard>
         </>
       )}
