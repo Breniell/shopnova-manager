@@ -13,15 +13,16 @@ import { SAOverview } from './SAOverview';
 import { SABoutiqueTable } from './SABoutiqueTable';
 import { SAMap } from './SAMap';
 import { SAAnalytics } from './SAAnalytics';
+import { SALicenses } from './SALicenses';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import {
   LayoutDashboard, Map, List, RefreshCw, LogOut,
-  Loader2, AlertTriangle, BarChart2, Store,
+  Loader2, AlertTriangle, BarChart2, Store, KeyRound,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/i18n';
 
-type Tab = 'overview' | 'boutiques' | 'map' | 'analytics';
+type Tab = 'overview' | 'boutiques' | 'map' | 'analytics' | 'licenses';
 
 const AUTO_REFRESH_MS = 120_000; // 2 minutes
 
@@ -93,12 +94,12 @@ export const SuperAdminPage: React.FC = () => {
 
   if (!isAuthenticated) return <SALogin />;
 
-  const tabBtn = (t: Tab, icon: React.ReactNode, label: string) => (
+  const tabBtn = (tabId: Tab, icon: React.ReactNode, label: string) => (
     <button
-      onClick={() => setTab(t)}
+      onClick={() => setTab(tabId)}
       className={cn(
         'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all',
-        tab === t
+        tab === tabId
           ? 'bg-primary text-primary-foreground shadow-sm'
           : 'text-muted-foreground hover:text-foreground hover:bg-muted',
       )}
@@ -113,7 +114,11 @@ export const SuperAdminPage: React.FC = () => {
     boutiques: t('superadmin.tabBoutiques'),
     map:       t('superadmin.mapTitle'),
     analytics: t('superadmin.tabAnalytics'),
+    licenses:  t('superadmin.tabLicenses'),
   };
+
+  // The licenses tab manages its own Firestore data and is always accessible
+  const isLicensesTab = tab === 'licenses';
 
   return (
     <div className="min-h-screen bg-background">
@@ -143,6 +148,7 @@ export const SuperAdminPage: React.FC = () => {
           {tabBtn('boutiques', <List            className="w-4 h-4" />, t('superadmin.tabBoutiques'))}
           {tabBtn('map',       <Map             className="w-4 h-4" />, t('superadmin.tabMap'))}
           {tabBtn('analytics', <BarChart2       className="w-4 h-4" />, t('superadmin.tabAnalytics'))}
+          {tabBtn('licenses',  <KeyRound        className="w-4 h-4" />, t('superadmin.tabLicenses'))}
         </nav>
 
         {/* Right actions */}
@@ -196,16 +202,28 @@ export const SuperAdminPage: React.FC = () => {
           </div>
         )}
 
-        {/* Initial loading */}
-        {loading && boutiques.length === 0 && (
+        {/* Licenses tab — always available regardless of registry boutiques count */}
+        {isLicensesTab && (
+          <>
+            <div>
+              <h2 className="text-lg font-bold text-foreground nova-heading mb-0.5">
+                {PAGE_TITLES.licenses}
+              </h2>
+            </div>
+            <SALicenses boutiques={boutiques} />
+          </>
+        )}
+
+        {/* Initial loading (non-licenses tabs) */}
+        {!isLicensesTab && loading && boutiques.length === 0 && (
           <div className="flex items-center justify-center py-24 gap-3 text-muted-foreground">
             <Loader2 className="w-5 h-5 animate-spin" />
             <span className="text-sm">{t('superadmin.loading')}</span>
           </div>
         )}
 
-        {/* Empty state */}
-        {!loading && boutiques.length === 0 && !error && (
+        {/* Empty state (non-licenses tabs) */}
+        {!isLicensesTab && !loading && boutiques.length === 0 && !error && (
           <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
             <Store className="w-10 h-10 text-muted-foreground/30" />
             <p className="text-sm font-medium">{t('superadmin.noBoutique')}</p>
@@ -215,7 +233,7 @@ export const SuperAdminPage: React.FC = () => {
           </div>
         )}
 
-        {boutiques.length > 0 && (
+        {!isLicensesTab && boutiques.length > 0 && (
           <>
             {/* Page heading */}
             <div>
