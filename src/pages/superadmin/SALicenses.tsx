@@ -307,7 +307,8 @@ function NewLicenseModal({ boutiques, onClose, onCreated }: NewLicenseModalProps
       setCliCmd(buildCliCommand({ boutiqueId: effectiveBid, plan, days, holderName, holderContact }));
       setStep(2);
       onCreated(lic);
-    } catch {
+    } catch (err) {
+      console.error('[SALicenses] handlePrepare error:', err);
       setStep1Err(t('superadmin.licenseErrCreate'));
     } finally {
       setSaving(false);
@@ -628,8 +629,9 @@ export const SALicenses: React.FC<Props> = ({ boutiques }) => {
       const snap = await getDocs(collection(fb.saDb, 'licenses'));
       const docs = snap.docs.map(d => ({ licenseId: d.id, ...d.data() } as LicenseDoc));
       setLicenses(docs.sort((a, b) => b.issuedAt - a.issuedAt));
-    } catch { /* offline */ }
-    finally { setLoading(false); }
+    } catch (err) {
+      console.error('[SALicenses] loadLicenses error:', err);
+    } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
@@ -661,8 +663,9 @@ export const SALicenses: React.FC<Props> = ({ boutiques }) => {
         { merge: true },
       );
       upsertLicense({ ...lic, status: 'revoked' });
-    } catch { /* ignore */ }
-    finally { setRevoking(false); setRevokeFor(null); }
+    } catch (err) {
+      console.error('[SALicenses] handleRevoke error:', err);
+    } finally { setRevoking(false); setRevokeFor(null); }
   }
 
   // ── Filtering + search ──────────────────────────────────────────────────────
