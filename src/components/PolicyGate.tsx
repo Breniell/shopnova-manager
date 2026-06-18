@@ -17,7 +17,7 @@ import type { Translations } from '@/i18n/fr';
 import { ALL_LOCALES, LOCALE_LABELS, LOCALE_TO_BCP47 } from '@/i18n/types';
 import type { SupportedLocale } from '@/i18n/types';
 
-const POLICY_VERSION    = '1.4.2';
+const POLICY_VERSION    = __APP_VERSION__;
 const STORAGE_KEY       = 'legwan-policy-accepted';
 const PENDING_ADMIN_KEY = 'legwan-pending-admin';
 const LOCALE_KEY        = 'legwan-locale';

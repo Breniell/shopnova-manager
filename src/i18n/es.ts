@@ -303,25 +303,25 @@ const es: Translations = {
     geoTransparencyTitle: 'Datos transmitidos al editor',
     geoTransparencyNone:  'No se transmiten datos financieros (sin ingresos, sin importes, sin conteo de ventas).',
     scrollDown:'Desplácese para leer más',
-    inForce:   'En vigor desde el 1 de enero de 2026',
+    inForce:   'Actualizado el 18 de junio de 2026',
     sections: {
       s1title: '1. Presentación',
-      s1:      'Legwan es un software de gestión de tiendas (caja registradora, inventario, informes) diseñado para comerciantes. Es editado por Legwan (contacto: support@legwan.cm). Al instalar y usar este software, acepta las condiciones descritas en esta política de privacidad.',
+      s1:      'Legwan es un software de gestión de tiendas (caja registradora, inventario, informes, crédito) editado por Legwan (support@legwan.cm). Funciona principalmente sin conexión: todos sus datos de ventas y stock se almacenan localmente en su máquina. Al instalar y usar este software, acepta las condiciones descritas en esta política de privacidad.',
 
-      s2title: '2. Datos registrados localmente',
-      s2:      'Legwan solo registra la información necesaria para el funcionamiento de su tienda:\n\n• Cuenta del gerente: nombre, apellido, código PIN (cifrado, no legible)\n• Cuentas de usuarios: nombre, rol, código PIN (cifrado, no legible)\n• Información de la tienda: nombre, dirección, número de teléfono\n• Catálogo de productos: nombre, precio de venta, stock disponible\n• Ventas y transacciones registradas\n• Movimientos de stock (entradas y salidas)\n• Proveedores y clientes\n• Sesiones y cierres de caja\n\nNo se recopilan datos bancarios ni de pago.',
+      s2title: '2. Datos almacenados localmente',
+      s2:      'Legwan almacena en su máquina únicamente la información necesaria para el funcionamiento de su tienda:\n\n• Cuentas de usuario: nombre, apellido, rol, código PIN (hash PBKDF2 — nunca legible en texto claro)\n• Información de la tienda: nombre, dirección, número de teléfono\n• Catálogo de productos: nombre, precios, stock\n• Ventas y transacciones\n• Movimientos de stock (entradas y salidas)\n• Sesiones y cierres de caja\n• Proveedores y clientes\n• Gastos e inventarios\n• Clave de licencia\n\nNo se recopilan datos bancarios ni de pago. Sus datos financieros (ingresos, importes) nunca salen de su dispositivo.',
 
       s3title: '3. Datos transmitidos al editor',
-      s3:      'Para garantizar el soporte, el mantenimiento y el seguimiento del servicio, el software transmite automáticamente a una plataforma centralizada gestionada por el editor:\n\n• Información de identificación de su tienda: nombre, dirección y número de teléfono\n• Versión del software instalada\n• Estadísticas de actividad agregadas: número de ventas, ingresos totales, número de productos, usuarios, clientes, proveedores\n• Si lo consiente expresamente: la ubicación geográfica de su tienda\n\nNunca se transmiten: los nombres de sus clientes, el detalle de sus transacciones, sus códigos PIN.\n\nLegwan no vende sus datos ni los utiliza con fines publicitarios. Sus datos le pertenecen.',
+      s3:      'Para el soporte y seguimiento del servicio, el software envía automáticamente al editor una señal de presencia ("heartbeat") que contiene únicamente:\n\n• Nombre, dirección y teléfono de su tienda\n• Versión del software y plataforma (Windows, macOS, Linux)\n• Estado de actividad: activo o inactivo este mes (sin ningún importe)\n• Número de cuentas de usuario\n• Fecha de la última transacción (sin importe ni detalle)\n• Si usted ha dado su consentimiento: ubicación geográfica (GPS, aproximación por IP o colocación manual)\n\nNUNCA se transmiten al editor:\n• Sus ingresos o facturación\n• Importes de ventas\n• Número de ventas\n• Detalles de productos, clientes, proveedores o gastos\n• Sus códigos PIN\n\nLegwan no vende sus datos ni los usa con fines publicitarios. Sus datos le pertenecen.',
 
       s4title: '4. Seguridad de sus datos',
-      s4:      'Sus datos están alojados en Firebase (Google Cloud), con cifrado de comunicaciones (TLS) y cifrado en reposo. Los códigos PIN se hashean de forma irreversible mediante un algoritmo criptográfico seguro (PBKDF2) con una sal única por usuario — nunca pueden ser recuperados en texto claro. Cada tienda tiene su propio espacio de datos aislado, inaccesible para otras tiendas.',
+      s4:      'La transmisión hacia los servidores del editor está cifrada (TLS). Los datos del registro se alojan en Firebase (Google Cloud), con cifrado en reposo. Los códigos PIN se hashean de forma irreversible (PBKDF2-SHA-256, sal única por usuario) — nunca pueden recuperarse. Cada tienda tiene su propio espacio de datos aislado, inaccesible para otras tiendas. El bloqueo anti-fuerza-bruta (5 intentos fallidos) se gestiona del lado del servidor.',
 
       s5title: '5. Sus derechos',
-      s5:      'De conformidad con la normativa aplicable, usted dispone en todo momento de los siguientes derechos:\n\n• Consultar sus datos directamente desde el software\n• Modificar su información en la configuración de la tienda\n• Exportar sus datos en formato CSV o PDF\n• Solicitar la eliminación completa de sus datos\n• Revocar su consentimiento de geolocalización en la Configuración\n\nPara ejercer estos derechos o cualquier consulta: support@legwan.cm',
+      s5:      'Usted dispone en todo momento de los siguientes derechos:\n\n• Consultar sus datos directamente desde el software\n• Modificar su información en la configuración de la tienda\n• Exportar sus datos en formato CSV o PDF\n• Hacer copia de seguridad y restaurar su tienda mediante un archivo cifrado (memoria USB)\n• Solicitar la eliminación completa de sus datos\n• Revocar su consentimiento de geolocalización en Configuración\n\nPara ejercer estos derechos o cualquier consulta: support@legwan.cm',
 
       s6title: '6. Evolución de esta política',
-      s6:      'Esta política puede evolucionar para adaptarse a los cambios del software o de la normativa. En caso de modificación importante, se le pedirá que lea y acepte la nueva versión al abrir el software. La fecha de entrada en vigor y el número de versión se indican en la parte inferior de esta página.',
+      s6:      'Esta política puede evolucionar con el software o la normativa. En caso de modificación importante, se le pedirá que lea y acepte la nueva versión al abrir el software. El número de versión y la fecha de actualización figuran en la parte inferior de esta página.',
     },
     admin: {
       title:      'Crea tu cuenta de administrador',

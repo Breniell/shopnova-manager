@@ -303,25 +303,25 @@ const pt: Translations = {
     geoTransparencyTitle: 'Dados transmitidos ao editor',
     geoTransparencyNone:  'Nenhum dado financeiro é transmitido (sem faturamento, sem valores, sem contagem de vendas).',
     scrollDown:'Role para baixo para ler mais',
-    inForce:   'Em vigor desde 1º de janeiro de 2026',
+    inForce:   'Atualizado em 18 de junho de 2026',
     sections: {
       s1title: '1. Apresentação',
-      s1:      'Legwan é um software de gestão de lojas (caixa registradora, estoque, relatórios) projetado para comerciantes. É publicado pela Legwan (contato: support@legwan.cm). Ao instalar e usar este software, você aceita as condições descritas nesta política de privacidade.',
+      s1:      'Legwan é um software de gestão de lojas (caixa registradora, estoque, relatórios, crédito) publicado pela Legwan (support@legwan.cm). Funciona principalmente offline: todos os seus dados de vendas e estoque são armazenados localmente em sua máquina. Ao instalar e usar este software, você aceita as condições descritas nesta política de privacidade.',
 
-      s2title: '2. Dados registrados localmente',
-      s2:      'Legwan registra apenas as informações necessárias para o funcionamento da sua loja:\n\n• Conta do gerente: nome, sobrenome, código PIN (criptografado, não legível)\n• Contas de usuários: nome, função, código PIN (criptografado, não legível)\n• Informações da loja: nome, endereço, número de telefone\n• Catálogo de produtos: nome, preço de venda, estoque disponível\n• Vendas e transações registradas\n• Movimentações de estoque (entradas e saídas)\n• Fornecedores e clientes\n• Sessões e fechamentos de caixa\n\nNenhum dado bancário ou de pagamento é coletado.',
+      s2title: '2. Dados armazenados localmente',
+      s2:      'Legwan armazena em sua máquina apenas as informações necessárias para o funcionamento da sua loja:\n\n• Contas de usuários: nome, sobrenome, função, código PIN (hash PBKDF2 — nunca legível em texto simples)\n• Informações da loja: nome, endereço, número de telefone\n• Catálogo de produtos: nome, preços, estoque\n• Vendas e transações\n• Movimentações de estoque (entradas e saídas)\n• Sessões e fechamentos de caixa\n• Fornecedores e clientes\n• Despesas e inventários\n• Chave de licença\n\nNenhum dado bancário ou de pagamento é coletado. Seus dados financeiros (faturamento, valores) nunca saem do seu dispositivo.',
 
       s3title: '3. Dados transmitidos ao editor',
-      s3:      'Para garantir suporte, manutenção e monitoramento do serviço, o software transmite automaticamente para uma plataforma centralizada gerenciada pelo editor:\n\n• Informações de identificação da sua loja: nome, endereço e número de telefone\n• Versão do software instalada\n• Estatísticas de atividade agregadas: número de vendas, receita total, número de produtos, usuários, clientes, fornecedores\n• Se você consentir expressamente: a localização geográfica da sua loja\n\nNunca são transmitidos: os nomes dos seus clientes, os detalhes das suas transações, seus códigos PIN.\n\nLegwan não vende seus dados nem os usa para fins publicitários. Seus dados pertencem a você.',
+      s3:      'Para suporte e monitoramento do serviço, o software envia automaticamente ao editor um sinal de presença ("heartbeat") contendo apenas:\n\n• Nome, endereço e telefone da sua loja\n• Versão do software e plataforma (Windows, macOS, Linux)\n• Status de atividade: ativo ou inativo este mês (sem nenhum valor)\n• Número de contas de usuários\n• Data da última transação (sem valor ou detalhe)\n• Se você consentiu: localização geográfica (GPS, aproximação por IP ou posicionamento manual)\n\nNUNCA transmitidos ao editor:\n• Seu faturamento ou receita\n• Valores de vendas\n• Número de vendas\n• Detalhes de produtos, clientes, fornecedores ou despesas\n• Seus códigos PIN\n\nLegwan não vende seus dados nem os usa para fins publicitários. Seus dados pertencem a você.',
 
       s4title: '4. Segurança dos seus dados',
-      s4:      'Seus dados estão hospedados no Firebase (Google Cloud), com criptografia de comunicações (TLS) e criptografia em repouso. Os códigos PIN são irreversivelmente criptografados usando um algoritmo criptográfico seguro (PBKDF2) com um sal único por usuário — nunca podem ser recuperados em texto simples. Cada loja tem seu próprio espaço de dados isolado, inacessível para outras lojas.',
+      s4:      'A transmissão para os servidores do editor é criptografada (TLS). Os dados do registro são hospedados no Firebase (Google Cloud), com criptografia em repouso. Os códigos PIN são irreversivelmente hasheados (PBKDF2-SHA-256, sal único por usuário) — nunca podem ser recuperados. Cada loja tem seu próprio espaço de dados isolado, inacessível para outras lojas. O bloqueio anti-força-bruta (5 tentativas falhas) é gerenciado do lado do servidor.',
 
       s5title: '5. Seus direitos',
-      s5:      'De acordo com a regulamentação aplicável, você tem a qualquer momento os seguintes direitos:\n\n• Consultar seus dados diretamente no software\n• Modificar suas informações nas configurações da loja\n• Exportar seus dados em formato CSV ou PDF\n• Solicitar a exclusão completa de seus dados\n• Revogar seu consentimento de geolocalização nas Configurações\n\nPara exercer esses direitos ou qualquer dúvida: support@legwan.cm',
+      s5:      'Você tem a qualquer momento os seguintes direitos:\n\n• Consultar seus dados diretamente no software\n• Modificar suas informações nas configurações da loja\n• Exportar seus dados em formato CSV ou PDF\n• Fazer backup e restaurar sua loja por meio de um arquivo criptografado (pendrive)\n• Solicitar a exclusão completa de seus dados\n• Revogar seu consentimento de geolocalização nas Configurações\n\nPara exercer esses direitos ou qualquer dúvida: support@legwan.cm',
 
       s6title: '6. Evolução desta política',
-      s6:      'Esta política pode evoluir para se adaptar às mudanças do software ou da regulamentação. Em caso de modificação importante, você será solicitado a ler e aceitar a nova versão ao abrir o software. A data de entrada em vigor e o número de versão estão indicados na parte inferior desta página.',
+      s6:      'Esta política pode evoluir com o software ou a regulamentação. Em caso de modificação importante, você será solicitado a ler e aceitar a nova versão ao abrir o software. O número de versão e a data de atualização estão indicados na parte inferior desta página.',
     },
     admin: {
       title:      'Crie sua conta de administrador',

@@ -31,7 +31,7 @@ import { useSaleStore } from '@/stores/useSaleStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import type { LocationSource, LocationPrecision } from '@/services/geoService';
 
-const APP_VERSION = '1.5.0';
+const APP_VERSION = __APP_VERSION__;
 
 export type { LocationSource, LocationPrecision };
 

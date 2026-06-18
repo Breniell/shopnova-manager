@@ -20,7 +20,7 @@ import {
 } from './types';
 import { computeChecksum, encryptBackupData } from './backupCrypto';
 
-const APP_VERSION = '1.5.0';
+const APP_VERSION = __APP_VERSION__;
 
 /** Collect the current state of all stores into a BackupData snapshot. */
 export function collectBackupData(): BackupData {

@@ -303,25 +303,25 @@ const en: Translations = {
     geoTransparencyTitle: 'Data transmitted to the publisher',
     geoTransparencyNone:  'No financial data is transmitted (no revenue, no amounts, no sale counts).',
     scrollDown:'Scroll down to read more',
-    inForce:   'In effect since January 1, 2026',
+    inForce:   'Updated June 18, 2026',
     sections: {
       s1title: '1. Presentation',
-      s1:      'Legwan is a shop management software (cash register, inventory, reports) designed for merchants in sub-Saharan Africa. By installing and using this software, you accept the conditions described in this policy.',
+      s1:      'Legwan is a shop management software (cash register, inventory, reports, credit) published by Legwan (support@legwan.cm). It works primarily offline: all your sales and stock data are stored locally on your machine. By installing and using this software, you accept the conditions described in this privacy policy.',
 
-      s2title: '2. Data collected',
-      s2:      'Legwan only records information necessary for your shop to function:\n\n• Administrator account: first name, last name, role (created at first installation)\n• Additional user accounts: name, role, PIN code (irreversibly hashed)\n• Shop information: name, address, phone\n• Products: description, price, stock\n• Sales and transactions\n• Stock movements\n• Suppliers and customers\n• Cash register sessions and closings\n\nNo banking or payment data is collected.',
+      s2title: '2. Data stored locally',
+      s2:      'Legwan stores on your machine only the information needed for your shop to operate:\n\n• User accounts: first name, last name, role, PIN code (PBKDF2-hashed — never readable in clear text)\n• Shop information: name, address, phone number\n• Product catalogue: name, prices, stock\n• Sales and transactions\n• Stock movements (in and out)\n• Cash register sessions and closings\n• Suppliers and customers\n• Expenses and inventory sessions\n• Licence key\n\nNo banking or payment data is collected. Your financial data (revenue, amounts) never leaves your device.',
 
-      s3title: '3. Data usage',
-      s3:      'To support maintenance and service monitoring, the software automatically transmits to a central platform managed by the publisher:\n\n• Shop information: name, address and phone number\n• App version and platform (Windows, macOS, Linux, Web)\n• Health signals: activity status (active/inactive this month — no amounts), number of user accounts\n• Date of last transaction (no amounts or details)\n• If you explicitly consent: geographic location (GPS or IP-level approximation)\n\nNever transmitted: your revenue, sale amounts, sale counts, stock levels, transaction details, PIN codes, or customer names.\n\nLegwan does not sell your data or use it for advertising. Your data belongs to you.',
+      s3title: '3. Data transmitted to the publisher',
+      s3:      'For support and service monitoring, the software automatically sends the publisher a presence signal ("heartbeat") containing only:\n\n• Your shop name, address and phone number\n• App version and platform (Windows, macOS, Linux)\n• Activity status: active or inactive this month (no amounts)\n• Number of user accounts\n• Date of last transaction (no amounts or details)\n• If you have consented: geographic location (GPS, IP approximation, or manual pin)\n\nNEVER transmitted to the publisher:\n• Your revenue or income\n• Sale amounts\n• Sale counts\n• Details of your products, customers, suppliers or expenses\n• Your PIN codes\n\nLegwan does not sell your data or use it for advertising. Your data belongs to you.',
 
-      s4title: '4. Security',
-      s4:      'Your data is hosted on Firebase (Google Cloud), with encryption in transit and at rest. PIN codes are irreversibly hashed with a unique cryptographic salt per user. Each shop has its own isolated data space, inaccessible to other shops.',
+      s4title: '4. Data security',
+      s4:      'Transmission to the publisher\'s servers is encrypted (TLS). Registry data is hosted on Firebase (Google Cloud), with encryption at rest. PIN codes are irreversibly hashed (PBKDF2-SHA-256, unique salt per user) — they can never be recovered. Each shop has its own isolated data space, inaccessible to other shops. The anti-brute-force lockout (5 failed attempts) is managed server-side, not on the device.',
 
       s5title: '5. Your rights',
-      s5:      'You may at any time:\n\n• View your data from within the software\n• Edit your information in settings\n• Export your data (CSV, PDF)\n• Request deletion of your data\n\nFor any request: support@legwan.cm',
+      s5:      'You may at any time:\n\n• View your data from within the software\n• Edit your information in shop settings\n• Export your data (CSV, PDF)\n• Back up and restore your shop via an encrypted file (USB drive)\n• Request deletion of your data\n• Revoke your geolocation consent in Settings\n\nFor any request: support@legwan.cm',
 
       s6title: '6. Policy updates',
-      s6:      'This policy may evolve. In case of significant changes, you will be asked to accept it again when opening the software.',
+      s6:      'This policy may evolve with the software or regulations. In case of significant changes, you will be asked to read and accept the new version when opening the software. The version number and update date are shown at the bottom of this page.',
     },
     admin: {
       title:      'Create your administrator account',

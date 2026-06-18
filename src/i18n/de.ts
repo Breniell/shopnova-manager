@@ -303,25 +303,25 @@ const de: Translations = {
     geoTransparencyTitle: 'An den Herausgeber übermittelte Daten',
     geoTransparencyNone:  'Es werden keine Finanzdaten übermittelt (kein Umsatz, keine Beträge, keine Verkaufszahlen).',
     scrollDown:'Scrollen Sie nach unten, um mehr zu lesen',
-    inForce:   'In Kraft seit dem 1. Januar 2026',
+    inForce:   'Aktualisiert am 18. Juni 2026',
     sections: {
       s1title: '1. Vorstellung',
-      s1:      'Legwan ist eine Ladenverwaltungssoftware (Kasse, Lager, Berichte) für Händler. Sie wird von Legwan herausgegeben (Kontakt: support@legwan.cm). Durch die Installation und Nutzung dieser Software stimmen Sie den in dieser Datenschutzrichtlinie beschriebenen Bedingungen zu.',
+      s1:      'Legwan ist eine Ladenverwaltungssoftware (Kasse, Lager, Berichte, Kredit) von Legwan (support@legwan.cm). Sie funktioniert hauptsächlich offline: Alle Verkaufs- und Bestandsdaten werden lokal auf Ihrem Gerät gespeichert. Durch die Installation und Nutzung dieser Software stimmen Sie den hier beschriebenen Bedingungen zu.',
 
       s2title: '2. Lokal gespeicherte Daten',
-      s2:      'Legwan speichert nur die für den Betrieb Ihres Geschäfts erforderlichen Informationen:\n\n• Manager-Konto: Vor- und Nachname, PIN-Code (verschlüsselt, nicht lesbar)\n• Benutzerkonten: Name, Rolle, PIN-Code (verschlüsselt, nicht lesbar)\n• Geschäftsinformationen: Name, Adresse, Telefonnummer\n• Produktkatalog: Bezeichnung, Verkaufspreis, verfügbarer Bestand\n• Aufgezeichnete Verkäufe und Transaktionen\n• Lagerbewegungen (Eingänge und Ausgänge)\n• Lieferanten und Kunden\n• Kassensitzungen und -abschlüsse\n\nEs werden keine Bank- oder Zahlungsdaten erhoben.',
+      s2:      'Legwan speichert auf Ihrem Gerät nur die für den Betrieb Ihres Geschäfts erforderlichen Informationen:\n\n• Benutzerkonten: Vor- und Nachname, Rolle, PIN-Code (PBKDF2-Hash — nie im Klartext lesbar)\n• Geschäftsinformationen: Name, Adresse, Telefonnummer\n• Produktkatalog: Bezeichnung, Preise, Bestand\n• Verkäufe und Transaktionen\n• Lagerbewegungen (Eingänge und Ausgänge)\n• Kassensitzungen und -abschlüsse\n• Lieferanten und Kunden\n• Ausgaben und Inventarsitzungen\n• Lizenzschlüssel\n\nEs werden keine Bank- oder Zahlungsdaten erhoben. Ihre Finanzdaten (Umsatz, Beträge) verlassen Ihr Gerät nie.',
 
       s3title: '3. An den Herausgeber übermittelte Daten',
-      s3:      'Um Support, Wartung und Dienstüberwachung zu gewährleisten, überträgt die Software automatisch an eine zentrale Plattform des Herausgebers:\n\n• Identifikationsinformationen Ihres Geschäfts: Name, Adresse und Telefonnummer\n• Installierte Softwareversion\n• Aggregierte Aktivitätsstatistiken: Anzahl der Verkäufe, Gesamtumsatz, Anzahl der Produkte, Benutzer, Kunden, Lieferanten\n• Bei ausdrücklicher Einwilligung: die geografische Lage Ihres Geschäfts\n\nNie übertragen werden: Kundennamen, Transaktionsdetails, PIN-Codes.\n\nLegwan verkauft Ihre Daten nicht und verwendet sie nicht zu Werbezwecken. Ihre Daten gehören Ihnen.',
+      s3:      'Für Support und Dienstüberwachung sendet die Software dem Herausgeber automatisch ein Präsenzsignal ("Heartbeat"), das ausschließlich Folgendes enthält:\n\n• Name, Adresse und Telefon Ihres Geschäfts\n• Softwareversion und Plattform (Windows, macOS, Linux)\n• Aktivitätsstatus: aktiv oder inaktiv diesen Monat (ohne Beträge)\n• Anzahl der Benutzerkonten\n• Datum der letzten Transaktion (ohne Betrag oder Detail)\n• Bei erteilter Einwilligung: geografischer Standort (GPS, IP-Annäherung oder manuelle Platzierung)\n\nNIE an den Herausgeber übermittelt:\n• Ihr Umsatz oder Ihre Einnahmen\n• Verkaufsbeträge\n• Verkaufszahlen\n• Details zu Produkten, Kunden, Lieferanten oder Ausgaben\n• Ihre PIN-Codes\n\nLegwan verkauft Ihre Daten nicht und verwendet sie nicht zu Werbezwecken. Ihre Daten gehören Ihnen.',
 
       s4title: '4. Datensicherheit',
-      s4:      'Ihre Daten werden auf Firebase (Google Cloud) gehostet, mit Kommunikationsverschlüsselung (TLS) und Verschlüsselung im Ruhezustand. PIN-Codes werden mithilfe eines sicheren kryptografischen Algorithmus (PBKDF2) mit einem einzigartigen Salt pro Benutzer irreversibel gehasht — sie können nie im Klartext abgerufen werden. Jedes Geschäft hat seinen eigenen isolierten Datenbereich, der für andere Geschäfte unzugänglich ist.',
+      s4:      'Die Übertragung zu den Servern des Herausgebers ist verschlüsselt (TLS). Die Registrierungsdaten werden auf Firebase (Google Cloud) mit Verschlüsselung im Ruhezustand gehostet. PIN-Codes werden irreversibel gehasht (PBKDF2-SHA-256, einzigartiger Salt pro Benutzer) — sie können nie wiederhergestellt werden. Jedes Geschäft hat seinen eigenen isolierten Datenbereich. Der Anti-Brute-Force-Schutz (5 fehlgeschlagene Versuche) wird serverseitig verwaltet.',
 
       s5title: '5. Ihre Rechte',
-      s5:      'Gemäß den geltenden Vorschriften stehen Ihnen jederzeit folgende Rechte zu:\n\n• Einsicht in Ihre Daten direkt in der Software\n• Änderung Ihrer Informationen in den Geschäftseinstellungen\n• Export Ihrer Daten im CSV- oder PDF-Format\n• Beantragung der vollständigen Löschung Ihrer Daten\n• Widerruf Ihrer Geolokalisierungseinwilligung in den Einstellungen\n\nFür die Ausübung dieser Rechte oder Fragen: support@legwan.cm',
+      s5:      'Ihnen stehen jederzeit folgende Rechte zu:\n\n• Einsicht in Ihre Daten direkt in der Software\n• Änderung Ihrer Informationen in den Einstellungen\n• Export Ihrer Daten im CSV- oder PDF-Format\n• Sicherung und Wiederherstellung Ihres Geschäfts über eine verschlüsselte Datei (USB)\n• Beantragung der vollständigen Löschung Ihrer Daten\n• Widerruf Ihrer Geolokalisierungseinwilligung in den Einstellungen\n\nFür die Ausübung dieser Rechte oder Fragen: support@legwan.cm',
 
       s6title: '6. Änderungen dieser Richtlinie',
-      s6:      'Diese Richtlinie kann sich anpassen, um Änderungen der Software oder Vorschriften zu berücksichtigen. Bei wesentlichen Änderungen werden Sie beim Öffnen der Software aufgefordert, die neue Version zu lesen und zu akzeptieren. Das Datum des Inkrafttretens und die Versionsnummer sind am Ende dieser Seite angegeben.',
+      s6:      'Diese Richtlinie kann sich mit der Software oder Vorschriften weiterentwickeln. Bei wesentlichen Änderungen werden Sie beim Öffnen der Software aufgefordert, die neue Version zu lesen und zu akzeptieren. Versionsnummer und Aktualisierungsdatum befinden sich am Ende dieser Seite.',
     },
     admin: {
       title:      'Erstellen Sie Ihr Administratorkonto',

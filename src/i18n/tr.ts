@@ -303,25 +303,25 @@ const tr: Translations = {
     geoTransparencyTitle: 'Yayıncıya iletilen veriler',
     geoTransparencyNone:  'Hiçbir finansal veri iletilmez (gelir, tutar veya satış sayısı gönderilmez).',
     scrollDown:'Daha fazlasını okumak için aşağı kaydırın',
-    inForce:   '1 Ocak 2026\'dan itibaren geçerli',
+    inForce:   '18 Haziran 2026\'da güncellendi',
     sections: {
       s1title: '1. Tanıtım',
-      s1:      'Legwan, tüccarlar için tasarlanmış bir mağaza yönetim yazılımıdır (kasa, stok, raporlar). Legwan tarafından yayınlanmaktadır (iletişim: support@legwan.cm). Bu yazılımı yükleyip kullanarak bu gizlilik politikasında belirtilen koşulları kabul etmiş olursunuz.',
+      s1:      'Legwan, Legwan (support@legwan.cm) tarafından yayınlanan bir mağaza yönetim yazılımıdır (kasa, stok, raporlar, kredi). Ağırlıklı olarak çevrimdışı çalışır: tüm satış ve stok verileriniz yerel makinenizde saklanır. Bu yazılımı yükleyip kullanarak bu gizlilik politikasında belirtilen koşulları kabul etmiş olursunuz.',
 
-      s2title: '2. Yerel olarak kaydedilen veriler',
-      s2:      'Legwan yalnızca mağazanızın işleyişi için gerekli bilgileri kaydeder:\n\n• Yönetici hesabı: ad, soyad, PIN kodu (şifreli, okunamaz)\n• Kullanıcı hesapları: ad, rol, PIN kodu (şifreli, okunamaz)\n• Mağaza bilgileri: ad, adres, telefon numarası\n• Ürün kataloğu: ürün adı, satış fiyatı, mevcut stok\n• Kayıtlı satışlar ve işlemler\n• Stok hareketleri (girişler ve çıkışlar)\n• Tedarikçiler ve müşteriler\n• Kasa oturumları ve kapanışları\n\nHiçbir banka veya ödeme verisi toplanmaz.',
+      s2title: '2. Yerel olarak saklanan veriler',
+      s2:      'Legwan, makinenizde yalnızca mağazanızın işleyişi için gerekli bilgileri saklar:\n\n• Kullanıcı hesapları: ad, soyad, rol, PIN kodu (PBKDF2 hash — düz metin olarak asla okunamaz)\n• Mağaza bilgileri: ad, adres, telefon numarası\n• Ürün kataloğu: ürün adı, fiyatlar, stok\n• Satışlar ve işlemler\n• Stok hareketleri (girişler ve çıkışlar)\n• Kasa oturumları ve kapanışları\n• Tedarikçiler ve müşteriler\n• Giderler ve envanter oturumları\n• Lisans anahtarı\n\nHiçbir banka veya ödeme verisi toplanmaz. Finansal verileriniz (ciro, tutarlar) cihazınızı asla terk etmez.',
 
       s3title: '3. Yayıncıya iletilen veriler',
-      s3:      'Destek, bakım ve hizmet izlemeyi sağlamak için yazılım, yayıncı tarafından yönetilen merkezi bir platforma otomatik olarak iletir:\n\n• Mağazanızın kimlik bilgileri: ad, adres ve telefon numarası\n• Yüklü yazılım sürümü\n• Toplu faaliyet istatistikleri: satış sayısı, toplam gelir, ürün, kullanıcı, müşteri, tedarikçi sayısı\n• Açıkça onay vermeniz durumunda: mağazanızın coğrafi konumu\n\nHiçbir zaman iletilmez: müşteri adları, işlem detayları, PIN kodları.\n\nLegwan verilerinizi satmaz veya reklam amaçlı kullanmaz. Verileriniz size aittir.',
+      s3:      'Destek ve hizmet izleme için yazılım, yayıncıya otomatik olarak yalnızca şunları içeren bir varlık sinyali ("heartbeat") gönderir:\n\n• Mağazanızın adı, adresi ve telefonu\n• Yazılım sürümü ve platform (Windows, macOS, Linux)\n• Aktivite durumu: bu ay aktif ya da değil (tutar yok)\n• Kullanıcı hesabı sayısı\n• Son işlem tarihi (tutar veya detay yok)\n• Onay verdiyseniz: coğrafi konum (GPS, IP yaklaşımı veya manuel yerleştirme)\n\nYayıncıya ASLA iletilmez:\n• Ciронuz veya geliriniz\n• Satış tutarları\n• Satış sayıları\n• Ürün, müşteri, tedarikçi veya gider detayları\n• PIN kodlarınız\n\nLegwan verilerinizi satmaz veya reklam amaçlı kullanmaz. Verileriniz size aittir.',
 
       s4title: '4. Veri güvenliği',
-      s4:      'Verileriniz, iletişim şifrelemesi (TLS) ve beklemede şifreleme ile Firebase\'de (Google Cloud) barındırılmaktadır. PIN kodları, kullanıcı başına benzersiz bir tuz ile güvenli bir kriptografik algoritma (PBKDF2) kullanılarak geri döndürülemez biçimde hashlanır — hiçbir zaman düz metin olarak alınamaz. Her mağazanın diğer mağazalar tarafından erişilemeyen kendi izole veri alanı vardır.',
+      s4:      'Yayıncı sunucularına iletim şifrelidir (TLS). Kayıt verileri Firebase\'de (Google Cloud) şifreli olarak barındırılır. PIN kodları, kullanıcı başına benzersiz tuz ile PBKDF2-SHA-256 ile geri döndürülemez biçimde hashlanır — hiçbir zaman kurtarılamaz. Her mağazanın kendi izole veri alanı vardır. Brute-force koruması (5 başarısız deneme) sunucu tarafında yönetilir.',
 
       s5title: '5. Haklarınız',
-      s5:      'Yürürlükteki mevzuata uygun olarak her zaman aşağıdaki haklara sahipsiniz:\n\n• Verilerinizi doğrudan yazılımdan görüntüleme\n• Mağaza ayarlarında bilgilerinizi değiştirme\n• Verilerinizi CSV veya PDF formatında dışa aktarma\n• Verilerinizin tamamen silinmesini talep etme\n• Ayarlar\'dan coğrafi konum iznini geri alma\n\nBu hakları kullanmak veya herhangi bir soru için: support@legwan.cm',
+      s5:      'Her zaman aşağıdaki haklara sahipsiniz:\n\n• Verilerinizi doğrudan yazılımdan görüntüleme\n• Mağaza ayarlarında bilgilerinizi değiştirme\n• Verilerinizi CSV veya PDF formatında dışa aktarma\n• Mağazanızı şifreli dosya ile yedekleme ve geri yükleme (USB bellek)\n• Verilerinizin tamamen silinmesini talep etme\n• Ayarlar\'dan coğrafi konum iznini geri alma\n\nBu hakları kullanmak veya herhangi bir soru için: support@legwan.cm',
 
       s6title: '6. Bu politikanın değişimi',
-      s6:      'Bu politika, yazılım veya mevzuattaki değişikliklere uyum sağlamak için değişebilir. Önemli bir değişiklik olması durumunda, yazılım açılırken yeni sürümü okumanız ve kabul etmeniz istenecektir. Yürürlük tarihi ve sürüm numarası bu sayfanın alt kısmında belirtilmektedir.',
+      s6:      'Bu politika yazılım veya mevzuatla birlikte değişebilir. Önemli bir değişiklik olması durumunda, yazılım açılırken yeni sürümü okumanız ve kabul etmeniz istenecektir. Sürüm numarası ve güncelleme tarihi bu sayfanın alt kısmında belirtilmektedir.',
     },
     admin: {
       title:      'Yönetici hesabınızı oluşturun',
