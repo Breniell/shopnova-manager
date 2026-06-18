@@ -306,7 +306,7 @@ const tr: Translations = {
     inForce:   '18 Haziran 2026\'da güncellendi',
     sections: {
       s1title: '1. Tanıtım',
-      s1:      'Legwan, Legwan (support@legwan.cm) tarafından yayınlanan bir mağaza yönetim yazılımıdır (kasa, stok, raporlar, kredi). Ağırlıklı olarak çevrimdışı çalışır: tüm satış ve stok verileriniz yerel makinenizde saklanır. Bu yazılımı yükleyip kullanarak bu gizlilik politikasında belirtilen koşulları kabul etmiş olursunuz.',
+      s1:      'Legwan, Legwan (knbdevsolutions@gmail.com) tarafından yayınlanan bir mağaza yönetim yazılımıdır (kasa, stok, raporlar, kredi). Ağırlıklı olarak çevrimdışı çalışır: tüm satış ve stok verileriniz yerel makinenizde saklanır. Bu yazılımı yükleyip kullanarak bu gizlilik politikasında belirtilen koşulları kabul etmiş olursunuz.',
 
       s2title: '2. Yerel olarak saklanan veriler',
       s2:      'Legwan, makinenizde yalnızca mağazanızın işleyişi için gerekli bilgileri saklar:\n\n• Kullanıcı hesapları: ad, soyad, rol, PIN kodu (PBKDF2 hash — düz metin olarak asla okunamaz)\n• Mağaza bilgileri: ad, adres, telefon numarası\n• Ürün kataloğu: ürün adı, fiyatlar, stok\n• Satışlar ve işlemler\n• Stok hareketleri (girişler ve çıkışlar)\n• Kasa oturumları ve kapanışları\n• Tedarikçiler ve müşteriler\n• Giderler ve envanter oturumları\n• Lisans anahtarı\n\nHiçbir banka veya ödeme verisi toplanmaz. Finansal verileriniz (ciro, tutarlar) cihazınızı asla terk etmez.',
@@ -318,7 +318,7 @@ const tr: Translations = {
       s4:      'Yayıncı sunucularına iletim şifrelidir (TLS). Kayıt verileri Firebase\'de (Google Cloud) şifreli olarak barındırılır. PIN kodları, kullanıcı başına benzersiz tuz ile PBKDF2-SHA-256 ile geri döndürülemez biçimde hashlanır — hiçbir zaman kurtarılamaz. Her mağazanın kendi izole veri alanı vardır. Brute-force koruması (5 başarısız deneme) sunucu tarafında yönetilir.',
 
       s5title: '5. Haklarınız',
-      s5:      'Her zaman aşağıdaki haklara sahipsiniz:\n\n• Verilerinizi doğrudan yazılımdan görüntüleme\n• Mağaza ayarlarında bilgilerinizi değiştirme\n• Verilerinizi CSV veya PDF formatında dışa aktarma\n• Mağazanızı şifreli dosya ile yedekleme ve geri yükleme (USB bellek)\n• Verilerinizin tamamen silinmesini talep etme\n• Ayarlar\'dan coğrafi konum iznini geri alma\n\nBu hakları kullanmak veya herhangi bir soru için: support@legwan.cm',
+      s5:      'Her zaman aşağıdaki haklara sahipsiniz:\n\n• Verilerinizi doğrudan yazılımdan görüntüleme\n• Mağaza ayarlarında bilgilerinizi değiştirme\n• Verilerinizi CSV veya PDF formatında dışa aktarma\n• Mağazanızı şifreli dosya ile yedekleme ve geri yükleme (USB bellek)\n• Verilerinizin tamamen silinmesini talep etme\n• Ayarlar\'dan coğrafi konum iznini geri alma\n\nBu hakları kullanmak veya herhangi bir soru için: knbdevsolutions@gmail.com',
 
       s6title: '6. Bu politikanın değişimi',
       s6:      'Bu politika yazılım veya mevzuatla birlikte değişebilir. Önemli bir değişiklik olması durumunda, yazılım açılırken yeni sürümü okumanız ve kabul etmeniz istenecektir. Sürüm numarası ve güncelleme tarihi bu sayfanın alt kısmında belirtilmektedir.',

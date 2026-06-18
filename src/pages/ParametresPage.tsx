@@ -34,7 +34,7 @@ import type { BackupData } from '@/lib/backup/types';
 import { useLicenseGate } from '@/components/LicenseGate';
 import { LicenseActivationForm } from '@/components/LicenseActivationForm';
 
-const SUPPORT_CONTACT = import.meta.env.VITE_SUPPORT_CONTACT ?? 'contact@legwan.com';
+const SUPPORT_CONTACT = import.meta.env.VITE_SUPPORT_CONTACT ?? 'knbdevsolutions@gmail.com';
 
 const ParametresPage: React.FC = () => {
   const { shop, updateShop } = useSettingsStore();

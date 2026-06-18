@@ -1,45 +1,63 @@
 {\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1036{\fonttbl{\f0\fswiss\fcharset0 Arial;}}
 {\*\generator Riched20 10.0.19041}\viewkind4\uc1
-\pard\sa160\sl280\slmult1\b\fs26\lang1036 POLITIQUE DE CONFIDENTIALIT\'c9 \emdash  LEGWAN\b0\fs20\par
-Version 1.0 \emdash  En vigueur depuis le 1er janvier 2026\par
+\pard\sa160\sl280\slmult1\f0\b\fs26\lang1036 POLITIQUE DE CONFIDENTIALIT\'c9 \emdash  LEGWAN\b0\fs20\par
+Version 1.5.0 \emdash  Mise \'e0 jour le 18 juin 2026\par
 \par
 
 \b\fs22 1. Pr\'e9sentation\b0\fs20\par
-Legwan est un logiciel de gestion de boutique (caisse, stocks, rapports) destin\'e9 aux commer\c231ants. En utilisant ce logiciel, vous acceptez les conditions d\'e9crites dans cette politique.\par
+Legwan est un logiciel de gestion de boutique (caisse, stocks, rapports, cr\'e9dit) \'e9dit\'e9 par KNB Dev Solutions pour Legwan (knbdevsolutions@gmail.com). Il fonctionne principalement hors-ligne : toutes vos donn\'e9es de vente et de stock sont stock\'e9es localement sur votre machine. En installant et en utilisant ce logiciel, vous acceptez les conditions d\'e9crites dans la pr\'e9sente politique de confidentialit\'e9.\par
 \par
 
-\b\fs22 2. Donn\'e9es enregistr\'e9es\b0\fs20\par
-Legwan enregistre uniquement les informations n\'e9cessaires au fonctionnement de votre boutique :\par
-\bullet  Informations de la boutique : nom, adresse, t\'e9l\'e9phone\par
-\bullet  Produits : d\'e9signation, prix, stock\par
+\b\fs22 2. Donn\'e9es enregistr\'e9es localement\b0\fs20\par
+Legwan enregistre sur votre machine uniquement les informations n\'e9cessaires au fonctionnement de votre boutique :\par
+\bullet  Comptes utilisateurs : pr\'e9nom, nom, r\'f4le, code PIN (chiffr\'e9 PBKDF2 \emdash  non lisible en clair)\par
+\bullet  Informations boutique : nom, adresse, num\'e9ro de t\'e9l\'e9phone\par
+\bullet  Catalogue produits : d\'e9signation, prix, stock\par
 \bullet  Ventes et transactions\par
-\bullet  Mouvements de stock\par
-\bullet  Fournisseurs\par
-\bullet  Cl\^otures de caisse\par
-\bullet  Comptes utilisateurs : nom, r\^ole, code PIN (chiffr\'e9, non lisible)\par
-Aucune donn\'e9e bancaire ni de paiement n\rquote est collect\'e9e.\par
+\bullet  Mouvements de stock (entr\'e9es et sorties)\par
+\bullet  Cl\'f4tures et sessions de caisse\par
+\bullet  Fournisseurs et clients\par
+\bullet  D\'e9penses et inventaires\par
+\bullet  Cl\'e9 de licence\par
+\par
+Aucune donn\'e9e bancaire ou de paiement n\rquote est collect\'e9e. Vos donn\'e9es financi\'e8res (chiffre d\rquote affaires, montants) ne quittent jamais votre appareil.\par
 \par
 
-\b\fs22 3. Utilisation des donn\'e9es\b0\fs20\par
-Vos donn\'e9es servent exclusivement \`a :\par
-\bullet  Faire fonctionner le logiciel (ventes, stocks, rapports)\par
-\bullet  Synchroniser vos donn\'e9es entre appareils via les serveurs de Google (Firebase)\par
-Legwan ne vend pas vos donn\'e9es et n\rquote y acc\`ede pas \`a des fins commerciales. Vos donn\'e9es vous appartiennent.\par
+\b\fs22 3. Donn\'e9es transmises \'e0 l\rquote \'e9diteur\b0\fs20\par
+Pour le support et le suivi du service, le logiciel envoie automatiquement un signal de pr\'e9sence (heartbeat) contenant uniquement :\par
+\bullet  Nom, adresse et t\'e9l\'e9phone de votre boutique\par
+\bullet  Version du logiciel et plateforme (Windows, macOS, Linux)\par
+\bullet  Statut d\rquote activit\'e9 : actif ou inactif ce mois (sans aucun montant)\par
+\bullet  Nombre de comptes utilisateurs\par
+\bullet  Date de la derni\'e8re transaction (sans montant ni d\'e9tail)\par
+\bullet  Si vous y avez consenti : position g\'e9ographique (GPS, adresse IP ou placement manuel)\par
+\par
+Ne sont JAMAIS transmis \'e0 l\rquote \'e9diteur :\par
+\bullet  Votre chiffre d\rquote affaires ou vos revenus\par
+\bullet  Les montants de vos ventes\par
+\bullet  Le nombre de ventes\par
+\bullet  Le d\'e9tail de vos produits, clients, fournisseurs ou d\'e9penses\par
+\bullet  Vos codes PIN\par
+\par
+Legwan ne vend pas vos donn\'e9es et ne les utilise pas \'e0 des fins publicitaires. Vos donn\'e9es vous appartiennent.\par
 \par
 
-\b\fs22 4. S\'e9curit\'e9\b0\fs20\par
-Vos donn\'e9es sont h\'e9berg\'e9es sur Firebase (Google Cloud), avec chiffrement en transit et au repos. Les codes PIN sont hach\'e9s de mani\`ere irr\'e9versible. Chaque boutique dispose de son propre espace de donn\'e9es isol\'e9.\par
+\b\fs22 4. S\'e9curit\'e9 de vos donn\'e9es\b0\fs20\par
+La transmission vers les serveurs de l\rquote \'e9diteur est chiffr\'e9e (TLS). Les donn\'e9es du registre sont h\'e9berg\'e9es sur Firebase (Google Cloud), avec chiffrement au repos. Les codes PIN sont hach\'e9s de mani\'e8re irr\'e9versible (PBKDF2-SHA-256, sel unique par utilisateur) \emdash  ils ne peuvent jamais \'eatre retrouv\'e9s en clair. Chaque boutique dispose de son propre espace de donn\'e9es isol\'e9, inaccessible aux autres boutiques. La protection anti-brute-force (blocage apr\'e8s 5 tentatives \'e9chou\'e9es) est g\'e9r\'e9e c\'f4t\'e9 serveur.\par
 \par
 
 \b\fs22 5. Vos droits\b0\fs20\par
-Vous pouvez \`a tout moment :\par
-\bullet  Consulter vos donn\'e9es depuis le logiciel\par
-\bullet  Modifier vos informations dans les param\`etres\par
-\bullet  Exporter vos donn\'e9es (CSV, PDF)\par
-\bullet  Demander la suppression de vos donn\'e9es\par
-Pour toute demande : support@legwan.cm\par
+Vous disposez \'e0 tout moment des droits suivants :\par
+\bullet  Consulter vos donn\'e9es directement depuis le logiciel\par
+\bullet  Modifier vos informations dans les param\'e8tres de la boutique\par
+\bullet  Exporter vos donn\'e9es au format CSV ou PDF\par
+\bullet  Sauvegarder et restaurer votre boutique via un fichier chiffr\'e9 (cl\'e9 USB)\par
+\bullet  Demander la suppression compl\'e8te de vos donn\'e9es\par
+\bullet  R\'e9voquer votre consentement \'e0 la g\'e9olocalisation dans les Param\'e8tres\par
+\par
+Pour exercer ces droits ou pour toute question : knbdevsolutions@gmail.com\par
 \par
 
-\b\fs22 6. Mises \`a jour de cette politique\b0\fs20\par
-Cette politique peut \'e9voluer. En cas de modification, vous serez invit\'e9 \`a l\rquote accepter \`a nouveau lors de l\rquote ouverture du logiciel.\par
+\b\fs22 6. \'c9volution de cette politique\b0\fs20\par
+Cette politique peut \'e9voluer avec le logiciel ou la r\'e9glementation. En cas de modification importante, vous serez invit\'e9 \'e0 lire et \'e0 accepter la nouvelle version \'e0 l\rquote ouverture du logiciel. Le num\'e9ro de version et la date de mise \'e0 jour figurent en bas de cette page.\par
 }

@@ -306,7 +306,7 @@ const en: Translations = {
     inForce:   'Updated June 18, 2026',
     sections: {
       s1title: '1. Presentation',
-      s1:      'Legwan is a shop management software (cash register, inventory, reports, credit) published by Legwan (support@legwan.cm). It works primarily offline: all your sales and stock data are stored locally on your machine. By installing and using this software, you accept the conditions described in this privacy policy.',
+      s1:      'Legwan is a shop management software (cash register, inventory, reports, credit) published by Legwan (knbdevsolutions@gmail.com). It works primarily offline: all your sales and stock data are stored locally on your machine. By installing and using this software, you accept the conditions described in this privacy policy.',
 
       s2title: '2. Data stored locally',
       s2:      'Legwan stores on your machine only the information needed for your shop to operate:\n\n• User accounts: first name, last name, role, PIN code (PBKDF2-hashed — never readable in clear text)\n• Shop information: name, address, phone number\n• Product catalogue: name, prices, stock\n• Sales and transactions\n• Stock movements (in and out)\n• Cash register sessions and closings\n• Suppliers and customers\n• Expenses and inventory sessions\n• Licence key\n\nNo banking or payment data is collected. Your financial data (revenue, amounts) never leaves your device.',
@@ -318,7 +318,7 @@ const en: Translations = {
       s4:      'Transmission to the publisher\'s servers is encrypted (TLS). Registry data is hosted on Firebase (Google Cloud), with encryption at rest. PIN codes are irreversibly hashed (PBKDF2-SHA-256, unique salt per user) — they can never be recovered. Each shop has its own isolated data space, inaccessible to other shops. The anti-brute-force lockout (5 failed attempts) is managed server-side, not on the device.',
 
       s5title: '5. Your rights',
-      s5:      'You may at any time:\n\n• View your data from within the software\n• Edit your information in shop settings\n• Export your data (CSV, PDF)\n• Back up and restore your shop via an encrypted file (USB drive)\n• Request deletion of your data\n• Revoke your geolocation consent in Settings\n\nFor any request: support@legwan.cm',
+      s5:      'You may at any time:\n\n• View your data from within the software\n• Edit your information in shop settings\n• Export your data (CSV, PDF)\n• Back up and restore your shop via an encrypted file (USB drive)\n• Request deletion of your data\n• Revoke your geolocation consent in Settings\n\nFor any request: knbdevsolutions@gmail.com',
 
       s6title: '6. Policy updates',
       s6:      'This policy may evolve with the software or regulations. In case of significant changes, you will be asked to read and accept the new version when opening the software. The version number and update date are shown at the bottom of this page.',

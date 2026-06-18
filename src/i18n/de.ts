@@ -306,7 +306,7 @@ const de: Translations = {
     inForce:   'Aktualisiert am 18. Juni 2026',
     sections: {
       s1title: '1. Vorstellung',
-      s1:      'Legwan ist eine Ladenverwaltungssoftware (Kasse, Lager, Berichte, Kredit) von Legwan (support@legwan.cm). Sie funktioniert hauptsächlich offline: Alle Verkaufs- und Bestandsdaten werden lokal auf Ihrem Gerät gespeichert. Durch die Installation und Nutzung dieser Software stimmen Sie den hier beschriebenen Bedingungen zu.',
+      s1:      'Legwan ist eine Ladenverwaltungssoftware (Kasse, Lager, Berichte, Kredit) von Legwan (knbdevsolutions@gmail.com). Sie funktioniert hauptsächlich offline: Alle Verkaufs- und Bestandsdaten werden lokal auf Ihrem Gerät gespeichert. Durch die Installation und Nutzung dieser Software stimmen Sie den hier beschriebenen Bedingungen zu.',
 
       s2title: '2. Lokal gespeicherte Daten',
       s2:      'Legwan speichert auf Ihrem Gerät nur die für den Betrieb Ihres Geschäfts erforderlichen Informationen:\n\n• Benutzerkonten: Vor- und Nachname, Rolle, PIN-Code (PBKDF2-Hash — nie im Klartext lesbar)\n• Geschäftsinformationen: Name, Adresse, Telefonnummer\n• Produktkatalog: Bezeichnung, Preise, Bestand\n• Verkäufe und Transaktionen\n• Lagerbewegungen (Eingänge und Ausgänge)\n• Kassensitzungen und -abschlüsse\n• Lieferanten und Kunden\n• Ausgaben und Inventarsitzungen\n• Lizenzschlüssel\n\nEs werden keine Bank- oder Zahlungsdaten erhoben. Ihre Finanzdaten (Umsatz, Beträge) verlassen Ihr Gerät nie.',
@@ -318,7 +318,7 @@ const de: Translations = {
       s4:      'Die Übertragung zu den Servern des Herausgebers ist verschlüsselt (TLS). Die Registrierungsdaten werden auf Firebase (Google Cloud) mit Verschlüsselung im Ruhezustand gehostet. PIN-Codes werden irreversibel gehasht (PBKDF2-SHA-256, einzigartiger Salt pro Benutzer) — sie können nie wiederhergestellt werden. Jedes Geschäft hat seinen eigenen isolierten Datenbereich. Der Anti-Brute-Force-Schutz (5 fehlgeschlagene Versuche) wird serverseitig verwaltet.',
 
       s5title: '5. Ihre Rechte',
-      s5:      'Ihnen stehen jederzeit folgende Rechte zu:\n\n• Einsicht in Ihre Daten direkt in der Software\n• Änderung Ihrer Informationen in den Einstellungen\n• Export Ihrer Daten im CSV- oder PDF-Format\n• Sicherung und Wiederherstellung Ihres Geschäfts über eine verschlüsselte Datei (USB)\n• Beantragung der vollständigen Löschung Ihrer Daten\n• Widerruf Ihrer Geolokalisierungseinwilligung in den Einstellungen\n\nFür die Ausübung dieser Rechte oder Fragen: support@legwan.cm',
+      s5:      'Ihnen stehen jederzeit folgende Rechte zu:\n\n• Einsicht in Ihre Daten direkt in der Software\n• Änderung Ihrer Informationen in den Einstellungen\n• Export Ihrer Daten im CSV- oder PDF-Format\n• Sicherung und Wiederherstellung Ihres Geschäfts über eine verschlüsselte Datei (USB)\n• Beantragung der vollständigen Löschung Ihrer Daten\n• Widerruf Ihrer Geolokalisierungseinwilligung in den Einstellungen\n\nFür die Ausübung dieser Rechte oder Fragen: knbdevsolutions@gmail.com',
 
       s6title: '6. Änderungen dieser Richtlinie',
       s6:      'Diese Richtlinie kann sich mit der Software oder Vorschriften weiterentwickeln. Bei wesentlichen Änderungen werden Sie beim Öffnen der Software aufgefordert, die neue Version zu lesen und zu akzeptieren. Versionsnummer und Aktualisierungsdatum befinden sich am Ende dieser Seite.',

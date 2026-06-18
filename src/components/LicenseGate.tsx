@@ -37,7 +37,7 @@ import {
 import { getBoutiqueId } from '@/services/boutiqueService';
 
 const PUBKEY_CONFIGURED = !!import.meta.env.VITE_LICENSE_PUBKEY;
-const SUPPORT_CONTACT   = import.meta.env.VITE_SUPPORT_CONTACT ?? 'contact@legwan.com';
+const SUPPORT_CONTACT   = import.meta.env.VITE_SUPPORT_CONTACT ?? 'knbdevsolutions@gmail.com';
 
 // ─── Gate context (read by child routes) ─────────────────────────────────────
 

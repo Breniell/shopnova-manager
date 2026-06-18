@@ -306,7 +306,7 @@ const es: Translations = {
     inForce:   'Actualizado el 18 de junio de 2026',
     sections: {
       s1title: '1. Presentación',
-      s1:      'Legwan es un software de gestión de tiendas (caja registradora, inventario, informes, crédito) editado por Legwan (support@legwan.cm). Funciona principalmente sin conexión: todos sus datos de ventas y stock se almacenan localmente en su máquina. Al instalar y usar este software, acepta las condiciones descritas en esta política de privacidad.',
+      s1:      'Legwan es un software de gestión de tiendas (caja registradora, inventario, informes, crédito) editado por Legwan (knbdevsolutions@gmail.com). Funciona principalmente sin conexión: todos sus datos de ventas y stock se almacenan localmente en su máquina. Al instalar y usar este software, acepta las condiciones descritas en esta política de privacidad.',
 
       s2title: '2. Datos almacenados localmente',
       s2:      'Legwan almacena en su máquina únicamente la información necesaria para el funcionamiento de su tienda:\n\n• Cuentas de usuario: nombre, apellido, rol, código PIN (hash PBKDF2 — nunca legible en texto claro)\n• Información de la tienda: nombre, dirección, número de teléfono\n• Catálogo de productos: nombre, precios, stock\n• Ventas y transacciones\n• Movimientos de stock (entradas y salidas)\n• Sesiones y cierres de caja\n• Proveedores y clientes\n• Gastos e inventarios\n• Clave de licencia\n\nNo se recopilan datos bancarios ni de pago. Sus datos financieros (ingresos, importes) nunca salen de su dispositivo.',
@@ -318,7 +318,7 @@ const es: Translations = {
       s4:      'La transmisión hacia los servidores del editor está cifrada (TLS). Los datos del registro se alojan en Firebase (Google Cloud), con cifrado en reposo. Los códigos PIN se hashean de forma irreversible (PBKDF2-SHA-256, sal única por usuario) — nunca pueden recuperarse. Cada tienda tiene su propio espacio de datos aislado, inaccesible para otras tiendas. El bloqueo anti-fuerza-bruta (5 intentos fallidos) se gestiona del lado del servidor.',
 
       s5title: '5. Sus derechos',
-      s5:      'Usted dispone en todo momento de los siguientes derechos:\n\n• Consultar sus datos directamente desde el software\n• Modificar su información en la configuración de la tienda\n• Exportar sus datos en formato CSV o PDF\n• Hacer copia de seguridad y restaurar su tienda mediante un archivo cifrado (memoria USB)\n• Solicitar la eliminación completa de sus datos\n• Revocar su consentimiento de geolocalización en Configuración\n\nPara ejercer estos derechos o cualquier consulta: support@legwan.cm',
+      s5:      'Usted dispone en todo momento de los siguientes derechos:\n\n• Consultar sus datos directamente desde el software\n• Modificar su información en la configuración de la tienda\n• Exportar sus datos en formato CSV o PDF\n• Hacer copia de seguridad y restaurar su tienda mediante un archivo cifrado (memoria USB)\n• Solicitar la eliminación completa de sus datos\n• Revocar su consentimiento de geolocalización en Configuración\n\nPara ejercer estos derechos o cualquier consulta: knbdevsolutions@gmail.com',
 
       s6title: '6. Evolución de esta política',
       s6:      'Esta política puede evolucionar con el software o la normativa. En caso de modificación importante, se le pedirá que lea y acepte la nueva versión al abrir el software. El número de versión y la fecha de actualización figuran en la parte inferior de esta página.',
