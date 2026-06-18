@@ -325,46 +325,112 @@ Variables d'environnement : à ajouter dans Vercel Dashboard → Project → Set
 
 ---
 
-## 8. Déploiement Desktop — Electron
+## 8. Déploiement Desktop — Electron (deux variantes)
 
-Le projet inclut déjà une configuration Electron (`electron/`, `electron-builder.yml`). Tu peux générer des installeurs Windows (`.exe`), Mac (`.dmg`), et Linux (`.AppImage`) en local.
+Le projet produit **deux installeurs Windows distincts** à partir du même code source :
 
-### 8.1 Builder l'app Electron
+| Variante | Contenu | Destinataire | Fichier produit |
+|---|---|---|---|
+| **CLIENT** | App complète — console super-admin **absente** du bundle | Commerçants | `Legwan-Setup-x.y.z.exe` |
+| **ÉDITEUR** | App complète — console super-admin **incluse** | Toi (éditeur) | `Legwan-Admin-Setup-x.y.z.exe` |
+
+Les deux installeurs coexistent sur la même machine sans conflit (IDs Windows différents, répertoires d'installation séparés).
+
+---
+
+### 8.1 Installeur CLIENT — à distribuer aux commerçants
 
 ```bash
-# 1. Builder l'app web
-npm run build
-
-# 2. Builder l'installeur Electron
-# Sur Windows :
-npx electron-builder --win
-
-# Sur Mac :
-npx electron-builder --mac
-
-# Sur Linux :
-npx electron-builder --linux
-
-# Tous ensemble (depuis Mac/Linux + dépendances wine pour Windows) :
-npx electron-builder -mwl
+npm run dist:client
 ```
 
-Les installeurs apparaissent dans `release/` ou `dist_electron/`.
+Ce que fait cette commande :
+1. Vite build avec `VITE_ENABLE_SUPERADMIN=false` → bundle sans aucun octet de super-admin
+2. electron-builder avec `electron-builder.yml` → produit `release/Legwan-Setup-x.y.z.exe`
 
-### 8.2 Distribuer les installeurs
+**Vérification après build** — zéro trace de super-admin dans le bundle :
+```bash
+# Doit retourner 0 résultat
+grep -r "superadmin" dist/assets/
+```
 
-Plusieurs options :
-- **Google Drive** : poser les installeurs dans un dossier partagé
-- **Site web** : héberger les binaires sur Firebase Hosting (dossier `/downloads/`)
-- **GitHub Releases** : créer une release et y attacher les binaires (gratuit)
+---
 
-> Pour des mises à jour automatiques (auto-update), il faut configurer `electron-updater` avec un service comme GitHub Releases ou un serveur statique. Hors scope pour Phase 1.
+### 8.2 Installeur ÉDITEUR — pour ta machine uniquement
 
-### 8.3 Signature de code (Windows/Mac, optionnel)
+```bash
+npm run dist:admin
+```
 
-Sans signature, Windows affiche un avertissement « SmartScreen » et Mac bloque l'ouverture. Pour le pilote, c'est acceptable (le commerçant clique "Plus d'infos" → "Exécuter quand même"). Pour la production large, prévoir :
-- Certificat code signing Windows (~70 €/an chez Sectigo)
-- Apple Developer ID (~99 $/an)
+Ce que fait cette commande :
+1. Vite build avec `VITE_ENABLE_SUPERADMIN=true` + `VITE_SUPERADMIN_EMAIL` issu de `.env`
+2. electron-builder avec `electron-builder.admin.yml` → produit `release/Legwan-Admin-Setup-x.y.z.exe`
+
+**Installation sur ta machine :**
+- Double-cliquer `release/Legwan-Admin-Setup-x.y.z.exe`
+- L'app s'installe dans `%LOCALAPPDATA%\Programs\Legwan Admin`
+- Un raccourci **"Legwan Admin"** apparaît sur le bureau et dans le menu Démarrer
+- Ouvrir l'app normalement (double-clic) — la console super-admin est accessible via `Ctrl+Shift+Alt+A`
+
+> L'installeur ÉDITEUR ne touche pas à l'installation CLIENT existante — IDs Windows et répertoires distincts.
+
+---
+
+### 8.3 Prérequis communs aux deux builds
+
+Avant de lancer `dist:client` ou `dist:admin` :
+
+1. `.env` présent et complet (Firebase vars + `VITE_SUPERADMIN_EMAIL` pour la variante admin)
+2. `build/icon.ico` présent (256×256 ou 512×512)
+3. `build/LICENSE.rtf` présent (affiché dans le wizard NSIS)
+
+Le script vérifie ces prérequis et s'arrête avec un message clair si quelque chose manque.
+
+---
+
+### 8.4 Builds web uniquement (sans Electron)
+
+Pour un déploiement web (Firebase Hosting, Vercel) :
+
+```bash
+npm run build:client    # bundle sans super-admin → dist/
+npm run build:admin     # bundle avec super-admin → dist/
+```
+
+---
+
+### 8.5 Sécurité — exclusions des installeurs
+
+Les fichiers suivants sont **explicitement exclus** des deux installeurs
+(configuré dans `files` de chaque `electron-builder*.yml`) :
+
+- `scripts/` (dont `scripts/license-gen/`) — outils CLI éditeur uniquement
+- `*.pem`, `*.key` — clés de signature éventuelles
+- `service-account*.json` — clé Firebase Admin
+- `.env`, `.env.*` — variables d'environnement locales
+
+---
+
+### 8.6 Signature de code (optionnel)
+
+Sans signature, Windows affiche un avertissement SmartScreen. Pour le pilote c'est acceptable
+(cliquer "Plus d'infos" → "Exécuter quand même"). Pour la production large :
+- Certificat EV Windows (~300 €/an chez Sectigo ou DigiCert) — supprime SmartScreen instantanément
+- OV classique (~70 €/an) — réduit les faux positifs mais ne supprime pas SmartScreen
+
+---
+
+### 8.7 Génération des licences (opération éditeur, séparée de l'app)
+
+La **signature des clés de licence** est une opération en ligne de commande, indépendante
+de l'app installée. Elle se fait sur ta machine uniquement, dans le terminal :
+
+```bash
+node scripts/license-gen/generate.mjs
+```
+
+Cet outil n'est jamais packagé dans les installeurs (exclu via `!scripts/**/*`).
+L'app installée (CLIENT ou ÉDITEUR) valide les licences — elle ne peut pas en générer.
 
 ---
 
@@ -490,9 +556,13 @@ Avant de mettre une boutique en production réelle (pas un test) :
 - [ ] Test offline : couper Wi-Fi, faire une vente, rallumer → synchro OK
 - [ ] Backup configuré (manuel ou automatique)
 - [ ] Sentry / monitoring activé (si en prod réelle)
-- [ ] Build commerçant sans `VITE_ENABLE_SUPERADMIN` — vérifier `grep -r superadmin dist/assets/` retourne 0 résultat
+- [ ] **Installeur CLIENT** généré via `npm run dist:client` → `release/Legwan-Setup-x.y.z.exe`
+- [ ] **Vérification bundle client** : `grep -r "superadmin" dist/assets/` → 0 résultat
+- [ ] **Installeur ÉDITEUR** généré via `npm run dist:admin` → `release/Legwan-Admin-Setup-x.y.z.exe`
+- [ ] **Installeur ÉDITEUR installé sur ta machine** — raccourci "Legwan Admin" sur le bureau
 - [ ] Custom claim `superadmin: true` attribué uniquement au compte admin dédié (pas un compte perso)
 - [ ] `service-account.json` absent du dépôt git (`git ls-files service-account*.json` → vide)
+- [ ] Vérifier que `scripts/license-gen/` **ne figure pas** dans l'installeur (`npm run dist:client` puis inspecter `release/`)
 
 ### Métier (boutique pilote)
 - [ ] Catalogue complet saisi (au moins 80% des produits)

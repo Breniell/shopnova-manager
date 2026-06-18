@@ -1102,6 +1102,7 @@ const pt: Translations = {
     later:        'Mais tarde',
   },
 
+  ...(import.meta.env.VITE_ENABLE_SUPERADMIN === 'true' ? {
   superadmin: {
     firebaseTitle:   'Firebase não configurado',
     firebaseDesc:    "O console super-admin requer uma conexão Firebase. Adicione variáveis de ambiente ao arquivo",
@@ -1326,6 +1327,8 @@ const pt: Translations = {
     licenseSearch:            'Pesquisar por loja, boutiqueId ou nome…',
     licenseNone:              'Nenhuma licença emitida ainda.',
   },
+  } : {}),
+
   license: {
     trialBanner:          'Teste gratuito — {days} dias restantes',
     trialEndsSoon:        'O periodo de teste termina em breve. Contacte o seu revendedor.',

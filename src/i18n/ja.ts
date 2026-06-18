@@ -1102,6 +1102,7 @@ const ja: Translations = {
     later:        '後で',
   },
 
+  ...(import.meta.env.VITE_ENABLE_SUPERADMIN === 'true' ? {
   superadmin: {
     firebaseTitle:   'Firebase が設定されていません',
     firebaseDesc:    "スーパー管理者コンソールにはFirebase接続が必要です。環境変数をファイルに追加してください",
@@ -1326,6 +1327,8 @@ const ja: Translations = {
     licenseSearch:            '店舗、boutiqueId、または名前で検索…',
     licenseNone:              'ライセンスはまだ発行されていません。',
   },
+  } : {}),
+
   license: {
     trialBanner:          '無料試用期間 — 残り{days}日',
     trialEndsSoon:        '試用期間もうすぐ終了。販売店へお問い合わせください。',

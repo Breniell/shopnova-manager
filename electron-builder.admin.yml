@@ -1,0 +1,71 @@
+# Legwan Admin — electron-builder configuration (ÉDITEUR uniquement)
+# Variante interne incluant la console super-admin.
+# NE PAS DISTRIBUER aux commerçants — usage éditeur uniquement.
+#
+# Commande : npm run dist:admin
+# Produit  : release/Legwan-Admin-Setup-x.y.z.exe
+
+appId: cm.legwan.manager.admin
+productName: Legwan Admin
+copyright: "© 2026 Legwan. Tous droits réservés."
+
+forceCodeSigning: false
+afterPack: scripts/after-pack-rcedit.cjs
+asar: false
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**/*
+  - electron/**/*
+  - package.json
+
+  - "!node_modules/**/*"
+  - "!src/**/*"
+  - "!tests/**/*"
+  - "!*.test.*"
+  - "!scripts/**/*"
+  - "!**/*.pem"
+  - "!**/*.key"
+  - "!service-account*.json"
+  - "!.env"
+  - "!.env.*"
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/icon.ico
+  requestedExecutionLevel: asInvoker
+  signAndEditExecutable: false
+  artifactName: "${productName}-Setup-${version}.${ext}"
+
+nsis:
+  oneClick: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: false
+  perMachine: false
+  # GUID distinct du client — les deux variantes coexistent sur la même machine
+  # sans que Windows les confonde (mises à jour, désinstallation indépendantes).
+  guid: "d4e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a"
+  include: build/installer.admin.nsh
+
+  installerLanguages:
+    - fr-FR
+  language: "1036"
+
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Legwan Admin
+
+  license: build/LICENSE.rtf
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
+  runAfterFinish: true
+
+# Pas de publish : l'éditeur met à jour sa version admin en reconstruisant manuellement.
+# electron-updater échouera silencieusement (catch dans main.mjs) — comportement attendu.

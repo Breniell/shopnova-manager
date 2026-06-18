@@ -1102,6 +1102,7 @@ const tr: Translations = {
     later:        'Sonra',
   },
 
+  ...(import.meta.env.VITE_ENABLE_SUPERADMIN === 'true' ? {
   superadmin: {
     firebaseTitle:   'Firebase yapılandırılmadı',
     firebaseDesc:    "Süper yönetici konsolu Firebase bağlantısı gerektirir. Ortam değişkenlerini dosyaya ekleyin",
@@ -1326,6 +1327,8 @@ const tr: Translations = {
     licenseSearch:            'Magaza, boutiqueId veya ada gore ara…',
     licenseNone:              'Henuz hicbir lisans verilmemis.',
   },
+  } : {}),
+
   license: {
     trialBanner:          'Ucretsiz deneme — {days} gun kaldi',
     trialEndsSoon:        'Deneme suresi yakinda sona eriyor. Saticinizia iletisin geciniz.',

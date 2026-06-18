@@ -1102,6 +1102,7 @@ const ar: Translations = {
     later:        'لاحقاً',
   },
 
+  ...(import.meta.env.VITE_ENABLE_SUPERADMIN === 'true' ? {
   superadmin: {
     firebaseTitle:   'Firebase غير مهيأ',
     firebaseDesc:    "تتطلب لوحة المشرف الرئيسي اتصال Firebase. أضف متغيرات البيئة إلى الملف",
@@ -1326,6 +1327,8 @@ const ar: Translations = {
     licenseSearch:            'البحث حسب المتجر أو boutiqueId أو الاسم…',
     licenseNone:              'لا توجد تراخيص صادرة حتى الآن.',
   },
+  } : {}),
+
   license: {
     trialBanner:          'الفترة التجريبية — {days} يوما متبقيا',
     trialEndsSoon:        'تنتهي الفترة التجريبية قريبا. تواصل مع موزعك.',

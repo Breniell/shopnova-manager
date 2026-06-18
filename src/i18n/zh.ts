@@ -1102,6 +1102,7 @@ const zh: Translations = {
     later:        '稍后',
   },
 
+  ...(import.meta.env.VITE_ENABLE_SUPERADMIN === 'true' ? {
   superadmin: {
     firebaseTitle:   'Firebase 未配置',
     firebaseDesc:    "超级管理员控制台需要 Firebase 连接。请在文件中添加环境变量",
@@ -1326,6 +1327,8 @@ const zh: Translations = {
     licenseSearch:            '按店铺、boutiqueId 或名称搜索…',
     licenseNone:              '暂无已颁发的许可证。',
   },
+  } : {}),
+
   license: {
     trialBanner:          '免费试用 — 剩余 {days} 天',
     trialEndsSoon:        '试用期即将结束，请联系您的经销商激活许可证。',

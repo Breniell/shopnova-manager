@@ -35,6 +35,12 @@ files:
   - "!src/**/*"
   - "!tests/**/*"
   - "!*.test.*"
+  - "!scripts/**/*"
+  - "!**/*.pem"
+  - "!**/*.key"
+  - "!service-account*.json"
+  - "!.env"
+  - "!.env.*"
 
 # ── Windows configuration ──────────────────────────────────────────────────────
 win:

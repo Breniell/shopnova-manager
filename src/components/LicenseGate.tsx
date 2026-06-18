@@ -179,7 +179,7 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
   const checkingRef               = useRef(false);
 
   // Superadmin path is never gated — it's the publisher's console.
-  const isSuperAdmin = location.pathname.startsWith('/superadmin');
+  const isSuperAdmin = import.meta.env.VITE_ENABLE_SUPERADMIN === 'true' && location.pathname.startsWith('/superadmin');
 
   // Dev mode without a key → skip all checks.
   const shouldSkip = !PUBKEY_CONFIGURED || isSuperAdmin;
