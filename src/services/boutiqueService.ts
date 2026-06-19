@@ -172,7 +172,42 @@ export async function signInBoutiqueRecoveryAccount(email: string, password: str
 
   const normalizedEmail = email.trim().toLowerCase();
   const credential = await signInWithEmailAndPassword(auth, normalizedEmail, password);
-  _boutiqueId = credential.user.uid;
+  const uid = credential.user.uid;
+
+  console.log('[Restore] Authentification Firebase reussie (UID:', uid, '). Verification des donnees boutique…');
+
+  // Verify that this account actually owns boutique data in Firestore.
+  // Without this check, a successful sign-in on an account with no associated boutique
+  // silently reloads into an empty login screen with no error message.
+  const { fsIsBoutiqueInitialized } = await import('@/services/firestoreService');
+  let boutiqueExists: boolean;
+  try {
+    boutiqueExists = await fsIsBoutiqueInitialized(uid);
+  } catch (err) {
+    console.error('[Restore] Impossible de lire la boutique dans Firestore (UID:', uid, '):', err);
+    await auth.signOut().catch(() => {});
+    const code = (err as { code?: string })?.code ?? '';
+    if (code === 'permission-denied' || code === 'PERMISSION_DENIED') {
+      throw new Error(
+        'Acces refuse par Firestore (permission-denied). Verifiez que les regles de securite Firebase sont bien deployees et que le compte est correct.'
+      );
+    }
+    throw new Error(
+      'Impossible de verifier la boutique. Verifiez votre connexion internet et reessayez.'
+    );
+  }
+
+  if (!boutiqueExists) {
+    console.error('[Restore] Aucune donnee boutique dans Firestore pour UID:', uid,
+      '— compte non lie a une boutique, ou mauvaise adresse email.');
+    await auth.signOut().catch(() => {});
+    throw new Error(
+      "Aucune boutique associee a ce compte. Verifiez votre adresse email — ce compte n'a peut-etre pas encore ete lie a une boutique via les Parametres."
+    );
+  }
+
+  console.log('[Restore] Boutique verifiee. Rechargement de l\'application…');
+  _boutiqueId = uid;
   localStorage.setItem(RECOVERY_EMAIL_KEY, normalizedEmail);
   localStorage.removeItem('legwan-auth');
   return _boutiqueId;

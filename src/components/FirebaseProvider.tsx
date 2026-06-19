@@ -293,10 +293,19 @@ export async function bootstrapFirebase(): Promise<void> {
   try {
     initialized = await fsIsBoutiqueInitialized(boutiqueId);
   } catch (err) {
-    console.warn('Firebase bootstrap offline fallback (isBoutiqueInitialized failed):', err);
+    console.error('[Restore] fsIsBoutiqueInitialized failed for boutiqueId', boutiqueId, ':', err);
+    // Treat as uninitialized — offline / permission error handled in the branch below.
   }
 
   if (!initialized) {
+    const pendingAdmin = localStorage.getItem(PENDING_ADMIN_KEY);
+    if (isFirebaseConfigured && !pendingAdmin) {
+      // Expected on a genuine first launch (PolicyGate hasn't written pendingAdmin yet).
+      // Unexpected after a restore — signInBoutiqueRecoveryAccount should have caught this.
+      // If you see this after a restore attempt, check [Restore] logs above for the cause.
+      console.error('[Restore] No boutique data and no pending admin for UID:', boutiqueId);
+    }
+
     // Brand-new boutique: seed Firestore with the admin account from PolicyGate
     // (or demo accounts in dev mode), then seed local state.
     const defaultUsers = await buildDefaultUsers();
@@ -308,7 +317,7 @@ export async function bootstrapFirebase(): Promise<void> {
       });
     } catch (err) {
       // Offline on first launch — still seed local state so app is usable
-      console.warn('Firebase bootstrap offline: boutique init deferred', err);
+      console.error('[Restore] fsInitializeBoutique failed (offline or permission error):', err);
     }
 
     useAuthStore.getState()._setUsers(defaultUsers);
@@ -337,7 +346,7 @@ export async function bootstrapFirebase(): Promise<void> {
       fsLoadSaleCounter(boutiqueId),
     ])) as unknown as BootstrapData;
   } catch (err) {
-    console.warn('Firebase bootstrap offline fallback (data load failed):', err);
+    console.error('[Restore] Data load failed for boutiqueId', boutiqueId, ':', err);
     if (!await trySeedLocalMode()) {
       throw err;
     }
