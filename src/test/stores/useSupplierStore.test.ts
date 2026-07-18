@@ -43,7 +43,7 @@ describe('useSupplierStore — addSupplier', () => {
     useSupplierStore.getState().addSupplier({ nom: 'Test', telephone: '699000000' });
     const suppliers = useSupplierStore.getState().suppliers;
     const s = suppliers[suppliers.length - 1];
-    expect(s.id).toMatch(/^sup\d+$/);
+    expect(s.id).toMatch(/^sup-[a-zA-Z0-9-]+$/);
   });
 
   it('stores all optional fields', () => {

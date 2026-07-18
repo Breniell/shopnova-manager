@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  collection, getDocs, setDoc, updateDoc, doc, serverTimestamp,
+  collection, getDocs, setDoc, updateDoc, doc, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
 import {
   KeyRound, Plus, Search, Copy, Check, AlertTriangle, ShieldOff,
@@ -656,12 +656,15 @@ export const SALicenses: React.FC<Props> = ({ boutiques }) => {
     if (!fb) return;
     setRevoking(true);
     try {
-      await updateDoc(doc(fb.saDb, 'licenses', lic.licenseId), { status: 'revoked' });
-      await setDoc(
+      // Keep registry state and client-visible revocation atomic.
+      const batch = writeBatch(fb.saDb);
+      batch.update(doc(fb.saDb, 'licenses', lic.licenseId), { status: 'revoked' });
+      batch.set(
         doc(fb.saDb, `boutiques/${lic.boutiqueId}/_license/current`),
         { revoked: true },
         { merge: true },
       );
+      await batch.commit();
       upsertLicense({ ...lic, status: 'revoked' });
     } catch (err) {
       console.error('[SALicenses] handleRevoke error:', err);

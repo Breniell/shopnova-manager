@@ -15,10 +15,12 @@ forceCodeSigning: false
 # afterPack, before NSIS creates the installer.
 afterPack: scripts/after-pack-rcedit.cjs
 
-# Keep packaged files on disk instead of app.asar: the CommonJS launcher
-# dynamically imports the ESM main process, and Windows/Electron ESM resolution
-# is unreliable from inside app.asar.
-asar: false
+# Package application code in app.asar. Electron runtime files stay unpacked so
+# Electron 26 can load the ESM main process and preload without relying on Node's
+# ESM loader to read module contents directly from the archive.
+asar: true
+asarUnpack:
+  - electron/**/*
 
 # ── Files to include in the app package ────────────────────────────────────────
 directories:

@@ -21,6 +21,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import {
   getRemainingBalance, getCustomerOutstanding, getAllOpenCreditSales,
   getCustomerOpenCreditSales, getCreditAgeBucket, getCreditAgeInDays,
+  getPaymentSignedAmount,
 } from '@/lib/credit';
 import { formatFCFA, formatDateShort, getCurrentBcp47 } from '@/utils/formatters';
 import { cn } from '@/lib/utils';
@@ -90,7 +91,7 @@ const CreditPage: React.FC = () => {
     todayStart.setHours(0, 0, 0, 0);
     return payments
       .filter(p => new Date(p.date) >= todayStart)
-      .reduce((sum, p) => sum + p.amount, 0);
+      .reduce((sum, p) => sum + getPaymentSignedAmount(p), 0);
   }, [payments]);
 
   // ── Filtres recherche ────────────────────────────────────────────────────
@@ -438,7 +439,7 @@ const CreditPage: React.FC = () => {
                           {customer ? `${customer.prenom} ${customer.nom}` : t('credit.deletedClient')}
                         </td>
                         <td className="p-3 text-sm text-muted-foreground">{sale?.saleNumber ?? '—'}</td>
-                        <td className="p-3 text-sm text-right text-secondary font-medium tabular-nums">{formatFCFA(p.amount)}</td>
+                        <td className="p-3 text-sm text-right text-secondary font-medium tabular-nums">{formatFCFA(getPaymentSignedAmount(p))}</td>
                         <td className="p-3 text-sm text-muted-foreground">
                           {p.channel === 'especes' ? t('credit.cashChannel') : `📱 ${p.mobileOperator?.toUpperCase() ?? 'Mobile'}`}
                         </td>

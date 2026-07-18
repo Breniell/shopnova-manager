@@ -16,7 +16,6 @@ import {
   type InventoryLine,
 } from '@/stores/useInventoryStore';
 import {
-  useStockStore,
   ADJUSTMENT_REASON_LABELS,
   type AdjustmentReason,
 } from '@/stores/useStockStore';
@@ -44,8 +43,7 @@ const REASONS: AdjustmentReason[] = [
 const InventairePage: React.FC = () => {
   const { t } = useTranslation();
   const { sessions, createSession, updateLine, validateSession, cancelSession, updateNotes } = useInventoryStore();
-  const { products, categories, updateStock } = useProductStore();
-  const { addMovement } = useStockStore();
+  const { products, categories } = useProductStore();
   const { currentUser } = useAuthStore();
 
   const [tab, setTab] = useState<Tab>('new');
@@ -134,39 +132,23 @@ const InventairePage: React.FC = () => {
   const handleValidate = () => {
     if (!activeSession || !currentUser) return;
 
-    const result = validateSession(
-      activeSession.id,
-      currentUser.id,
-      `${currentUser.prenom} ${currentUser.nom}`,
-      {
-        getProductPrixAchat: (productId) => {
-          const p = products.find(x => x.id === productId);
-          return p?.prixAchat ?? 0;
+    let result: ReturnType<typeof validateSession>;
+    try {
+      result = validateSession(
+        activeSession.id,
+        currentUser.id,
+        `${currentUser.prenom} ${currentUser.nom}`,
+        {
+          getProductPrixAchat: (productId) => {
+            const p = products.find(x => x.id === productId);
+            return p?.prixAchat ?? 0;
+          },
         },
-        addMovementAndUpdateStock: ({
-          productId, productName, ecart, stockTheorique, stockCompte,
-          reason, notes, inventorySessionId, userId, userName,
-        }) => {
-          // Mouvement d'ajustement (la quantité peut être négative = perte)
-          addMovement({
-            date: new Date(),
-            productId,
-            productName,
-            type: 'ajustement',
-            quantity: ecart,
-            stockBefore: stockTheorique,
-            stockAfter: stockCompte,
-            userId,
-            userName,
-            reason,
-            inventorySessionId,
-            notes,
-          });
-          // Mise à jour du stock produit (en delta — updateStock(id, delta))
-          updateStock(productId, ecart);
-        },
-      }
-    );
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('common.error'));
+      return;
+    }
 
     if (result.success === false) {
       const list = result.missingReasons.slice(0, 3).join(', ') + (result.missingReasons.length > 3 ? '...' : '');

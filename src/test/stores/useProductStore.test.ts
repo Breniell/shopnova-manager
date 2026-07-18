@@ -52,7 +52,7 @@ describe('useProductStore — addProduct', () => {
     });
     const products = useProductStore.getState().products;
     const newProduct = products[products.length - 1];
-    expect(newProduct.id).toMatch(/^p\d+$/);
+    expect(newProduct.id).toMatch(/^p-[a-zA-Z0-9-]+$/);
   });
 
   it('stores the correct product data', () => {
@@ -74,7 +74,7 @@ describe('useProductStore — updateProduct', () => {
     updateProduct(target.id, { prixVente: 9999, stock: 77 });
     const updated = useProductStore.getState().products.find(p => p.id === target.id)!;
     expect(updated.prixVente).toBe(9999);
-    expect(updated.stock).toBe(77);
+    expect(updated.stock).toBe(target.stock);
     expect(updated.nom).toBe(target.nom);
   });
 
@@ -105,24 +105,6 @@ describe('useProductStore — deleteProduct', () => {
     const before = useProductStore.getState().products.length;
     useProductStore.getState().deleteProduct('nonexistent-id');
     expect(useProductStore.getState().products).toHaveLength(before);
-  });
-});
-
-describe('useProductStore — updateStock', () => {
-  it('increases stock when quantity is positive', () => {
-    const { updateStock, products } = useProductStore.getState();
-    const target = products[0];
-    updateStock(target.id, 10);
-    const updated = useProductStore.getState().products.find(p => p.id === target.id)!;
-    expect(updated.stock).toBe(target.stock + 10);
-  });
-
-  it('decreases stock when quantity is negative', () => {
-    const { updateStock, products } = useProductStore.getState();
-    const target = products.find(p => p.stock >= 5)!;
-    updateStock(target.id, -5);
-    const updated = useProductStore.getState().products.find(p => p.id === target.id)!;
-    expect(updated.stock).toBe(target.stock - 5);
   });
 });
 

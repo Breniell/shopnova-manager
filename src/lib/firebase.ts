@@ -10,10 +10,26 @@ import {
 import { getAuth, type Auth } from 'firebase/auth';
 
 /** True if Firebase credentials are present in the environment */
-export const isFirebaseConfigured = !!(
+export let isFirebaseConfigured = !!(
   import.meta.env.VITE_FIREBASE_API_KEY &&
   import.meta.env.VITE_FIREBASE_PROJECT_ID
 );
+
+/** Permanently selects autonomous local mode for the current renderer. */
+export function disableFirebaseForLocalMode(): void {
+  isFirebaseConfigured = false;
+}
+
+/** Runtime config remains available to the isolated migration app in local mode. */
+export function getFirebaseRuntimeConfig(): Record<string, string> | null {
+  return _firebaseConfig ? { ..._firebaseConfig } : null;
+}
+
+/** Call only after the default Auth has successfully signed into the target tenant. */
+export function enableFirebaseAfterLocalMigration(): void {
+  if (!_firebaseConfig) throw new Error('Firebase runtime configuration unavailable');
+  isFirebaseConfigured = true;
+}
 
 // ─── Boutique Firebase app (anonymous auth, offline-first Firestore) ──────────
 

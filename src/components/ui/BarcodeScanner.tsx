@@ -22,6 +22,8 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ open, onClose, o
   const videoRef = useRef<HTMLVideoElement>(null);
   const rafRef = useRef<number>(0);
   const streamRef = useRef<MediaStream | null>(null);
+  const callbacksRef = useRef({ onClose, onScan, t });
+  callbacksRef.current = { onClose, onScan, t };
   const [manualCode, setManualCode] = useState('');
   const [detectedCode, setDetectedCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +49,12 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ open, onClose, o
     const handleResult = (code: string) => {
       if (cancelled) return;
       setDetectedCode(code);
-      setTimeout(() => { if (!cancelled) { onScan(code); onClose(); } }, 700);
+      setTimeout(() => {
+        if (!cancelled) {
+          callbacksRef.current.onScan(code);
+          callbacksRef.current.onClose();
+        }
+      }, 700);
     };
 
     // Fast path: native BarcodeDetector API (no lib overhead, lower latency)
@@ -91,11 +98,12 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ open, onClose, o
       } catch (err) {
         if (cancelled) return;
         const domErr = err instanceof DOMException ? err.name : '';
+        const translate = callbacksRef.current.t;
         const msg = domErr === 'NotAllowedError'
-          ? t('barcode.permissionDenied')
+          ? translate('barcode.permissionDenied')
           : domErr === 'NotFoundError'
-          ? t('barcode.noCamera')
-          : t('barcode.cameraError');
+          ? translate('barcode.noCamera')
+          : translate('barcode.cameraError');
         setError(msg);
       }
     };

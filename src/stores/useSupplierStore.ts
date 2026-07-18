@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { getBoutiqueId } from '@/services/boutiqueService';
 import { fsSaveSupplier, fsDeleteSupplier } from '@/services/firestoreService';
+import { enqueue } from '@/lib/outbox';
+import { toast } from 'sonner';
 
 export interface Supplier {
   id: string;
@@ -28,10 +30,15 @@ export const useSupplierStore = create<SupplierState>()((set, get) => ({
   _setSuppliers: (suppliers) => set({ suppliers }),
 
   addSupplier: (supplier) => {
-    const id = 'sup' + Date.now();
+    const id = `sup-${globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`}`;
     const newSupplier: Supplier = { ...supplier, id };
     set(state => ({ suppliers: [...state.suppliers, newSupplier] }));
-    fsSaveSupplier(getBoutiqueId(), newSupplier).catch(console.error);
+    fsSaveSupplier(getBoutiqueId(), newSupplier).catch((error) => {
+      enqueue('supplierSave', newSupplier);
+      toast.error("Fournisseur en attente de synchronisation");
+      console.warn('[outbox] supplier create enqueued:', error);
+    });
   },
 
   updateSupplier: (id, data) => {
@@ -39,11 +46,19 @@ export const useSupplierStore = create<SupplierState>()((set, get) => ({
       suppliers: state.suppliers.map(s => s.id === id ? { ...s, ...data } : s),
     }));
     const updated = get().suppliers.find(s => s.id === id);
-    if (updated) fsSaveSupplier(getBoutiqueId(), updated).catch(console.error);
+    if (updated) fsSaveSupplier(getBoutiqueId(), updated).catch((error) => {
+      enqueue('supplierSave', updated);
+      toast.error("Modification fournisseur en attente de synchronisation");
+      console.warn('[outbox] supplier update enqueued:', error);
+    });
   },
 
   deleteSupplier: (id) => {
     set(state => ({ suppliers: state.suppliers.filter(s => s.id !== id) }));
-    fsDeleteSupplier(getBoutiqueId(), id).catch(console.error);
+    fsDeleteSupplier(getBoutiqueId(), id).catch((error) => {
+      enqueue('supplierDelete', id);
+      toast.error("Suppression fournisseur en attente de synchronisation");
+      console.warn('[outbox] supplier delete enqueued:', error);
+    });
   },
 }));

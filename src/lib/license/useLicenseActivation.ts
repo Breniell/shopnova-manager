@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { verifyLicense } from './verify';
-import { setLicenseString, fsSaveLicense } from './store';
+import { getLastSeenTime, setLastSeenTime, setLicenseString, fsSaveLicense } from './store';
+import { getTrustedNow } from './clock';
 import { getBoutiqueId } from '@/services/boutiqueService';
 
 export type ActivateError =
@@ -37,8 +38,13 @@ export function useLicenseActivation(onActivated: () => void): UseLicenseActivat
     setError(null);
 
     try {
-      const bid    = getBoutiqueId();
-      const result = await verifyLicense(trimmed, { now: Date.now(), boutiqueId: bid });
+      const bid = getBoutiqueId();
+      // Use the same monotonic/network-aware clock as startup. Date.now() alone
+      // accepts an expired key after a manual clock rollback.
+      const lastSeen = await getLastSeenTime(bid);
+      const { now } = await getTrustedNow(lastSeen);
+      await setLastSeenTime(now, bid);
+      const result = await verifyLicense(trimmed, { now, boutiqueId: bid });
 
       if (result.valid && result.payload) {
         setLicenseString(trimmed);

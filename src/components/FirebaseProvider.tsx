@@ -17,7 +17,11 @@ import React, { useState, useEffect } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { onSnapshot, collection, doc, query, where, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { useTranslation } from '@/i18n';
-import { initBoutique, getBoutiqueId } from '@/services/boutiqueService';
+import {
+  initBoutique,
+  getBoutiqueId,
+  activateLocalOfflineBoutique,
+} from '@/services/boutiqueService';
 import { db, isFirebaseConfigured } from '@/lib/firebase';
 import {
   fsIsBoutiqueInitialized,
@@ -53,6 +57,9 @@ import { hashPin, generateSalt } from '@/lib/crypto';
 import type { User } from '@/stores/useAuthStore';
 import { sendRegistryHeartbeat } from '@/services/registryService';
 import { retryAll } from '@/lib/outbox';
+import { shouldUseOfflineFallback, runBoundedStartup } from '@/lib/offlineStartup';
+import { hydrateLocalSnapshot, installLocalSnapshotPersistence } from '@/lib/localSnapshot';
+import { mergeSyncedSales } from '@/lib/salesSync';
 
 const PENDING_ADMIN_KEY = 'legwan-pending-admin';
 
@@ -210,17 +217,22 @@ const ErrorScreen: React.FC<{ error: string }> = ({ error }) => {
 };
 
 // ─── Real-time listeners ──────────────────────────────────────────────────────
-// Products, sales, users, customers, and settings get live updates via
-// onSnapshot so the UI reflects changes made on other devices (or other
-// browser tabs) without a page reload.
-//
-// Movements, expenses, sessions, payments, cashSessions, cashOuts,
-// inventorySessions, and clotures remain point-in-time getDocs: they are
-// append-only or low-frequency, and we don't need sub-second freshness there.
+// Business collections get live updates so a second till cannot keep stale
+// accounting, session or inventory data until the next application restart.
 
 function subscribeToRealtime(bid: string): Array<() => void> {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 90);
+
+  const parseDate = (value: unknown): Date => value instanceof Timestamp ? value.toDate()
+    : value instanceof Date ? value
+    : new Date(value as string);
+
+  const mapSales = (documents: Array<{ id: string; data: () => Record<string, unknown> }>): Sale[] =>
+    documents.map(item => {
+      const data = item.data();
+      return { ...(data as unknown as Sale), id: item.id, date: parseDate(data.date) };
+    });
 
   const unsubProducts = onSnapshot(
     collection(db, `boutiques/${bid}/products`),
@@ -231,7 +243,20 @@ function subscribeToRealtime(bid: string): Array<() => void> {
     err => console.warn('[onSnapshot] products:', err),
   );
 
-  const unsubSales = onSnapshot(
+  let recentSales: Sale[] | null = null;
+  let creditSales: Sale[] | null = null;
+  const publishSales = () => {
+    if (!recentSales || !creditSales) return;
+    const merged = mergeSyncedSales(
+      recentSales,
+      creditSales,
+      useSaleStore.getState().sales,
+      cutoff,
+    );
+    useSaleStore.getState()._setSales(merged);
+  };
+
+  const unsubRecentSales = onSnapshot(
     query(
       collection(db, `boutiques/${bid}/sales`),
       where('date', '>=', Timestamp.fromDate(cutoff)),
@@ -239,24 +264,43 @@ function subscribeToRealtime(bid: string): Array<() => void> {
       limit(2000),
     ),
     snap => {
-      const sales = snap.docs.map(d => {
-        const data = d.data();
-        const ts = data.date;
-        const date = ts instanceof Timestamp ? ts.toDate()
-                   : ts instanceof Date      ? ts
-                   : new Date(ts as string);
-        return { ...(data as Sale), id: d.id, date };
-      });
-      useSaleStore.getState()._setSales(sales);
+      recentSales = mapSales(snap.docs);
+      publishSales();
     },
-    err => console.warn('[onSnapshot] sales:', err),
+    err => console.warn('[onSnapshot] recent sales:', err),
+  );
+
+  const unsubCreditSales = onSnapshot(
+    query(collection(db, `boutiques/${bid}/sales`), where('paymentMode', '==', 'credit')),
+    snap => {
+      creditSales = mapSales(snap.docs);
+      publishSales();
+    },
+    err => console.warn('[onSnapshot] credit sales:', err),
+  );
+
+  const unsubPayments = onSnapshot(
+    query(
+      collection(db, `boutiques/${bid}/payments`),
+      orderBy('date', 'desc'),
+    ),
+    snap => {
+      const payments = snap.docs.map(d => {
+        const data = d.data();
+        return { ...(data as Payment), id: d.id, date: parseDate(data.date) };
+      });
+      usePaymentStore.getState()._setPayments(payments);
+    },
+    err => console.warn('[onSnapshot] payments:', err),
   );
 
   const unsubUsers = onSnapshot(
     collection(db, `boutiques/${bid}/users`),
     snap => {
       const users = snap.docs.map(d => ({ ...(d.data() as User), id: d.id }));
-      if (users.length) useAuthStore.getState()._setUsers(users);
+      // Preserve the offline PIN directory on an empty cache emission, but an
+      // empty server snapshot is authoritative (for example after revocation).
+      if (users.length || !snap.metadata.fromCache) useAuthStore.getState()._setUsers(users);
     },
     err => console.warn('[onSnapshot] users:', err),
   );
@@ -278,24 +322,106 @@ function subscribeToRealtime(bid: string): Array<() => void> {
     err => console.warn('[onSnapshot] settings:', err),
   );
 
-  return [unsubProducts, unsubSales, unsubUsers, unsubCustomers, unsubSettings];
+  const unsubMovements = onSnapshot(
+    query(collection(db, `boutiques/${bid}/stock_movements`), orderBy('date', 'desc')),
+    snap => useStockStore.getState()._setMovements(snap.docs.map(item => {
+      const data = item.data();
+      return { ...(data as StockMovement), id: item.id, date: parseDate(data.date) };
+    })),
+    err => console.warn('[onSnapshot] stock movements:', err),
+  );
+
+  const unsubSuppliers = onSnapshot(
+    collection(db, `boutiques/${bid}/suppliers`),
+    snap => useSupplierStore.getState()._setSuppliers(
+      snap.docs.map(item => ({ ...(item.data() as Supplier), id: item.id })),
+    ),
+    err => console.warn('[onSnapshot] suppliers:', err),
+  );
+
+  const unsubExpenses = onSnapshot(
+    query(collection(db, `boutiques/${bid}/expenses`), orderBy('date', 'desc')),
+    snap => useExpenseStore.getState()._setExpenses(snap.docs.map(item => {
+      const data = item.data();
+      return { ...(data as Expense), id: item.id, date: parseDate(data.date) };
+    })),
+    err => console.warn('[onSnapshot] expenses:', err),
+  );
+
+  const unsubCashSessions = onSnapshot(
+    query(collection(db, `boutiques/${bid}/cash_sessions`), orderBy('openedAt', 'desc')),
+    snap => {
+      const sessions = snap.docs.map(item => ({ ...(item.data() as CashSession), id: item.id }));
+      const store = useCashSessionStore.getState();
+      store._setSessions(sessions);
+      if (store.currentSessionId && !sessions.some(
+        session => session.id === store.currentSessionId && session.status === 'open',
+      )) store._setCurrentSessionId(null);
+    },
+    err => console.warn('[onSnapshot] cash sessions:', err),
+  );
+
+  const unsubCashOuts = onSnapshot(
+    query(collection(db, `boutiques/${bid}/cash_outs`), orderBy('date', 'desc')),
+    snap => useCashSessionStore.getState()._setCashOuts(snap.docs.map(item => {
+      const data = item.data();
+      return { ...(data as CashOut), id: item.id, date: parseDate(data.date) };
+    })),
+    err => console.warn('[onSnapshot] cash outs:', err),
+  );
+
+  const unsubInventorySessions = onSnapshot(
+    query(collection(db, `boutiques/${bid}/inventory_sessions`), orderBy('createdAt', 'desc')),
+    snap => useInventoryStore.getState()._setSessions(
+      snap.docs.map(item => ({ ...(item.data() as InventorySession), id: item.id })),
+    ),
+    err => console.warn('[onSnapshot] inventory sessions:', err),
+  );
+
+  const unsubClotures = onSnapshot(
+    query(collection(db, `boutiques/${bid}/clotures`), orderBy('date', 'desc')),
+    snap => useCaisseStore.getState()._setClotures(
+      snap.docs.map(item => ({ ...(item.data() as ClotureCaisse), id: item.id })),
+    ),
+    err => console.warn('[onSnapshot] clotures:', err),
+  );
+
+  return [
+    unsubProducts,
+    unsubRecentSales,
+    unsubCreditSales,
+    unsubPayments,
+    unsubUsers,
+    unsubCustomers,
+    unsubSettings,
+    unsubMovements,
+    unsubSuppliers,
+    unsubExpenses,
+    unsubCashSessions,
+    unsubCashOuts,
+    unsubInventorySessions,
+    unsubClotures,
+  ];
 }
 
 // ─── Main bootstrap ─────────────────────────────────────────────────────────────
 
 /** Exported for integration-testing only — do not call from application code. */
-export async function bootstrapFirebase(): Promise<void> {
+export async function bootstrapFirebase(localSnapshotAvailable = false): Promise<void> {
   // 1. Authenticate + get boutiqueId
   const boutiqueId = await initBoutique();
 
+  // A hydrated autonomous snapshot is the newest crash-safe source on this
+  // device. Never replace it with a possibly older or incomplete Firestore
+  // cache while disconnected. Installations upgrading from an older version
+  // may not have such a snapshot yet, so they still get one cache hydration.
+  if (localSnapshotAvailable && typeof navigator !== 'undefined' && navigator.onLine === false) return;
+
   // 2. Check if this boutique already exists in Firestore
-  let initialized = false;
-  try {
-    initialized = await fsIsBoutiqueInitialized(boutiqueId);
-  } catch (err) {
-    console.error('[Restore] fsIsBoutiqueInitialized failed for boutiqueId', boutiqueId, ':', err);
-    // Treat as uninitialized — offline / permission error handled in the branch below.
-  }
+  // A failed probe is not evidence of a new boutique. Propagate the failure so
+  // a cache miss, permission error, or transient outage can never enqueue a
+  // destructive reinitialization of an existing cloud tenant.
+  const initialized = await fsIsBoutiqueInitialized(boutiqueId);
 
   if (!initialized) {
     const pendingAdmin = localStorage.getItem(PENDING_ADMIN_KEY);
@@ -308,11 +434,16 @@ export async function bootstrapFirebase(): Promise<void> {
 
     // Brand-new boutique: seed Firestore with the admin account from PolicyGate
     // (or demo accounts in dev mode), then seed local state.
-    const defaultUsers = await buildDefaultUsers();
+    let defaultUsers = useAuthStore.getState().users;
+    // A first launch may have completed locally while the PC was disconnected.
+    // In that case PolicyGate's pending admin has already been consumed and is
+    // now present in the persisted auth store. Reuse it when Firebase becomes
+    // available instead of initializing the new remote tenant with no users.
+    if (!defaultUsers.length) defaultUsers = await buildDefaultUsers();
 
     try {
       await fsInitializeBoutique(boutiqueId, {
-        settings: defaultShopSettings,
+        settings: useSettingsStore.getState().shop,
         users: defaultUsers,
       });
     } catch (err) {
@@ -321,15 +452,15 @@ export async function bootstrapFirebase(): Promise<void> {
     }
 
     useAuthStore.getState()._setUsers(defaultUsers);
-    useSettingsStore.getState()._setSettings(defaultShopSettings);
+    // Keep settings restored from the autonomous snapshot. On a genuine first
+    // launch this state is already defaultShopSettings.
+    useSettingsStore.getState()._setSettings(useSettingsStore.getState().shop);
     scheduleHeartbeat(); // first-ever registration: boutique appears in registry immediately
     return;
   }
 
   // 3. Load all data from Firestore (IndexedDB cache → instant offline)
-  let results: BootstrapData;
-  try {
-    results = (await Promise.all([
+  const results = (await Promise.all([
       fsLoadSettings(boutiqueId),
       fsLoadUsers(boutiqueId),
       fsLoadProducts(boutiqueId),
@@ -344,14 +475,7 @@ export async function bootstrapFirebase(): Promise<void> {
       fsLoadInventorySessions(boutiqueId),
       fsLoadClotures(boutiqueId),
       fsLoadSaleCounter(boutiqueId),
-    ])) as unknown as BootstrapData;
-  } catch (err) {
-    console.error('[Restore] Data load failed for boutiqueId', boutiqueId, ':', err);
-    if (!await trySeedLocalMode()) {
-      throw err;
-    }
-    return;
-  }
+  ])) as unknown as BootstrapData;
 
   const [
     settings, users, products, sales, movements, suppliers, customers, payments, expenses,
@@ -359,8 +483,12 @@ export async function bootstrapFirebase(): Promise<void> {
   ] = results;
 
   // 4. Populate Zustand stores
+  // Connected reads are authoritative, including an empty collection. Offline
+  // cache hydration (used only when upgrading without a local snapshot) keeps
+  // an existing local value when that collection is absent from the cache.
+  const authoritative = typeof navigator === 'undefined' || navigator.onLine !== false;
   if (settings)            useSettingsStore.getState()._setSettings(settings);
-  if (users.length) {
+  if (authoritative || users.length) {
     useAuthStore.getState()._setUsers(users);
     // Security: validate that the persisted currentUser still exists in Firestore
     // Prevents localStorage manipulation to bypass PIN authentication
@@ -372,18 +500,33 @@ export async function bootstrapFirebase(): Promise<void> {
       }
     }
   }
-  if (products.length)     useProductStore.getState()._setProducts(products);
-  if (sales.length)        useSaleStore.getState()._setSales(sales);
-  if (movements.length)    useStockStore.getState()._setMovements(movements);
-  if (suppliers.length)    useSupplierStore.getState()._setSuppliers(suppliers);
-  if (customers.length)    useCustomerStore.getState()._setCustomers(customers);
-  if (payments.length)     usePaymentStore.getState()._setPayments(payments);
-  if (expenses.length)     useExpenseStore.getState()._setExpenses(expenses);
-  if (cashSessions.length) useCashSessionStore.getState()._setSessions(cashSessions);
-  if (cashOuts.length)     useCashSessionStore.getState()._setCashOuts(cashOuts);
-  if (inventorySessions.length) useInventoryStore.getState()._setSessions(inventorySessions);
-  if (clotures.length)     useCaisseStore.getState()._setClotures(clotures);
-  if (typeof saleCounter === 'number' && saleCounter > 0) useSaleStore.getState()._setSaleCounter(saleCounter);
+  if (authoritative || products.length)     useProductStore.getState()._setProducts(products);
+  if (authoritative || sales.length) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 90);
+    useSaleStore.getState()._setSales(mergeSyncedSales(
+      sales.filter(sale => new Date(sale.date) >= cutoff),
+      sales.filter(sale => sale.paymentMode === 'credit'),
+      useSaleStore.getState().sales,
+      cutoff,
+    ));
+  }
+  if (authoritative || movements.length)    useStockStore.getState()._setMovements(movements);
+  if (authoritative || suppliers.length)    useSupplierStore.getState()._setSuppliers(suppliers);
+  if (authoritative || customers.length)    useCustomerStore.getState()._setCustomers(customers);
+  if (authoritative || payments.length)     usePaymentStore.getState()._setPayments(payments);
+  if (authoritative || expenses.length)     useExpenseStore.getState()._setExpenses(expenses);
+  if (authoritative || cashSessions.length) useCashSessionStore.getState()._setSessions(cashSessions);
+  if (authoritative) {
+    const currentSessionId = useCashSessionStore.getState().currentSessionId;
+    if (currentSessionId && !cashSessions.some(session => session.id === currentSessionId)) {
+      useCashSessionStore.getState()._setCurrentSessionId(null);
+    }
+  }
+  if (authoritative || cashOuts.length)     useCashSessionStore.getState()._setCashOuts(cashOuts);
+  if (authoritative || inventorySessions.length) useInventoryStore.getState()._setSessions(inventorySessions);
+  if (authoritative || clotures.length)     useCaisseStore.getState()._setClotures(clotures);
+  if (authoritative || saleCounter > 0) useSaleStore.getState()._setSaleCounter(saleCounter);
 
   // 5. Send platform registry heartbeat (fire-and-forget, never blocks startup)
   scheduleHeartbeat();
@@ -404,27 +547,72 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Restore autonomous local data before any cloud read can fail or time out.
+    const localHydration = hydrateLocalSnapshot().then((available) => {
+      installLocalSnapshotPersistence();
+      return available;
+    });
+
     if (!isFirebaseConfigured) {
-      seedLocalMode().then(() => setReady(true));
+      localHydration.then(() => seedLocalMode()).then(() => setReady(true));
       return;
     }
 
     let realtimeUnsubs: Array<() => void> = [];
+    let usedOfflineFallback = false;
 
-    bootstrapFirebase()
-      .then(() => {
+    const finishCloudBootstrap = () => {
         setReady(true);
+        if (navigator.onLine === false || !isFirebaseConfigured) {
+          // Stay exclusively on the autonomous snapshot for this session. A
+          // reload on `online` performs a fresh authenticated cloud bootstrap.
+          usedOfflineFallback = true;
+          return;
+        }
         // Retry any writes that were rejected before this session started.
         retryAll().catch(() => {});
         // Start real-time listeners now that auth is established.
+        realtimeUnsubs.forEach(fn => fn());
         realtimeUnsubs = subscribeToRealtime(getBoutiqueId());
-      })
-      .catch((err: unknown) => {
+      };
+
+    const cloudBootstrap = localHydration.then((available) => bootstrapFirebase(available));
+    runBoundedStartup(cloudBootstrap, finishCloudBootstrap)
+      .then(finishCloudBootstrap)
+      .catch(async (err: unknown) => {
         console.error('Firebase bootstrap error:', err);
+        // Cloud availability must never prevent a locally installed POS from
+        // opening. A normal offline bootstrap reads Firestore's IndexedDB;
+        // this last-resort path still exposes the persisted hashed staff list.
+        if (shouldUseOfflineFallback(err)) {
+          // A timeout while navigator still says "online" is only a degraded
+          // session: keep observing the in-flight cloud bootstrap. Permanent
+          // local mode is reserved for a genuinely disconnected first install.
+          const code = typeof err === 'object' && err && 'code' in err
+            ? String((err as { code?: unknown }).code)
+            : '';
+          if (navigator.onLine === false || code === 'auth/local-session-missing') {
+            activateLocalOfflineBoutique();
+          }
+          if (await trySeedLocalMode()) {
+            usedOfflineFallback = true;
+            setReady(true);
+            return;
+          }
+        }
         setError(err instanceof Error ? err.message : 'Erreur inconnue');
       });
 
-    const handleOnline = () => retryAll().catch(() => {});
+    const handleOnline = () => {
+      // Re-run authentication/bootstrap instead of continuing indefinitely
+      // with a degraded local shell. initBoutique protects an existing tenant
+      // from being replaced by a new anonymous UID if its session was lost.
+      if (usedOfflineFallback) {
+        window.location.reload();
+        return;
+      }
+      retryAll().catch(() => {});
+    };
     window.addEventListener('online', handleOnline);
     return () => {
       window.removeEventListener('online', handleOnline);

@@ -11,6 +11,7 @@ import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { PolicyGate } from "@/components/PolicyGate";
 import { LicenseGate } from "@/components/LicenseGate";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { AutomaticBackup } from "@/components/AutomaticBackup";
 
 // Pages are code-split: each route loads its own chunk on demand, keeping the
 // initial bundle small. Heavy, rarely-visited pages (e.g. the super-admin
@@ -54,6 +55,7 @@ const App = () => (
   <RtlSync />
   <PolicyGate>
   <FirebaseProvider>
+    <AutomaticBackup />
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Sonner position="top-right" theme="dark" />

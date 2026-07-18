@@ -9,6 +9,7 @@ import {
   getCreditAgeInDays,
   getCreditAgeBucket,
   checkCreditLimit,
+  projectCreditSale,
 } from '@/lib/credit';
 import type { Sale } from '@/stores/useSaleStore';
 import type { Payment } from '@/stores/usePaymentStore';
@@ -126,6 +127,45 @@ describe('getAmountPaid', () => {
 
   it('returns 0 when no payment exists', () => {
     expect(getAmountPaid(makeSale(), [])).toBe(0);
+  });
+
+  it('keeps both concurrent terminal operations instead of losing one', () => {
+    const payments = [
+      makePayment({ id: 'terminal-a', operationId: 'terminal-a', kind: 'payment', amount: 3000 }),
+      makePayment({ id: 'terminal-b', operationId: 'terminal-b', kind: 'payment', amount: 2500 }),
+    ];
+    expect(getAmountPaid(makeSale(), payments)).toBe(5500);
+  });
+
+  it('derives the balance from an immutable reversal event', () => {
+    const payment = makePayment({ id: 'p-original', kind: 'payment', amount: 3000 });
+    const reversal = makePayment({
+      id: 'rev-p-original', kind: 'reversal', reversesPaymentId: payment.id, amount: 3000,
+    });
+    expect(getAmountPaid(makeSale(), [payment, reversal])).toBe(0);
+  });
+});
+
+describe('projectCreditSale', () => {
+  it('ignores a stale absolute amount and projects the complete ledger', () => {
+    const stale = makeSale({ total: 10000, amountPaid: 3000, creditStatus: 'partial' });
+    const projected = projectCreditSale(stale, [
+      makePayment({ id: 'a', amount: 3000 }),
+      makePayment({ id: 'b', amount: 7000 }),
+    ]);
+    expect(projected.amountPaid).toBe(10000);
+    expect(projected.creditStatus).toBe('paid');
+    expect(projected.creditConflict).toBe(false);
+  });
+
+  it('preserves an offline over-collection and flags it for reconciliation', () => {
+    const projected = projectCreditSale(makeSale({ total: 10000 }), [
+      makePayment({ id: 'a', amount: 7000 }),
+      makePayment({ id: 'b', amount: 5000 }),
+    ]);
+    expect(projected.amountPaid).toBe(12000);
+    expect(projected.creditStatus).toBe('paid');
+    expect(projected.creditConflict).toBe(true);
   });
 });
 

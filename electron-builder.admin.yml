@@ -11,7 +11,9 @@ copyright: "© 2026 Legwan. Tous droits réservés."
 
 forceCodeSigning: false
 afterPack: scripts/after-pack-rcedit.cjs
-asar: false
+asar: true
+asarUnpack:
+  - electron/**/*
 
 directories:
   output: release

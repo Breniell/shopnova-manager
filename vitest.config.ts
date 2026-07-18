@@ -13,6 +13,9 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    // A single worker avoids severe jsdom contention on release-validation PCs.
+    minWorkers: 1,
+    maxWorkers: 1,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
   },

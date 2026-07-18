@@ -24,7 +24,7 @@ export const LicenseBlockedScreen: React.FC<Props> = ({ status, onActivated }) =
   const Icon = status === 'revoked' ? ShieldOff : ShieldX;
 
   let boutiqueId = '–';
-  try { boutiqueId = getBoutiqueId(); } catch {}
+  try { boutiqueId = getBoutiqueId(); } catch { /* Identity may be unavailable on first launch. */ }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">

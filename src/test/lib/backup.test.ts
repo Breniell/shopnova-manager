@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   computeChecksum,
   verifyChecksum,
@@ -10,9 +10,34 @@ import {
 } from '@/lib/backup/export';
 import {
   parseBackupFile,
+  executeRestoreTasks,
+  persistRestoreBeforeStoreMutation,
+  BackupRestorePersistenceError,
 } from '@/lib/backup/import';
 import type { BackupData, BackupFile } from '@/lib/backup/types';
-import { BACKUP_FORMAT, BACKUP_VERSION } from '@/lib/backup/types';
+import { BACKUP_FORMAT } from '@/lib/backup/types';
+import { movementRestoreContentsMatch, paymentRestoreContentsMatch } from '@/services/firestoreService';
+import type { Payment } from '@/stores/usePaymentStore';
+import type { StockMovement } from '@/stores/useStockStore';
+
+vi.mock('@/stores/useSettingsStore', () => ({
+  useSettingsStore: { getState: () => ({ shop: { nom: 'Boutique Test', devise: 'XAF', langue: 'fr' } }) },
+}));
+vi.mock('@/stores/useProductStore', () => ({ useProductStore: { getState: () => ({ products: [{ id: 'p1' }] }) } }));
+vi.mock('@/stores/useSaleStore', () => ({ useSaleStore: { getState: () => ({ sales: [] }) } }));
+vi.mock('@/stores/useCustomerStore', () => ({ useCustomerStore: { getState: () => ({ customers: [] }) } }));
+vi.mock('@/stores/useSupplierStore', () => ({ useSupplierStore: { getState: () => ({ suppliers: [] }) } }));
+vi.mock('@/stores/useExpenseStore', () => ({ useExpenseStore: { getState: () => ({ expenses: [] }) } }));
+vi.mock('@/stores/useCashSessionStore', () => ({
+  useCashSessionStore: { getState: () => ({ sessions: [], cashOuts: [] }) },
+}));
+vi.mock('@/stores/useStockStore', () => ({ useStockStore: { getState: () => ({ movements: [] }) } }));
+vi.mock('@/stores/useInventoryStore', () => ({ useInventoryStore: { getState: () => ({ sessions: [] }) } }));
+vi.mock('@/stores/usePaymentStore', () => ({ usePaymentStore: { getState: () => ({ payments: [] }) } }));
+vi.mock('@/stores/useAuthStore', () => ({
+  useAuthStore: { getState: () => ({ users: [{ id: 'u1', prenom: 'A', nom: 'B' }] }) },
+}));
+vi.mock('@/services/boutiqueService', () => ({ getBoutiqueId: () => 'bid-test' }));
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -38,7 +63,7 @@ const minimalData = (): BackupData => ({
 function buildBackupFile(data: BackupData, checksum: string, extra: Record<string, unknown> = {}): BackupFile {
   return {
     format:     BACKUP_FORMAT,
-    version:    BACKUP_VERSION,
+    version:    1,
     exportedAt: new Date().toISOString(),
     boutiqueId: 'bid-test',
     appVersion: '1.5.0',
@@ -114,25 +139,6 @@ describe('encryptBackupData / decryptBackupData', () => {
 // ─── collectBackupData ────────────────────────────────────────────────────────
 
 describe('collectBackupData', () => {
-  beforeEach(() => {
-    vi.mock('@/stores/useSettingsStore', () => ({
-      useSettingsStore: { getState: () => ({ shop: { nom: 'Boutique Test', devise: 'XAF', langue: 'fr' } }) }
-    }));
-    vi.mock('@/stores/useProductStore',  () => ({ useProductStore:  { getState: () => ({ products: [{ id: 'p1' }] }) } }));
-    vi.mock('@/stores/useSaleStore',     () => ({ useSaleStore:     { getState: () => ({ sales: [] }) } }));
-    vi.mock('@/stores/useCustomerStore', () => ({ useCustomerStore: { getState: () => ({ customers: [] }) } }));
-    vi.mock('@/stores/useSupplierStore', () => ({ useSupplierStore: { getState: () => ({ suppliers: [] }) } }));
-    vi.mock('@/stores/useExpenseStore',  () => ({ useExpenseStore:  { getState: () => ({ expenses: [] }) } }));
-    vi.mock('@/stores/useCashSessionStore', () => ({
-      useCashSessionStore: { getState: () => ({ sessions: [], cashOuts: [] }) }
-    }));
-    vi.mock('@/stores/useStockStore',    () => ({ useStockStore:    { getState: () => ({ movements: [] }) } }));
-    vi.mock('@/stores/useInventoryStore',() => ({ useInventoryStore:{ getState: () => ({ sessions: [] }) } }));
-    vi.mock('@/stores/usePaymentStore',  () => ({ usePaymentStore:  { getState: () => ({ payments: [] }) } }));
-    vi.mock('@/stores/useAuthStore',     () => ({ useAuthStore:     { getState: () => ({ users: [{ id: 'u1', prenom: 'A', nom: 'B' }] }) } }));
-    vi.mock('@/services/boutiqueService', () => ({ getBoutiqueId: () => 'bid-test' }));
-  });
-
   it('returns a BackupData with all expected fields', () => {
     const data = collectBackupData();
     expect(data).toHaveProperty('settings');
@@ -201,12 +207,44 @@ describe('parseBackupFile', () => {
     expect(result.data).toBeDefined();
   });
 
+  it('rejects structurally invalid business data even with a valid checksum', async () => {
+    const invalid = {
+      ...minimalData(),
+      users: [{
+        id: 'u1', prenom: 'A', nom: 'B', role: 'superadmin',
+        pin: '1234', color: '#000000',
+      }],
+    } as unknown as BackupData;
+    const cs = await computeChecksum(invalid);
+    const file = makeFile(JSON.stringify(buildBackupFile(invalid, cs)));
+
+    const result = await parseBackupFile(file);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe('invalid_format');
+  });
+
+  it('rejects duplicate identifiers in a collection', async () => {
+    const baseProduct = {
+      id: 'p1', nom: 'Produit', stock: 2, prixAchat: 100, prixVente: 150,
+      categorie: 'test', codeBarre: '', seuilAlerte: 0,
+    };
+    const invalid = { ...minimalData(), products: [baseProduct, { ...baseProduct }] } as BackupData;
+    const cs = await computeChecksum(invalid);
+    const file = makeFile(JSON.stringify(buildBackupFile(invalid, cs)));
+
+    const result = await parseBackupFile(file);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe('invalid_format');
+  });
+
   it('returns wrong_password when encrypted file is given no password', async () => {
     const data  = minimalData();
     const cs    = await computeChecksum(data);
     const enc   = await encryptBackupData(data, 'pw');
     const bf: BackupFile = {
-      format: BACKUP_FORMAT, version: BACKUP_VERSION,
+      format: BACKUP_FORMAT, version: 1,
       exportedAt: new Date().toISOString(), boutiqueId: 'bid', appVersion: '1.5.0',
       checksum: cs, encrypted: true, data: enc,
     };
@@ -221,7 +259,7 @@ describe('parseBackupFile', () => {
     const cs    = await computeChecksum(data);
     const enc   = await encryptBackupData(data, 'pw123');
     const bf: BackupFile = {
-      format: BACKUP_FORMAT, version: BACKUP_VERSION,
+      format: BACKUP_FORMAT, version: 1,
       exportedAt: new Date().toISOString(), boutiqueId: 'bid', appVersion: '1.5.0',
       checksum: cs, encrypted: true, data: enc,
     };
@@ -236,7 +274,7 @@ describe('parseBackupFile', () => {
     const cs    = await computeChecksum(data);
     const enc   = await encryptBackupData(data, 'correct-pw');
     const bf: BackupFile = {
-      format: BACKUP_FORMAT, version: BACKUP_VERSION,
+      format: BACKUP_FORMAT, version: 1,
       exportedAt: new Date().toISOString(), boutiqueId: 'bid', appVersion: '1.5.0',
       checksum: cs, encrypted: true, data: enc,
     };
@@ -244,5 +282,70 @@ describe('parseBackupFile', () => {
     const result = await parseBackupFile(file, 'wrong-pw');
     expect(result.ok).toBe(false);
     expect(result.error).toBe('wrong_password');
+  });
+});
+
+describe('restore persistence', () => {
+  it('rejects when any allSettled task fails instead of reporting success', async () => {
+    const progress = vi.fn();
+    const tasks = [
+      { label: 'settings', fn: vi.fn().mockResolvedValue(undefined) },
+      { label: 'sales', fn: vi.fn().mockRejectedValue(new Error('permission-denied')) },
+    ];
+
+    const promise = executeRestoreTasks(tasks, progress);
+
+    await expect(promise).rejects.toBeInstanceOf(BackupRestorePersistenceError);
+    await expect(promise).rejects.toMatchObject({
+      failures: [{ label: 'sales', reason: 'permission-denied' }],
+    });
+    expect(progress).toHaveBeenLastCalledWith({ done: 2, total: 2, label: 'settings' });
+  });
+
+  it('does not mutate local stores when persistence is only partially successful', async () => {
+    const applyStores = vi.fn();
+    const tasks = [
+      { label: 'products', fn: vi.fn().mockResolvedValue(undefined) },
+      { label: 'sales', fn: vi.fn().mockRejectedValue(new Error('quota-exceeded')) },
+    ];
+
+    await expect(
+      persistRestoreBeforeStoreMutation(tasks, applyStores),
+    ).rejects.toBeInstanceOf(BackupRestorePersistenceError);
+
+    expect(applyStores).not.toHaveBeenCalled();
+  });
+});
+
+describe('immutable payment restore', () => {
+  const historicalPayment = (): Payment => ({
+    id: 'pay-1', saleId: 'sale-1', customerId: 'customer-1',
+    date: new Date('2026-07-13T08:00:00.000Z'), amount: 500,
+    channel: 'especes', userId: 'user-1', userName: 'Caissier',
+  });
+
+  it('treats the same historical payment as an idempotent success', () => {
+    const restored = historicalPayment();
+    const existing = { ...historicalPayment(), operationId: 'pay-1', kind: 'payment' as const };
+    expect(paymentRestoreContentsMatch(existing, restored)).toBe(true);
+  });
+
+  it('detects different immutable content as a conflict', () => {
+    const restored = historicalPayment();
+    const existing = { ...historicalPayment(), amount: 700 };
+    expect(paymentRestoreContentsMatch(existing, restored)).toBe(false);
+  });
+});
+
+describe('immutable stock movement restore', () => {
+  const movement = (): StockMovement => ({
+    id: 'sale-s1-0', date: new Date('2026-07-13T08:00:00.000Z'),
+    productId: 'p1', productName: 'Produit', type: 'vente', quantity: -2,
+    stockBefore: 10, stockAfter: 8, userId: 'u1', userName: 'Caissier',
+  });
+
+  it('accepts an identical replay and detects changed immutable content', () => {
+    expect(movementRestoreContentsMatch(movement(), { ...movement() })).toBe(true);
+    expect(movementRestoreContentsMatch(movement(), { ...movement(), quantity: -3 })).toBe(false);
   });
 });

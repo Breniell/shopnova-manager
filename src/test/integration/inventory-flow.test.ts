@@ -52,25 +52,12 @@ describe('Integration: inventory flow end-to-end', () => {
       stockCompte: 20,
     });
 
-    // 3. Valider — avec callbacks branchés sur les vrais stores
+    // 3. Valider — le store applique une seule opération locale/cloud atomique
     const result = useInventoryStore.getState().validateSession(
       session.id, 'mgr1', 'Gérant',
       {
         getProductPrixAchat: (id) =>
           useProductStore.getState().products.find(p => p.id === id)?.prixAchat ?? 0,
-        addMovementAndUpdateStock: ({ productId, productName, ecart, stockTheorique, stockCompte, reason, inventorySessionId, userId, userName }) => {
-          useStockStore.getState().addMovement({
-            date: new Date(),
-            productId, productName,
-            type: 'ajustement',
-            quantity: ecart,
-            stockBefore: stockTheorique,
-            stockAfter: stockCompte,
-            userId, userName,
-            reason, inventorySessionId,
-          });
-          useProductStore.getState().updateStock(productId, ecart);
-        },
       }
     );
 
@@ -90,6 +77,8 @@ describe('Integration: inventory flow end-to-end', () => {
     expect(moves[0].type).toBe('ajustement');
     expect(moves[0].productId).toBe('p1');
     expect(moves[0].quantity).toBe(-3);
+    expect(moves[0].id).toBe(`inventory-${session.id}-p1`);
+    expect(moves[0].operationId).toBe(session.id);
     expect(moves[0].reason).toBe('casse');
     expect(moves[0].inventorySessionId).toBe(session.id);
 
@@ -111,13 +100,10 @@ describe('Integration: inventory flow end-to-end', () => {
       // pas de reason !
     });
 
-    let movementsAdded = 0;
-    let stockChanges = 0;
     const result = useInventoryStore.getState().validateSession(
       session.id, 'mgr1', 'Gérant',
       {
         getProductPrixAchat: () => 500,
-        addMovementAndUpdateStock: () => { movementsAdded++; stockChanges++; },
       }
     );
 
@@ -125,8 +111,7 @@ describe('Integration: inventory flow end-to-end', () => {
     if (result.success === false) {
       expect(result.missingReasons).toContain('X');
     }
-    expect(movementsAdded).toBe(0);
-    expect(stockChanges).toBe(0);
+    expect(useStockStore.getState().movements).toHaveLength(0);
 
     // Le stock du produit ne doit PAS avoir bougé
     expect(useProductStore.getState().products[0].stock).toBe(10);
@@ -152,9 +137,6 @@ describe('Integration: inventory flow end-to-end', () => {
       {
         getProductPrixAchat: (id) =>
           useProductStore.getState().products.find(p => p.id === id)?.prixAchat ?? 0,
-        addMovementAndUpdateStock: ({ productId, ecart }) => {
-          useProductStore.getState().updateStock(productId, ecart);
-        },
       }
     );
 
@@ -199,9 +181,6 @@ describe('Integration: inventory flow end-to-end', () => {
     useInventoryStore.getState().updateLine(s1.id, 'p1', { stockCompte: 95, reason: 'vol' });
     useInventoryStore.getState().validateSession(s1.id, 'mgr1', 'Gérant', {
       getProductPrixAchat: () => 100,
-      addMovementAndUpdateStock: ({ productId, ecart }) => {
-        useProductStore.getState().updateStock(productId, ecart);
-      },
     });
     expect(useProductStore.getState().products[0].stock).toBe(95);
 
@@ -216,9 +195,6 @@ describe('Integration: inventory flow end-to-end', () => {
     useInventoryStore.getState().updateLine(s2.id, 'p1', { stockCompte: 93, reason: 'peremption' });
     useInventoryStore.getState().validateSession(s2.id, 'mgr1', 'Gérant', {
       getProductPrixAchat: () => 100,
-      addMovementAndUpdateStock: ({ productId, ecart }) => {
-        useProductStore.getState().updateStock(productId, ecart);
-      },
     });
     expect(useProductStore.getState().products[0].stock).toBe(93);
   });

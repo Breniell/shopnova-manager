@@ -44,7 +44,9 @@ describe('exportCSV', () => {
 
   it('creates a Blob with the CSV content', () => {
     const RealBlob = globalThis.Blob;
-    const blobSpy = vi.fn((...args: ConstructorParameters<typeof Blob>) => new RealBlob(...args));
+    const blobSpy = vi.fn(function BlobConstructor(...args: ConstructorParameters<typeof Blob>) {
+      return new RealBlob(...args);
+    });
     vi.stubGlobal('Blob', blobSpy);
     exportCSV('rapport', ['Produit', 'Qté'], [['Bière', '12'], ['Eau', '6']]);
     expect(blobSpy).toHaveBeenCalledOnce();
@@ -57,7 +59,9 @@ describe('exportCSV', () => {
 
   it('includes UTF-8 BOM for Excel compatibility', () => {
     const RealBlob = globalThis.Blob;
-    const blobSpy = vi.fn((...args: ConstructorParameters<typeof Blob>) => new RealBlob(...args));
+    const blobSpy = vi.fn(function BlobConstructor(...args: ConstructorParameters<typeof Blob>) {
+      return new RealBlob(...args);
+    });
     vi.stubGlobal('Blob', blobSpy);
     exportCSV('test', ['H'], [['v']]);
     const csvContent = blobSpy.mock.calls[0][0][0] as string;
@@ -67,7 +71,9 @@ describe('exportCSV', () => {
 
   it('uses semicolon as separator', () => {
     const RealBlob = globalThis.Blob;
-    const blobSpy = vi.fn((...args: ConstructorParameters<typeof Blob>) => new RealBlob(...args));
+    const blobSpy = vi.fn(function BlobConstructor(...args: ConstructorParameters<typeof Blob>) {
+      return new RealBlob(...args);
+    });
     vi.stubGlobal('Blob', blobSpy);
     exportCSV('test', ['A', 'B', 'C'], [['x', 'y', 'z']]);
     const csvContent = blobSpy.mock.calls[0][0][0] as string;

@@ -5,21 +5,28 @@
  * paymentMode est 'credit'. Plusieurs Payment peuvent référencer la même Sale
  * (cas de règlements échelonnés).
  *
- * Note : à chaque ajout de Payment, le composant appelant doit recalculer
- * Sale.amountPaid et Sale.creditStatus via computeCreditStatus (cf. lib/credit.ts).
- * Cette responsabilité n'est PAS dans le store pour éviter des dépendances
- * croisées avec useSaleStore et garder le code testable.
+ * Le registre est append-only : une correction crée une opération d'annulation
+ * immuable au lieu de supprimer le paiement d'origine. Les projections de crédit
+ * sont recalculées depuis ce registre après chaque synchronisation.
  */
 import { create } from 'zustand';
-import { getBoutiqueId } from '@/services/boutiqueService';
-import { fsSavePayment, fsDeletePayment } from '@/services/firestoreService';
-import { enqueue } from '@/lib/outbox';
+import { enqueue, retryAll } from '@/lib/outbox';
+import { isFirebaseConfigured } from '@/lib/firebase';
 import { toast } from 'sonner';
+import { useSaleStore } from '@/stores/useSaleStore';
+import { useCashSessionStore } from '@/stores/useCashSessionStore';
+import { runLocalStateTransaction } from '@/lib/localStateTransaction';
 
 export type PaymentChannel = 'especes' | 'mobile_money';
 
 export interface Payment {
   id: string;
+  /** Identifiant immuable de l'opération. Absent uniquement sur l'historique v1. */
+  operationId?: string;
+  /** Les documents v1 sans kind sont des paiements normaux. */
+  kind?: 'payment' | 'reversal';
+  /** Renseigné seulement pour une annulation comptable. */
+  reversesPaymentId?: string;
   saleId: string;                   // référence à la vente à crédit
   customerId: string;               // dénormalisé pour les filtres par client
   date: Date;
@@ -43,11 +50,11 @@ interface PaymentState {
   /** Internal: called by FirebaseProvider on startup */
   _setPayments: (payments: Payment[]) => void;
 
-  /** Crée un règlement. Retourne le Payment créé (utile au composant pour MAJ vente). */
-  addPayment: (payment: Omit<Payment, 'id'>) => Payment;
+  /** Crée un encaissement immuable avec un ID stable. */
+  addPayment: (payment: Omit<Payment, 'id' | 'operationId' | 'kind' | 'reversesPaymentId'>) => Payment;
 
-  /** Supprime un règlement (correction). Le composant doit MAJ creditStatus de la vente. */
-  deletePayment: (id: string) => void;
+  /** Annule comptablement un paiement sans jamais supprimer l'original. */
+  reversePayment: (id: string, actor: { userId: string; userName: string; notes?: string }) => Payment;
 
   // Sélecteurs
   getPaymentsForSale: (saleId: string) => Payment[];
@@ -55,27 +62,92 @@ interface PaymentState {
   getPaymentsInRange: (start: Date, end: Date) => Payment[];
 }
 
+function newOperationId(prefix: 'pay' | 'rev'): string {
+  const uuid = globalThis.crypto?.randomUUID?.()
+    ?? `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+  return `${prefix}-${uuid}`;
+}
+
+function reconcileCreditSales(payments: Payment[]): void {
+  useSaleStore.getState()._reconcileCreditProjections(payments);
+}
+
+function sortAndDedupe(payments: Payment[]): Payment[] {
+  const byId = new Map<string, Payment>();
+  for (const payment of payments) byId.set(payment.id, payment);
+  return [...byId.values()].sort((a, b) =>
+    new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+}
+
 export const usePaymentStore = create<PaymentState>()((set, get) => ({
   payments: [],
 
-  _setPayments: (payments) => set({ payments }),
+  _setPayments: (payments) => {
+    const next = sortAndDedupe(payments);
+    runLocalStateTransaction(() => {
+      set({ payments: next });
+      reconcileCreditSales(next);
+    });
+  },
 
   addPayment: (data) => {
-    // ID = timestamp + suffixe random pour éviter les collisions (cf. bug fixé v1.1.1)
-    const id = 'pay' + Date.now() + Math.random().toString(36).slice(2, 7);
-    const newPayment: Payment = { ...data, id };
-    set(state => ({ payments: [newPayment, ...state.payments] }));
-    fsSavePayment(getBoutiqueId(), newPayment).catch((err) => {
-      enqueue('payment', newPayment);
-      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
-      console.warn('[outbox] payment enqueued:', err);
+    const id = newOperationId('pay');
+    const newPayment: Payment = { ...data, id, operationId: id, kind: 'payment' };
+    if (isFirebaseConfigured) {
+      const queued = enqueue('payment', newPayment);
+      if (!queued.durable) {
+        toast.error("Journal local non durable : gardez l'application ouverte jusqu'à la synchronisation");
+      }
+    }
+    const next = sortAndDedupe([newPayment, ...get().payments]);
+    runLocalStateTransaction(() => {
+      set({ payments: next });
+      reconcileCreditSales(next);
     });
+    if (isFirebaseConfigured) void retryAll();
     return newPayment;
   },
 
-  deletePayment: (id) => {
-    set(state => ({ payments: state.payments.filter(p => p.id !== id) }));
-    fsDeletePayment(getBoutiqueId(), id).catch(console.error);
+  reversePayment: (id, actor) => {
+    const original = get().payments.find(p => p.id === id);
+    if (!original) throw new Error('Paiement introuvable');
+    if (original.kind === 'reversal') throw new Error('Une annulation ne peut pas être annulée directement');
+
+    const reversalId = `rev-${original.id}`;
+    const existing = get().payments.find(p => p.id === reversalId);
+    if (existing) return existing;
+
+    const reversal: Payment = {
+      id: reversalId,
+      operationId: reversalId,
+      kind: 'reversal',
+      reversesPaymentId: original.id,
+      saleId: original.saleId,
+      customerId: original.customerId,
+      date: new Date(),
+      amount: original.amount,
+      channel: original.channel,
+      mobileOperator: original.mobileOperator,
+      mobileReference: original.mobileReference,
+      userId: actor.userId,
+      userName: actor.userName,
+      notes: actor.notes,
+      cashSessionId: useCashSessionStore.getState().currentSessionId ?? undefined,
+    };
+    if (isFirebaseConfigured) {
+      const queued = enqueue('payment', reversal);
+      if (!queued.durable) {
+        toast.error("Journal local non durable : gardez l'application ouverte jusqu'à la synchronisation");
+      }
+    }
+    const next = sortAndDedupe([reversal, ...get().payments]);
+    runLocalStateTransaction(() => {
+      set({ payments: next });
+      reconcileCreditSales(next);
+    });
+    if (isFirebaseConfigured) void retryAll();
+    return reversal;
   },
 
   getPaymentsForSale: (saleId) =>

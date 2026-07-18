@@ -39,7 +39,7 @@ describe('useCaisseStore — addCloture', () => {
 
   it('assigns a unique id starting with "cl"', () => {
     useCaisseStore.getState().addCloture(makeCloture());
-    expect(useCaisseStore.getState().clotures[0].id).toMatch(/^cl\d+$/);
+    expect(useCaisseStore.getState().clotures[0].id).toMatch(/^cl-[a-zA-Z0-9-]+$/);
   });
 
   it('stores all financial fields correctly', () => {

@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { getBoutiqueId } from '@/services/boutiqueService';
 import { fsSaveCustomer, fsDeleteCustomer } from '@/services/firestoreService';
+import { enqueue } from '@/lib/outbox';
+import { toast } from 'sonner';
 
 /**
  * Customer (Client) — fiche client de la boutique.
@@ -114,7 +116,11 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
       archived: false,
     };
     set(state => ({ customers: [...state.customers, newCustomer] }));
-    fsSaveCustomer(getBoutiqueId(), newCustomer).catch(console.error);
+    fsSaveCustomer(getBoutiqueId(), newCustomer).catch((error) => {
+      enqueue('customerSave', newCustomer);
+      toast.error("Client en attente de synchronisation");
+      console.warn('[outbox] customer create enqueued:', error);
+    });
     return newCustomer;
   },
 
@@ -123,7 +129,11 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
       customers: state.customers.map(c => c.id === id ? { ...c, ...data } : c),
     }));
     const updated = get().customers.find(c => c.id === id);
-    if (updated) fsSaveCustomer(getBoutiqueId(), updated).catch(console.error);
+    if (updated) fsSaveCustomer(getBoutiqueId(), updated).catch((error) => {
+      enqueue('customerSave', updated);
+      toast.error("Modification client en attente de synchronisation");
+      console.warn('[outbox] customer update enqueued:', error);
+    });
   },
 
   archiveCustomer: (id) => {
@@ -136,7 +146,11 @@ export const useCustomerStore = create<CustomerState>()((set, get) => ({
 
   deleteCustomer: (id) => {
     set(state => ({ customers: state.customers.filter(c => c.id !== id) }));
-    fsDeleteCustomer(getBoutiqueId(), id).catch(console.error);
+    fsDeleteCustomer(getBoutiqueId(), id).catch((error) => {
+      enqueue('customerDelete', id);
+      toast.error("Suppression client en attente de synchronisation");
+      console.warn('[outbox] customer delete enqueued:', error);
+    });
   },
 
   getCustomerById: (id) => get().customers.find(c => c.id === id),

@@ -36,12 +36,13 @@
  * last-seen, ce qui ne lui accorde aucun avantage (l'heure reste au niveau de
  * la dernière vérification valide).
  */
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDocFromServer, serverTimestamp } from 'firebase/firestore';
 import type { Timestamp } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '@/lib/firebase';
 
 /** Unix timestamp before which the system clock is certainly wrong (BIOS reset). */
 const EPOCH_FLOOR = new Date('2020-01-01T00:00:00Z').getTime();
+export const NETWORK_TIME_TIMEOUT_MS = 2_500;
 
 export interface TrustedTimeResult {
   now:          number;  // best estimate of the current time (ms)
@@ -64,7 +65,8 @@ async function defaultFetchNetworkTime(): Promise<number | null> {
     const clockRef = doc(db, `boutiques/${bid}/_clock/tick`);
     // Write a server timestamp. merge:true is idempotent — no data is lost.
     await setDoc(clockRef, { at: serverTimestamp() }, { merge: true });
-    const snap = await getDoc(clockRef);
+    // Never accept an IndexedDB tick as current network time.
+    const snap = await getDocFromServer(clockRef);
     const ts   = snap.data()?.at as Timestamp | undefined;
     return ts?.toMillis() ?? null;
   } catch {
@@ -86,17 +88,27 @@ export async function getTrustedNow(
   lastSeenMs:  number | null,
   fetchFn:     () => Promise<number | null> = defaultFetchNetworkTime,
   _systemNow?: number,
+  networkTimeoutMs: number = NETWORK_TIME_TIMEOUT_MS,
 ): Promise<TrustedTimeResult> {
 
   // ── 1. Try network time ───────────────────────────────────────────────────
   // When online, the server timestamp is the single source of truth.
   // We do NOT update lastSeenMs here — the caller is responsible for that,
   // so it can persist it before the next offline session.
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
-    const networkTime = await fetchFn();
+    // Firestore writes can remain pending while disconnected. Bound this probe
+    // so a cold offline launch cannot remain on the licence spinner.
+    const networkTime = await Promise.race([
+      Promise.resolve().then(fetchFn),
+      new Promise<null>(resolve => {
+        timeoutId = setTimeout(() => resolve(null), Math.max(0, networkTimeoutMs));
+      }),
+    ]);
     if (networkTime !== null && networkTime > EPOCH_FLOOR) {
       // Sanity check: network time should also be post-2020.
       // (Guards against a misconfigured server or a corrupted response.)
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
       return { now: networkTime, clockWarning: false };
     }
   } catch {
@@ -104,6 +116,7 @@ export async function getTrustedNow(
   }
 
   // ── 2. Offline fallback ───────────────────────────────────────────────────
+  if (timeoutId !== undefined) clearTimeout(timeoutId);
   const systemNow = _systemNow ?? Date.now();
   const lastSeen  = lastSeenMs ?? 0;
 

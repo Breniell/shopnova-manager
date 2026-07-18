@@ -25,6 +25,8 @@ import {
   setLastSeenTime,
   fsGetLicense,
   fsSaveLicense,
+  getRememberedRevokedLicense,
+  rememberRevokedLicense,
 } from '@/lib/license/store';
 import { getTrustedNow }      from '@/lib/license/clock';
 import {
@@ -75,7 +77,7 @@ const INITIAL: GateState = {
 function ActivationModal({ onClose, onActivated }: { onClose: () => void; onActivated: () => void }) {
   const { t } = useTranslation();
   let boutiqueId = '–';
-  try { boutiqueId = getBoutiqueId(); } catch {}
+  try { boutiqueId = getBoutiqueId(); } catch { /* Identity may be unavailable on first launch. */ }
 
   return (
     <div
@@ -182,7 +184,9 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
   const isSuperAdmin = import.meta.env.VITE_ENABLE_SUPERADMIN === 'true' && location.pathname.startsWith('/superadmin');
 
   // Dev mode without a key → skip all checks.
-  const shouldSkip = !PUBKEY_CONFIGURED || isSuperAdmin;
+  // Local development may run without publisher material. Production fails
+  // closed if the public key was accidentally omitted from the bundle.
+  const shouldSkip = (import.meta.env.DEV && !PUBKEY_CONFIGURED) || isSuperAdmin;
 
   const openModal  = () => setShowModal(true);
   const closeModal = () => setShowModal(false);
@@ -198,13 +202,12 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
       try { bid = getBoutiqueId(); } catch { bid = 'local-boutique'; }
 
       // ── 1. Load timestamps ──────────────────────────────────────────────────
-      const [installDate, lastSeenMs] = await Promise.all([
-        getOrCreateInstallDate(bid),
-        getLastSeenTime(bid),
-      ]);
+      const lastSeenMs = await getLastSeenTime(bid);
 
       // ── 2. Get trusted time ────────────────────────────────────────────────
       const { now, clockWarning } = await getTrustedNow(lastSeenMs);
+      // Create/repair the trial anchor only after the clock has been vetted.
+      const installDate = await getOrCreateInstallDate(bid, now);
 
       // Persist the new trusted time (do not await — non-blocking).
       setLastSeenTime(now, bid).catch(() => {});
@@ -216,10 +219,14 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
         : null;
 
       // ── 4. Check Firestore revocation (soft, online-only) ──────────────────
-      let revoked = false;
+      const rememberedRevokedId = getRememberedRevokedLicense();
+      let revoked = !!rememberedRevokedId
+        && licenseResult?.payload?.licenseId === rememberedRevokedId;
       const fsDoc = await fsGetLicense(bid);
       if (fsDoc?.revoked) {
         revoked = true;
+        const revokedLicenseId = fsDoc.licenseId || licenseResult?.payload?.licenseId;
+        if (revokedLicenseId) rememberRevokedLicense(revokedLicenseId);
       } else if (fsDoc?.licenseStr && !licStr) {
         // Licence present in Firestore but missing locally (reinstall) → restore it.
         const { setLicenseString } = await import('@/lib/license/store');
@@ -242,9 +249,11 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
         expiresAt: expAt > 0 ? expAt : null,
       });
 
-    } catch {
-      // On unexpected error, default to 'valid' to avoid blocking honest users.
-      setGate({ status: 'valid', clockWarning: false, trialLeft: 0, graceLeft: 0, expiresAt: null });
+    } catch (error) {
+      // Expected offline failures are handled inside the clock and Firestore
+      // helpers. An unexpected failure must not unlock every protected route.
+      console.error('[LicenseGate] licence check failed:', error);
+      setGate({ status: 'invalid', clockWarning: false, trialLeft: 0, graceLeft: 0, expiresAt: null });
     } finally {
       checkingRef.current = false;
     }

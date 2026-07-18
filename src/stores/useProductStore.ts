@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { getBoutiqueId } from '@/services/boutiqueService';
-import { fsSaveProduct, fsDeleteProduct, fsAdjustStock, fsUpdateProductFields } from '@/services/firestoreService';
+import { fsSaveProduct, fsDeleteProduct, fsUpdateProductFields } from '@/services/firestoreService';
 import { enqueue } from '@/lib/outbox';
 import { toast } from 'sonner';
 
@@ -19,10 +19,10 @@ export interface Product {
   categorie: Category;
   codeBarre: string;
   prixAchat: number;
-  prixVente: number;          // = prix affiché / prix de référence pour le client
-  prixCible?: number;         // prix idéal (entre plancher et vente) — alerte si vendu en dessous
-  prixPlancher?: number;      // prix minimum absolu — bloqué en dessous sauf override gérant
-  negociable?: boolean;       // autorise (ou non) la modification du prix à la caisse
+  prixVente: number;
+  prixCible?: number;
+  prixPlancher?: number;
+  negociable?: boolean;
   stock: number;
   seuilAlerte: number;
   description?: string;
@@ -32,14 +32,11 @@ export interface Product {
 interface ProductState {
   products: Product[];
   categories: Category[];
-
-  /** Internal: called by FirebaseProvider on startup */
+  /** Internal: called by FirebaseProvider on startup. */
   _setProducts: (products: Product[]) => void;
-
   addProduct: (product: Omit<Product, 'id'>) => void;
   updateProduct: (id: string, data: Partial<Product>) => void;
   deleteProduct: (id: string) => void;
-  updateStock: (id: string, quantity: number) => void;
   getProductByBarcode: (barcode: string) => Product | undefined;
 }
 
@@ -53,41 +50,43 @@ export const useProductStore = create<ProductState>()((set, get) => ({
   _setProducts: (products) => set({ products }),
 
   addProduct: (product) => {
-    const id = 'p' + Date.now();
+    const id = `p-${globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`}`;
     const newProduct: Product = { ...product, id };
     set(state => ({ products: [...state.products, newProduct] }));
-    // New doc: full setDoc is correct here
-    fsSaveProduct(getBoutiqueId(), newProduct).catch(console.error);
-  },
-
-  updateProduct: (id, data) => {
-    const current = get().products.find(p => p.id === id);
-    if (!current) return;
-    const updated = { ...current, ...data };
-    set(state => ({ products: state.products.map(p => p.id === id ? updated : p) }));
-    // Never write stock via updateProduct — stock moves through fsAdjustStock (increment).
-    // Destructure stock out so the Firestore doc only receives the edited fields.
-    const { stock: _omit, id: _id, ...fields } = updated;
-    fsUpdateProductFields(getBoutiqueId(), id, fields).catch(console.error);
-  },
-
-  deleteProduct: (id) => {
-    set(state => ({ products: state.products.filter(p => p.id !== id) }));
-    fsDeleteProduct(getBoutiqueId(), id).catch(console.error);
-  },
-
-  updateStock: (id, quantity) => {
-    const current = get().products.find(p => p.id === id);
-    if (!current) return;
-    const updated = { ...current, stock: current.stock + quantity };
-    set(state => ({ products: state.products.map(p => p.id === id ? updated : p) }));
-    // Use increment() so multi-register merges never overwrite each other's deltas.
-    fsAdjustStock(getBoutiqueId(), id, quantity).catch((err) => {
-      enqueue('stockAdjust', { productId: id, delta: quantity });
-      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
-      console.warn('[outbox] stockAdjust enqueued:', err);
+    fsSaveProduct(getBoutiqueId(), newProduct).catch((error) => {
+      enqueue('productCreate', newProduct);
+      toast.error("Produit en attente de synchronisation");
+      console.warn('[outbox] product create enqueued:', error);
     });
   },
 
-  getProductByBarcode: (barcode) => get().products.find(p => p.codeBarre === barcode),
+  updateProduct: (id, data) => {
+    const current = get().products.find(product => product.id === id);
+    if (!current) return;
+    const { stock: _ignoredStock, id: _ignoredId, ...editableFields } = data;
+    const updated = { ...current, ...editableFields };
+    set(state => ({
+      products: state.products.map(product => product.id === id ? updated : product),
+    }));
+    // Stock is deliberately omitted: every stock mutation must go through an
+    // atomic stock operation together with its immutable ledger movement.
+    const { stock: _stock, id: _id, ...fields } = updated;
+    fsUpdateProductFields(getBoutiqueId(), id, fields).catch((error) => {
+      enqueue('productUpdate', { productId: id, fields });
+      toast.error("Modification produit en attente de synchronisation");
+      console.warn('[outbox] product update enqueued:', error);
+    });
+  },
+
+  deleteProduct: (id) => {
+    set(state => ({ products: state.products.filter(product => product.id !== id) }));
+    fsDeleteProduct(getBoutiqueId(), id).catch((error) => {
+      enqueue('productDelete', id);
+      toast.error("Suppression produit en attente de synchronisation");
+      console.warn('[outbox] product delete enqueued:', error);
+    });
+  },
+
+  getProductByBarcode: (barcode) => get().products.find(product => product.codeBarre === barcode),
 }));

@@ -11,6 +11,7 @@ import React, { useEffect, useState } from 'react';
 import { Download, RefreshCw, X, ArrowDownToLine } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/i18n';
+import { toast } from 'sonner';
 
 type UpdateState =
   | { phase: 'idle' }
@@ -27,19 +28,26 @@ export const UpdateBanner: React.FC = () => {
     const api = window.legwan;
     if (!api?.isElectron) return; // Web / dev browser — no-op
 
-    api.onUpdateAvailable?.((info) => {
+    const unsubscribers = [api.onUpdateAvailable?.((info) => {
       setState({ phase: 'available', version: info.version });
       setDismissed(false);
-    });
+    }),
 
     api.onUpdateDownloadProgress?.((p) => {
       setState({ phase: 'downloading', percent: p.percent });
-    });
+    }),
 
     api.onUpdateDownloaded?.((info) => {
       setState({ phase: 'ready', version: info.version });
       setDismissed(false);
-    });
+    }),
+    api.onUpdateInstallBlocked?.(() => {
+      toast.error('Mise à jour interrompue : la sauvegarde de sécurité a échoué.');
+    })];
+
+    return () => {
+      unsubscribers.forEach(unsubscribe => unsubscribe?.());
+    };
   }, []);
 
   // Nothing to show

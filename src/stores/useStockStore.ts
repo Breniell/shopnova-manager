@@ -1,25 +1,22 @@
 import { create } from 'zustand';
-import { getBoutiqueId } from '@/services/boutiqueService';
-import { fsSaveMovement } from '@/services/firestoreService';
-import { enqueue } from '@/lib/outbox';
+import { validateStockCommit, type StockCommitPayload } from '@/services/firestoreService';
+import { isFirebaseConfigured } from '@/lib/firebase';
+import { enqueue, retryAll } from '@/lib/outbox';
+import { runLocalStateTransaction } from '@/lib/localStateTransaction';
+import { useProductStore } from '@/stores/useProductStore';
 import { toast } from 'sonner';
 
 export type MovementType = 'entrée' | 'vente' | 'ajustement';
 
-/**
- * Motif d'un mouvement de stock de type 'ajustement'.
- * Utilisé essentiellement par les sessions d'inventaire pour catégoriser
- * les écarts détectés (pertes / gains).
- */
 export type AdjustmentReason =
-  | 'avarie'                 // produit endommagé / pourri
-  | 'casse'                  // bouteille cassée, etc.
-  | 'vol'                    // disparition / vol présumé
-  | 'peremption'             // date dépassée
-  | 'erreur_saisie'          // correction d'une erreur antérieure
-  | 'consommation_interne'   // consommé par le personnel
-  | 'cadeau_don'             // offert (client fidèle, association)
-  | 'non_identifie';         // écart sans explication
+  | 'avarie'
+  | 'casse'
+  | 'vol'
+  | 'peremption'
+  | 'erreur_saisie'
+  | 'consommation_interne'
+  | 'cadeau_don'
+  | 'non_identifie';
 
 export const ADJUSTMENT_REASON_LABELS: Record<AdjustmentReason, string> = {
   avarie:               'Avarié / endommagé',
@@ -34,6 +31,8 @@ export const ADJUSTMENT_REASON_LABELS: Record<AdjustmentReason, string> = {
 
 export interface StockMovement {
   id: string;
+  /** Stable identifier of the atomic business operation that created it. */
+  operationId?: string;
   date: Date;
   productId: string;
   productName: string;
@@ -46,20 +45,21 @@ export interface StockMovement {
   supplier?: string;
   unitPrice?: number;
   notes?: string;
-  // ─── Inventaire (v1.3) ──────────────────────────────────────────────────
-  // Renseigné quand type='ajustement' et que la cause est connue.
   reason?: AdjustmentReason;
-  // Lien vers la session d'inventaire qui a généré ce mouvement.
   inventorySessionId?: string;
 }
 
+type ManualStockChange = Omit<
+  StockMovement,
+  'id' | 'operationId' | 'stockBefore' | 'stockAfter'
+> & { type: Extract<MovementType, 'entrée' | 'ajustement'> };
+
 interface StockState {
   movements: StockMovement[];
-
-  /** Internal: called by FirebaseProvider on startup */
+  /** Internal: called by FirebaseProvider on startup. */
   _setMovements: (movements: StockMovement[]) => void;
-
-  addMovement: (movement: Omit<StockMovement, 'id'>) => StockMovement;
+  /** Atomically records a manual stock delta and its immutable movement. */
+  commitStockChange: (movement: ManualStockChange) => StockMovement;
 }
 
 export const useStockStore = create<StockState>()((set) => ({
@@ -67,16 +67,60 @@ export const useStockStore = create<StockState>()((set) => ({
 
   _setMovements: (movements) => set({ movements }),
 
-  addMovement: (movement) => {
-    // ID avec random suffix pour éviter les collisions (cf. bug fixé v1.1.1)
+  commitStockChange: (movement) => {
+    if (!Number.isInteger(movement.quantity) || movement.quantity === 0) {
+      throw new Error('Quantité de stock invalide');
+    }
+    if (movement.type === 'entrée' && movement.quantity < 0) {
+      throw new Error('Une entrée de stock doit être positive');
+    }
+    const product = useProductStore.getState().products.find(item => item.id === movement.productId);
+    if (!product) throw new Error('Produit introuvable');
+    if (product.stock + movement.quantity < 0) {
+      throw new Error('Le stock ne peut pas devenir négatif');
+    }
+
     const id = 'm' + Date.now() + Math.random().toString(36).slice(2, 7);
-    const newMovement: StockMovement = { ...movement, id };
-    set(state => ({ movements: [newMovement, ...state.movements] }));
-    fsSaveMovement(getBoutiqueId(), newMovement).catch((err) => {
-      enqueue('stockMovement', newMovement);
-      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
-      console.warn('[outbox] stockMovement enqueued:', err);
+    const operationId = `stock-${id}`;
+    const newMovement: StockMovement = {
+      ...movement,
+      id,
+      operationId,
+      stockBefore: product.stock,
+      stockAfter: product.stock + movement.quantity,
+    };
+    const payload: StockCommitPayload = {
+      operation: {
+        operationId,
+        kind: 'manual',
+        date: movement.date,
+        userId: movement.userId,
+        userName: movement.userName,
+      },
+      stockDeltas: [{ productId: movement.productId, delta: movement.quantity }],
+      movements: [newMovement],
+    };
+    validateStockCommit(payload);
+
+    // Write-ahead journal: after a crash, the whole operation is replayed or
+    // none of it is. Local-only installations persist the final snapshot below.
+    if (isFirebaseConfigured) {
+      const queued = enqueue('stockCommit', payload);
+      if (!queued.durable) {
+        toast.error("Journal local non durable : gardez l'application ouverte jusqu'à la synchronisation");
+      }
+    }
+
+    runLocalStateTransaction(() => {
+      useProductStore.setState(state => ({
+        products: state.products.map(item => item.id === product.id
+          ? { ...item, stock: item.stock + movement.quantity }
+          : item),
+      }));
+      set(state => ({ movements: [newMovement, ...state.movements] }));
     });
+
+    if (isFirebaseConfigured) void retryAll();
     return newMovement;
   },
 }));

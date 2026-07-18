@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { hashPinPbkdf2, hashPinLegacy, generateSalt } from '@/lib/crypto';
-import { getBoutiqueId } from '@/services/boutiqueService';
+import { getBoutiqueId, getLocalSnapshotTenantId } from '@/services/boutiqueService';
 import { fsSaveUser, fsDeleteUser, fsGetLoginAttempts, fsSetLoginAttempts } from '@/services/firestoreService';
+import { enqueue } from '@/lib/outbox';
+import { toast } from 'sonner';
 
 export type UserRole = 'gérant' | 'caissier';
 export type HashAlgo = 'sha256' | 'pbkdf2';
@@ -55,6 +57,22 @@ interface AuthState {
 
 const MAX_ATTEMPTS   = 5;
 const LOCK_DURATION_MS = 5 * 60 * 1000;
+
+function persistUser(user: User): void {
+  fsSaveUser(getBoutiqueId(), user).catch((error) => {
+    enqueue('userSave', user);
+    toast.error("Utilisateur en attente de synchronisation");
+    console.warn('[outbox] user save enqueued:', error);
+  });
+}
+
+function persistUserDeletion(userId: string): void {
+  fsDeleteUser(getBoutiqueId(), userId).catch((error) => {
+    enqueue('userDelete', userId);
+    toast.error("Suppression utilisateur en attente de synchronisation");
+    console.warn('[outbox] user delete enqueued:', error);
+  });
+}
 
 /** Exported for unit-testing only — do not call from application code. */
 export async function verifyPin(pin: string, user: User): Promise<boolean> {
@@ -119,7 +137,7 @@ export const useAuthStore = create<AuthState>()(
             const newHash = await hashPinPbkdf2(pin, newSalt);
             finalUser = { ...user, pin: newHash, salt: newSalt, hashAlgo: 'pbkdf2' };
             set(s => ({ users: s.users.map(u => u.id === userId ? finalUser : u) }));
-            try { fsSaveUser(getBoutiqueId(), finalUser).catch(() => {}); } catch { /* hors-ligne : ignore */ }
+            persistUser(finalUser);
           }
 
           set({ currentUser: finalUser, isAuthenticated: true });
@@ -150,7 +168,7 @@ export const useAuthStore = create<AuthState>()(
         const hashedPin = await hashPinPbkdf2(userData.pin, salt);
         const newUser: User = { ...userData, id, pin: hashedPin, salt, hashAlgo: 'pbkdf2' };
         set(s => ({ users: [...s.users, newUser] }));
-        try { fsSaveUser(getBoutiqueId(), newUser).catch(() => {}); } catch { /* hors-ligne : ignore */ }
+        persistUser(newUser);
       },
 
       updateUserPin: async (userId, newPin) => {
@@ -161,30 +179,46 @@ export const useAuthStore = create<AuthState>()(
         );
         set({ users: updated });
         const user = updated.find(u => u.id === userId);
-        if (user) try { fsSaveUser(getBoutiqueId(), user).catch(() => {}); } catch { /* hors-ligne : ignore */ }
+        if (user) persistUser(user);
       },
 
       updateUserInfo: (userId, info) => {
         const updated = get().users.map(u => u.id === userId ? { ...u, ...info } : u);
         set({ users: updated });
         const user = updated.find(u => u.id === userId);
-        if (user) try { fsSaveUser(getBoutiqueId(), user).catch(() => {}); } catch { /* hors-ligne : ignore */ }
+        if (user) persistUser(user);
         const current = get().currentUser;
         if (current?.id === userId) set({ currentUser: { ...current, ...info } });
       },
 
       deleteUser: (userId) => {
         set(s => ({ users: s.users.filter(u => u.id !== userId) }));
-        try { fsDeleteUser(getBoutiqueId(), userId).catch(() => {}); } catch { /* hors-ligne : ignore */ }
+        persistUserDeletion(userId);
       },
     }),
     {
       name: 'legwan-auth',
       partialize: (state) => ({
-        currentUser:     state.currentUser,
-        isAuthenticated: state.isAuthenticated,
+        // PINs are already irreversibly hashed. Keeping the user directory
+        // locally is required to authenticate staff when Firebase is offline.
+        users:           state.users,
         loginAttempts:   state.loginAttempts,
+        tenantId:        getLocalSnapshotTenantId(),
       }),
+      merge: (persisted, current) => {
+        const saved = persisted as Partial<AuthState> & { tenantId?: string };
+        const tenantId = getLocalSnapshotTenantId();
+        const sameTenant = saved.tenantId === tenantId
+          || (!saved.tenantId && tenantId === 'unregistered');
+        return {
+          ...current,
+          ...(sameTenant ? saved : {}),
+          // Every process start requires a fresh PIN. This also neutralizes old
+          // persisted payloads that contained an authenticated manager session.
+          currentUser: null,
+          isAuthenticated: false,
+        };
+      },
     }
   )
 );

@@ -4,11 +4,12 @@ const { pathToFileURL } = require('url');
 
 (async () => {
   try {
-    const filePathMjs = path.join(__dirname, 'main.mjs');
-    const filePathJs = path.join(__dirname, 'main.js');
-    const fs = require('fs');
-    const target = fs.existsSync(filePathMjs) ? filePathMjs : filePathJs;
-    await import(pathToFileURL(target).href);
+    // Node's ESM loader in Electron 26 cannot import module contents through
+    // app.asar. electron-builder unpacks electron/**/* for this reason.
+    const filePathMjs = __dirname.includes('app.asar')
+      ? path.join(process.resourcesPath, 'app.asar.unpacked', 'electron', 'main.mjs')
+      : path.join(__dirname, 'main.mjs');
+    await import(pathToFileURL(filePathMjs).href);
 
   } catch (err) {
     // Print error and exit so logs capture launch failures

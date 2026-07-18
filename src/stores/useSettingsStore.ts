@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { getBoutiqueId } from '@/services/boutiqueService';
 import { fsSaveSettings } from '@/services/firestoreService';
+import { enqueue } from '@/lib/outbox';
+import { toast } from 'sonner';
 import type { SupportedLocale } from '@/i18n/types';
 
 export interface ShopSettings {
@@ -51,6 +53,10 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   updateShop: (data) => {
     const updated = { ...get().shop, ...data };
     set({ shop: updated });
-    fsSaveSettings(getBoutiqueId(), updated).catch(console.error);
+    fsSaveSettings(getBoutiqueId(), updated).catch((error) => {
+      enqueue('settingsSave', updated);
+      toast.error("Paramètres en attente de synchronisation");
+      console.warn('[outbox] settings enqueued:', error);
+    });
   },
 }));

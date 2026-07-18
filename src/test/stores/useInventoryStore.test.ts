@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   useInventoryStore,
   type InventoryScope,
 } from '@/stores/useInventoryStore';
-import type { Product } from '@/stores/useProductStore';
+import { useProductStore, type Product } from '@/stores/useProductStore';
+import { useStockStore } from '@/stores/useStockStore';
 
 const makeProduct = (overrides: Partial<Product> = {}): Product => ({
   id: 'p1',
@@ -19,6 +20,8 @@ const makeProduct = (overrides: Partial<Product> = {}): Product => ({
 
 beforeEach(() => {
   useInventoryStore.setState({ sessions: [] });
+  useProductStore.setState({ products: [] });
+  useStockStore.setState({ movements: [] });
 });
 
 describe('useInventoryStore — initial state', () => {
@@ -181,6 +184,7 @@ describe('useInventoryStore — cancelSession', () => {
 describe('useInventoryStore — validateSession', () => {
   const setupSession = (lines: { id: string; stock: number; counted: number | null; reason?: string }[]) => {
     const products = lines.map(l => makeProduct({ id: l.id, stock: l.stock }));
+    useProductStore.setState({ products });
     const s = useInventoryStore.getState().createSession({
       scope: 'complet', products, userId: 'u1', userName: 'Gérant',
     });
@@ -200,13 +204,11 @@ describe('useInventoryStore — validateSession', () => {
       { id: 'p1', stock: 10, counted: 10 },
       { id: 'p2', stock: 20, counted: 20 },
     ]);
-    const addMovementSpy = vi.fn();
     const result = useInventoryStore.getState().validateSession(s.id, 'u1', 'Gérant', {
       getProductPrixAchat: () => 1000,
-      addMovementAndUpdateStock: addMovementSpy,
     });
     expect(result.success).toBe(true);
-    expect(addMovementSpy).not.toHaveBeenCalled();
+    expect(useStockStore.getState().movements).toHaveLength(0);
   });
 
   it('returns success=false when ecart present without reason', () => {
@@ -216,7 +218,6 @@ describe('useInventoryStore — validateSession', () => {
     ]);
     const result = useInventoryStore.getState().validateSession(s.id, 'u1', 'Gérant', {
       getProductPrixAchat: () => 1000,
-      addMovementAndUpdateStock: vi.fn(),
     });
     expect(result.success).toBe(false);
     if (result.success === false) {
@@ -230,13 +231,11 @@ describe('useInventoryStore — validateSession', () => {
       { id: 'p2', stock: 5, counted: 7, reason: 'erreur_saisie' }, // ecart +2
       { id: 'p3', stock: 15, counted: 15 },                    // pas d'ecart
     ]);
-    const addMovementSpy = vi.fn();
     const result = useInventoryStore.getState().validateSession(s.id, 'u1', 'Gérant', {
       getProductPrixAchat: () => 1000,
-      addMovementAndUpdateStock: addMovementSpy,
     });
     expect(result.success).toBe(true);
-    expect(addMovementSpy).toHaveBeenCalledTimes(2); // 2 lignes avec écart
+    expect(useStockStore.getState().movements).toHaveLength(2);
   });
 
   it('computes totalEcartQty and totalEcartValue correctly', () => {
@@ -246,7 +245,6 @@ describe('useInventoryStore — validateSession', () => {
     ]);
     const result = useInventoryStore.getState().validateSession(s.id, 'u1', 'Gérant', {
       getProductPrixAchat: (id) => id === 'p1' ? 1000 : 1500,
-      addMovementAndUpdateStock: vi.fn(),
     });
     expect(result.success).toBe(true);
     if (result.success) {
@@ -259,7 +257,6 @@ describe('useInventoryStore — validateSession', () => {
     const s = setupSession([{ id: 'p1', stock: 10, counted: 10 }]);
     useInventoryStore.getState().validateSession(s.id, 'mgr1', 'Manager X', {
       getProductPrixAchat: () => 0,
-      addMovementAndUpdateStock: vi.fn(),
     });
     const validated = useInventoryStore.getState().sessions.find(x => x.id === s.id);
     expect(validated?.status).toBe('validated');
@@ -272,11 +269,9 @@ describe('useInventoryStore — validateSession', () => {
     const s = setupSession([{ id: 'p1', stock: 10, counted: 10 }]);
     useInventoryStore.getState().validateSession(s.id, 'u1', 'X', {
       getProductPrixAchat: () => 0,
-      addMovementAndUpdateStock: vi.fn(),
     });
     expect(() => useInventoryStore.getState().validateSession(s.id, 'u1', 'X', {
       getProductPrixAchat: () => 0,
-      addMovementAndUpdateStock: vi.fn(),
     })).toThrow(/déjà validée/);
   });
 });
@@ -292,7 +287,6 @@ describe('useInventoryStore — selectors', () => {
     });
     useInventoryStore.getState().validateSession(s2.id, 'u1', 'X', {
       getProductPrixAchat: () => 0,
-      addMovementAndUpdateStock: vi.fn(),
     });
     const open = useInventoryStore.getState().getOpenSessions();
     expect(open).toHaveLength(1);
@@ -306,7 +300,6 @@ describe('useInventoryStore — selectors', () => {
     });
     useInventoryStore.getState().validateSession(s1.id, 'u1', 'X', {
       getProductPrixAchat: () => 0,
-      addMovementAndUpdateStock: vi.fn(),
     });
 
     const now = new Date();
