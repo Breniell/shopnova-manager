@@ -110,6 +110,16 @@ describe('getTrustedNow — offline, clock is reasonable', () => {
 });
 
 describe('getTrustedNow — network error treated as offline', () => {
+  it('does not hang when the network probe stays pending offline', async () => {
+    const never = () => new Promise<number | null>(() => {});
+    const started = Date.now();
+    const result = await getTrustedNow(LAST_SEEN, never, REASONABLE_DATE, 5);
+
+    expect(Date.now() - started).toBeLessThan(1_000);
+    expect(result.now).toBe(REASONABLE_DATE);
+    expect(result.clockWarning).toBe(false);
+  });
+
   it('falls back to system clock when fetchFn throws', async () => {
     const throwing = () => Promise.reject(new Error('network error'));
     const result   = await getTrustedNow(null, throwing, REASONABLE_DATE);

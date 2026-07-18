@@ -211,7 +211,11 @@ export const useCashSessionStore = create<CashSessionState>()((set, get) => ({
 
   deleteCashOut: (id) => {
     set(state => ({ cashOuts: state.cashOuts.filter(c => c.id !== id) }));
-    fsDeleteCashOut(getBoutiqueId(), id).catch(console.error);
+    fsDeleteCashOut(getBoutiqueId(), id).catch((error) => {
+      enqueue('cashOutDelete', id);
+      toast.error("Suppression de sortie en attente de synchronisation");
+      console.warn('[outbox] cash-out delete enqueued:', error);
+    });
   },
 
   getCurrentSession: () => {

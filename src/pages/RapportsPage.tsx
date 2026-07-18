@@ -11,6 +11,7 @@ import { exportCSV, exportPDF } from '@/lib/export';
 import { toast } from 'sonner';
 import { formatPrice, getCurrentBcp47 } from '@/utils/formatters';
 import { useTranslation } from '@/i18n';
+import { useCurrentDate } from '@/hooks/useCurrentDate';
 
 type Period = 'today' | 'week' | 'month';
 
@@ -21,14 +22,14 @@ const RapportsPage: React.FC = () => {
   const { expenses } = useExpenseStore();
   const [period, setPeriod] = useState<Period>('week');
 
-  const now = new Date();
+  const now = useCurrentDate();
   const periodStart = useMemo(() => {
     const d = new Date(now);
     if (period === 'today') { d.setHours(0, 0, 0, 0); }
     else if (period === 'week') { d.setDate(d.getDate() - 7); }
     else { d.setMonth(d.getMonth() - 1); }
     return d;
-  }, [period]);
+  }, [period, now]);
 
   const activeSales = sales.filter(s => s.status !== 'refunded');
   const periodSales = activeSales.filter(s => new Date(s.date) >= periodStart);
@@ -36,7 +37,9 @@ const RapportsPage: React.FC = () => {
   const avgCart = periodSales.length > 0 ? Math.round(totalRevenue / periodSales.length) : 0;
   const totalCost = periodSales.reduce((sum, s) => sum + s.items.reduce((isum, item) => {
     const product = products.find(p => p.id === item.productId);
-    return isum + (product ? product.prixAchat * item.quantity : 0);
+    // New sales carry a cost snapshot. Historical v1 sales fall back to the
+    // current catalogue cost because no contemporaneous value was recorded.
+    return isum + (item.prixAchat ?? product?.prixAchat ?? 0) * item.quantity;
   }, 0), 0);
   const margin = totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue * 100) : 0;
 
@@ -62,16 +65,20 @@ const RapportsPage: React.FC = () => {
   const productMap = new Map<string, { nom: string; qty: number; revenue: number }>();
   periodSales.forEach(s => s.items.forEach(item => {
     const e = productMap.get(item.productId);
-    const rev = item.quantity * item.prixVente;
+    const lineGross = item.quantity * (item.prixUnitaire ?? item.prixVente);
+    // Allocate the sale-level discount proportionally so product revenue sums
+    // to the actual charged total, including negotiated unit prices.
+    const rev = s.subtotal > 0 ? s.total * (lineGross / s.subtotal) : 0;
     if (e) { e.qty += item.quantity; e.revenue += rev; }
     else { productMap.set(item.productId, { nom: item.nom, qty: item.quantity, revenue: rev }); }
   }));
   const top10 = Array.from(productMap.values()).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
 
-  // Payment distribution (no credit)
+  // Sale distribution by payment mode (accrual view, including credit).
   const paymentDist = [
     { name: t('rapports.labelCash'), value: periodSales.filter(s => s.paymentMode === 'especes').reduce((sum, s) => sum + s.total, 0), color: '#2B6954' },
     { name: t('rapports.labelMobile'), value: periodSales.filter(s => s.paymentMode === 'mobile_money').reduce((sum, s) => sum + s.total, 0), color: '#A93200' },
+    { name: t('nav.credit'), value: periodSales.filter(s => s.paymentMode === 'credit').reduce((sum, s) => sum + s.total, 0), color: '#D99B2B' },
   ].filter(d => d.value > 0);
 
   // Critical stock

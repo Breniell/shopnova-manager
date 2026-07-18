@@ -1,8 +1,7 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { useSaleStore } from '@/stores/useSaleStore';
 import { useProductStore } from '@/stores/useProductStore';
 import { useStockStore } from '@/stores/useStockStore';
-import * as firestoreService from '@/services/firestoreService';
 
 const INITIAL_STATE = useSaleStore.getState();
 
@@ -140,6 +139,12 @@ describe('useSaleStore — getCartTotal', () => {
 // ─── completeSale ─────────────────────────────────────────────────────────────
 describe('useSaleStore — completeSale', () => {
   beforeEach(() => {
+    useProductStore.setState({
+      products: [{
+        id: 'p1', nom: 'Bière Castel', categorie: 'Boissons', codeBarre: '1234567890123',
+        prixAchat: 400, prixVente: 600, stock: 50, seuilAlerte: 5,
+      }],
+    });
     const { addToCart, updateCartQuantity } = useSaleStore.getState();
     addToCart({ productId: 'p1', nom: 'Bière Castel', prixVente: 600 });
     updateCartQuantity('p1', 2); // subtotal = 1200
@@ -239,6 +244,13 @@ const SEED_SALES = [
 describe('useSaleStore — refundSale', () => {
   beforeEach(() => {
     useSaleStore.getState()._setSales([...SEED_SALES]);
+    useProductStore.setState({
+      products: [
+        { id: 'p1', nom: 'Bière Castel', categorie: 'Boissons', codeBarre: '111', prixAchat: 400, prixVente: 600, stock: 10, seuilAlerte: 2 },
+        { id: 'p2', nom: 'Eau Supermont', categorie: 'Boissons', codeBarre: '222', prixAchat: 100, prixVente: 300, stock: 5, seuilAlerte: 2 },
+      ],
+    });
+    useStockStore.setState({ movements: [] });
   });
 
   it('marks a sale as refunded', () => {
@@ -266,6 +278,25 @@ describe('useSaleStore — refundSale', () => {
     refundSale(target.id, 'test', 'u1', 'Manager');
     const updatedOther = useSaleStore.getState().sales.find(s => s.id === other.id)!;
     expect(updatedOther.status).toBe('completed');
+  });
+
+  it('is locally idempotent and never restores stock twice', () => {
+    const target = useSaleStore.getState().sales[0];
+    const refund = useSaleStore.getState().refundSale;
+    refund(target.id, 'test', 'u1', 'Manager');
+    refund(target.id, 'test replay', 'u1', 'Manager');
+
+    expect(useProductStore.getState().products.find(p => p.id === 'p1')!.stock).toBe(12);
+    expect(useStockStore.getState().movements.filter(m => m.productId === 'p1')).toHaveLength(1);
+  });
+
+  it('creates a deterministic local refund marker and movement ids', () => {
+    const target = useSaleStore.getState().sales[0];
+    useSaleStore.getState().refundSale(target.id, 'test', 'u1', 'Manager');
+
+    const refunded = useSaleStore.getState().sales.find(sale => sale.id === target.id)!;
+    expect(refunded.refundOperationId).toBe(target.id);
+    expect(useStockStore.getState().movements[0].id).toBe(`refund-${target.id}-0`);
   });
 });
 
@@ -328,23 +359,21 @@ describe('useSaleStore — completeSale (stock atomique)', () => {
     expect(parts[2]).toMatch(/^[A-Z0-9]{4}$/);
   });
 
-  it('ne crée aucun mouvement pour un produit absent du catalogue mais enregistre la vente', () => {
+  it('refuse toute la vente si un produit du panier a disparu du catalogue', () => {
     useSaleStore.getState().clearCart();
     useSaleStore.getState().addToCart({ productId: 'inconnu', nom: 'Fantôme', prixVente: 100 });
-    const sale = useSaleStore.getState().completeSale({
+    expect(() => useSaleStore.getState().completeSale({
       paymentMode: 'especes', amountReceived: 100, changeGiven: 0,
       userId: 'u1', userName: 'Test',
-    });
-    expect(sale.items).toHaveLength(1);
+    })).toThrow('Produit introuvable');
+    expect(useSaleStore.getState().sales).toHaveLength(0);
     expect(useStockStore.getState().movements).toHaveLength(0);
   });
 });
 
 // ─── fsCommitSale reçoit des deltas négatifs (pas des produits complets) ───────
-describe('useSaleStore — fsCommitSale payload uses stockDeltas', () => {
-  afterEach(() => vi.restoreAllMocks());
-
-  it('fsCommitSale is called with negative stockDeltas — never with absolute product values', () => {
+describe('useSaleStore — sale stock delta projection', () => {
+  it('records a negative movement delta and never an absolute stock value', () => {
     localStorage.clear();
     useStockStore.setState({ movements: [] });
     useProductStore.setState({
@@ -355,22 +384,19 @@ describe('useSaleStore — fsCommitSale payload uses stockDeltas', () => {
     });
     useSaleStore.setState({ cart: [], discount: 0, saleCounter: 0 });
 
-    const spy = vi.spyOn(firestoreService, 'fsCommitSale');
-
     const { addToCart, updateCartQuantity, completeSale } = useSaleStore.getState();
     addToCart({ productId: 'p1', nom: 'Bière', prixVente: 600 });
     updateCartQuantity('p1', 3);
     completeSale({ paymentMode: 'especes', amountReceived: 1800, changeGiven: 0, userId: 'u1', userName: 'Test' });
 
-    expect(spy).toHaveBeenCalledOnce();
-    const payload = spy.mock.calls[0][1];
-    // Must carry stockDeltas, not products
-    expect(payload).toHaveProperty('stockDeltas');
-    expect((payload as { stockDeltas: unknown[] }).stockDeltas).toHaveLength(1);
-    const delta = (payload as { stockDeltas: Array<{ productId: string; delta: number }> }).stockDeltas[0];
-    expect(delta.productId).toBe('p1');
-    expect(delta.delta).toBe(-3); // negative — decrement
-    // Must NOT contain a 'products' key
-    expect(payload).not.toHaveProperty('products');
+    const persistedSale = useSaleStore.getState().sales[0];
+    const movement = useStockStore.getState().movements[0];
+    expect(movement).toMatchObject({
+      productId: 'p1',
+      quantity: -3,
+      userId: 'u1',
+    });
+    expect(movement.id).toBe(`sale-${persistedSale.id}-0`);
+    expect(useProductStore.getState().products[0].stock).toBe(7);
   });
 });

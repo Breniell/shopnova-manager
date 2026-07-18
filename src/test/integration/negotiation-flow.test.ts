@@ -11,10 +11,15 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useSaleStore } from '@/stores/useSaleStore';
+import { useProductStore } from '@/stores/useProductStore';
 import { getAppliedPrice, getLossFromNegotiation } from '@/lib/pricing';
 
 beforeEach(() => {
   useSaleStore.setState({ sales: [], cart: [], discount: 0, saleCounter: 0 });
+  useProductStore.setState({ products: [{
+    id: 'p1', nom: 'Coca', categorie: 'Boissons', codeBarre: 'p1',
+    prixAchat: 300, prixVente: 500, stock: 100, seuilAlerte: 5,
+  }] });
 });
 
 describe('Integration: price negotiation flow', () => {

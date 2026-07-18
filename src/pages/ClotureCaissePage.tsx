@@ -13,6 +13,8 @@ import { Calculator, Check, DollarSign, Smartphone, History, AlertTriangle, Wall
 import { toast } from 'sonner';
 import { formatPrice, formatFCFA, formatDate, formatTime, formatDateShort } from '@/utils/formatters';
 import { useTranslation } from '@/i18n';
+import { getPaymentSignedAmount } from '@/lib/credit';
+import { useCurrentDate } from '@/hooks/useCurrentDate';
 
 const denominations = [
   { label: '10 000', value: 10000, type: 'billet' },
@@ -51,15 +53,17 @@ const ClotureCaissePage: React.FC = () => {
   const currentSession = getCurrentSession();
   const inSessionMode = currentSession !== null;
 
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const now = useCurrentDate();
+  const dayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
 
   // Bornes temporelles pour les calculs :
   // - session mode : depuis l'ouverture de la session
   // - legacy mode  : depuis minuit aujourd'hui
-  const periodStart = inSessionMode && currentSession
-    ? new Date(currentSession.openedAt)
-    : today;
+  const periodStart = useMemo(() => {
+    if (inSessionMode && currentSession) return new Date(currentSession.openedAt);
+    const [year, month, day] = dayKey.split('-').map(Number);
+    return new Date(year, month, day);
+  }, [inSessionMode, currentSession, dayKey]);
 
   // ── Ventes incluses dans la période ─────────────────────────────────────
   const periodSales = useMemo(() => {
@@ -105,7 +109,7 @@ const ClotureCaissePage: React.FC = () => {
     .reduce((sum, s) => sum + s.total, 0);
   const totalEspecesReglements = periodPayments
     .filter(p => p.channel === 'especes')
-    .reduce((sum, p) => sum + p.amount, 0);
+    .reduce((sum, p) => sum + getPaymentSignedAmount(p), 0);
   const totalEspeces = totalEspecesVentes + totalEspecesReglements;
 
   // ── Mobile money ────────────────────────────────────────────────────────
@@ -114,7 +118,7 @@ const ClotureCaissePage: React.FC = () => {
     .reduce((sum, s) => sum + s.total, 0);
   const totalMobileReglements = periodPayments
     .filter(p => p.channel === 'mobile_money')
-    .reduce((sum, p) => sum + p.amount, 0);
+    .reduce((sum, p) => sum + getPaymentSignedAmount(p), 0);
   const totalMobile = totalMobileVentes + totalMobileReglements;
 
   // CA encaissé = espèces + mobile money (ne contient PAS les crédits non réglés)

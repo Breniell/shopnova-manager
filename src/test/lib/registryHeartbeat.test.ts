@@ -30,6 +30,7 @@ vi.mock('@/lib/firebase', () => ({
 vi.mock('@/services/boutiqueService', () => ({
   initBoutique:               vi.fn().mockResolvedValue('boutique-test-id'),
   getBoutiqueId:              vi.fn().mockReturnValue('boutique-test-id'),
+  getLocalSnapshotTenantId:   vi.fn().mockReturnValue('boutique-test-id'),
   getBoutiqueRecoveryStatus:  vi.fn().mockResolvedValue({ isRecoveryEnabled: false }),
   getBoutiqueRecoveryErrorMessage: vi.fn().mockReturnValue(''),
   getSavedRecoveryEmail:      vi.fn().mockReturnValue(''),

@@ -20,7 +20,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -38,8 +38,13 @@ jobs:
           }
           Write-Host "Version check passed: $tag"
 
-      - name: Run tests
-        run: npm test
+      - name: Run quality and security checks
+        run: |
+          npm run lint
+          npm run typecheck
+          npm run security:prod
+          npm test
+          npm run test:electron-runtime
 
       - name: Create .env from secrets
         shell: pwsh
@@ -50,11 +55,16 @@ jobs:
             "VITE_FIREBASE_PROJECT_ID=$env:VITE_FIREBASE_PROJECT_ID",
             "VITE_FIREBASE_STORAGE_BUCKET=$env:VITE_FIREBASE_STORAGE_BUCKET",
             "VITE_FIREBASE_MESSAGING_SENDER_ID=$env:VITE_FIREBASE_MESSAGING_SENDER_ID",
-            "VITE_FIREBASE_APP_ID=$env:VITE_FIREBASE_APP_ID"
+            "VITE_FIREBASE_APP_ID=$env:VITE_FIREBASE_APP_ID",
+            "VITE_LICENSE_PUBKEY=$env:VITE_LICENSE_PUBKEY"
           )
           $content | Out-File -FilePath .env -Encoding utf8NoBOM
           if (-not $env:VITE_FIREBASE_API_KEY) {
             Write-Error "Secret VITE_FIREBASE_API_KEY manquant."
+            exit 1
+          }
+          if (-not $env:VITE_LICENSE_PUBKEY) {
+            Write-Error "Secret VITE_LICENSE_PUBKEY manquant. Le build distribue ne peut pas verifier les licences."
             exit 1
           }
           Write-Host ".env generated from secrets."
@@ -65,6 +75,7 @@ jobs:
           VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_LICENSE_PUBKEY: ${{ secrets.VITE_LICENSE_PUBKEY }}
 
       - name: Cache electron-builder binaries
         uses: actions/cache@v4
@@ -96,15 +107,16 @@ jobs:
             Write-Host "winCodeSign ready"
           }
 
-      - name: Build Vite (electron mode)
-        run: npm run electron:build
-
-      - name: Package Windows installer
-        shell: pwsh
-        run: npx electron-builder --win nsis --x64 --publish never
+      - name: Signed release build and verification
+        run: npm run release:client
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: "false"
-          WIN_CSC_LINK: ""
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          WIN_CSC_PUBLISHER: ${{ secrets.WIN_CSC_PUBLISHER }}
+          WIN_CSC_SUBJECT: ${{ secrets.WIN_CSC_SUBJECT }}
+
+      - name: Packaged offline smoke test
+        run: npm run smoke:offline:packaged
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -115,6 +127,7 @@ jobs:
             release/Legwan-Setup-*.exe
             release/Legwan-Setup-*.exe.blockmap
             release/latest.yml
+            release/SHA256SUMS.txt
           draft: false
           prerelease: false
           generate_release_notes: true

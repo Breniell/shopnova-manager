@@ -13,6 +13,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { useSaleStore, type CartItem } from '@/stores/useSaleStore';
 import { usePaymentStore } from '@/stores/usePaymentStore';
 import { useCustomerStore } from '@/stores/useCustomerStore';
+import { useProductStore } from '@/stores/useProductStore';
 import {
   getRemainingBalance,
   getCustomerOutstanding,
@@ -35,6 +36,18 @@ const seedCustomer = (overrides: Partial<{ plafondCredit: number }> = {}) => {
 };
 
 const seedCart = (cart: CartItem[]) => {
+  useProductStore.setState({
+    products: cart.map(item => ({
+      id: item.productId,
+      nom: item.nom,
+      categorie: 'Autre' as const,
+      codeBarre: `test-${item.productId}`,
+      prixAchat: 0,
+      prixVente: item.prixVente,
+      stock: 100,
+      seuilAlerte: 0,
+    })),
+  });
   useSaleStore.setState({ cart });
 };
 

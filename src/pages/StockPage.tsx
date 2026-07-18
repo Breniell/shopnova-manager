@@ -45,8 +45,8 @@ function buildMailtoLink(
 
 const StockPage: React.FC = () => {
   const { t } = useTranslation();
-  const { products, updateStock } = useProductStore();
-  const { movements, addMovement } = useStockStore();
+  const { products } = useProductStore();
+  const { movements, commitStockChange } = useStockStore();
   const { currentUser } = useAuthStore();
   const { suppliers } = useSupplierStore();
   const { shop } = useSettingsStore();
@@ -85,16 +85,17 @@ const StockPage: React.FC = () => {
     const product = products.find(p => p.id === selectedProduct);
     if (!product || !currentUser) return;
 
-    const quantity = parseInt(qty);
-    updateStock(product.id, quantity);
-    addMovement({
+    const quantity = Number(qty);
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      toast.error('La quantité doit être un entier strictement positif');
+      return;
+    }
+    commitStockChange({
       date: new Date(),
       productId: product.id,
       productName: product.nom,
       type: 'entrée',
       quantity,
-      stockBefore: product.stock,
-      stockAfter: product.stock + quantity,
       userId: currentUser.id,
       userName: `${currentUser.prenom} ${currentUser.nom}`,
       supplier,

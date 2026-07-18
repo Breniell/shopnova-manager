@@ -13,12 +13,17 @@ import { useSaleStore } from '@/stores/useSaleStore';
 import { usePaymentStore } from '@/stores/usePaymentStore';
 import { useCashSessionStore } from '@/stores/useCashSessionStore';
 import { useCustomerStore } from '@/stores/useCustomerStore';
+import { useProductStore } from '@/stores/useProductStore';
 
 beforeEach(() => {
   useSaleStore.setState({ sales: [], cart: [], discount: 0, saleCounter: 0 });
   usePaymentStore.setState({ payments: [] });
   useCashSessionStore.setState({ sessions: [], cashOuts: [], currentSessionId: null });
   useCustomerStore.setState({ customers: [] });
+  useProductStore.setState({ products: [{
+    id: 'p1', nom: 'Produit test', categorie: 'Autre', codeBarre: 'p1',
+    prixAchat: 100, prixVente: 1500, stock: 100, seuilAlerte: 5,
+  }] });
 });
 
 describe('Integration: cash session flow', () => {

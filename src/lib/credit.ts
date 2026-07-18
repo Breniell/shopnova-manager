@@ -10,12 +10,20 @@
  *   • `Payment[]` : la liste des règlements reçus pour cette vente
  *   • Le solde restant = Sale.total - Σ(Payment.amount sur cette vente)
  *
- * Les champs `Sale.amountPaid` et `Sale.creditStatus` sont des dénormalisations
- * (caches) pour l'affichage rapide. À recalculer après chaque ajout/retrait
- * de paiement.
+ * Les champs `Sale.amountPaid` et `Sale.creditStatus` sont uniquement des
+ * projections compatibles avec les anciennes sauvegardes. Le registre
+ * immuable `Payment[]` reste la seule source de vérité.
  */
 import type { Sale, CreditStatus } from '@/stores/useSaleStore';
 import type { Payment } from '@/stores/usePaymentStore';
+
+/**
+ * Valeur comptable d'une opération du registre. Les paiements historiques
+ * n'ont pas de `kind` et sont donc traités comme des encaissements normaux.
+ */
+export function getPaymentSignedAmount(payment: Payment): number {
+  return payment.kind === 'reversal' ? -payment.amount : payment.amount;
+}
 
 /**
  * Solde restant à régler sur une vente à crédit.
@@ -27,7 +35,7 @@ export function getRemainingBalance(sale: Sale, payments: Payment[]): number {
   if (sale.status === 'refunded') return 0;
   const paid = payments
     .filter(p => p.saleId === sale.id)
-    .reduce((sum, p) => sum + p.amount, 0);
+    .reduce((sum, p) => sum + getPaymentSignedAmount(p), 0);
   return Math.max(0, sale.total - paid);
 }
 
@@ -39,7 +47,27 @@ export function getAmountPaid(sale: Sale, payments: Payment[]): number {
   if (sale.paymentMode !== 'credit') return 0;
   return payments
     .filter(p => p.saleId === sale.id)
-    .reduce((sum, p) => sum + p.amount, 0);
+    .reduce((sum, p) => sum + getPaymentSignedAmount(p), 0);
+}
+
+/**
+ * Recalcule les champs de compatibilité depuis le registre. Cette projection
+ * est volontairement locale : aucune caisse n'écrit un total absolu pouvant
+ * écraser le calcul d'une autre caisse.
+ */
+export function projectCreditSale(sale: Sale, payments: Payment[]): Sale {
+  if (sale.paymentMode !== 'credit') return sale;
+  const amountPaid = Math.max(0, getAmountPaid(sale, payments));
+  return {
+    ...sale,
+    amountPaid,
+    creditStatus: computeCreditStatus(sale, payments),
+    creditConflict: amountPaid > sale.total,
+  };
+}
+
+export function projectCreditSales(sales: Sale[], payments: Payment[]): Sale[] {
+  return sales.map(sale => projectCreditSale(sale, payments));
 }
 
 /**

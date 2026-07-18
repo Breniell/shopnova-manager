@@ -19,17 +19,31 @@ import {
   fsCommitSale,
   fsCommitRefund,
   fsCommitCreditPayment,
-  fsAdjustStock,
+  fsCommitLegacyStockAdjustment,
+  fsCommitStockOperation,
   fsSaveCloture,
   fsSaveCashSession,
   fsSaveCashOut,
   fsSaveExpense,
-  fsSaveMovement,
+  fsRestoreMovement,
   fsSavePayment,
   fsSaveInventorySession,
+  fsSaveProduct,
+  fsUpdateProductFields,
+  fsDeleteProduct,
+  fsSaveSupplier,
+  fsDeleteSupplier,
+  fsSaveCustomer,
+  fsDeleteCustomer,
+  fsSaveSettings,
+  fsSaveUser,
+  fsDeleteUser,
+  fsDeleteExpense,
+  fsDeleteCashOut,
   type SaleCommitPayload,
   type RefundCommitPayload,
   type CreditPaymentCommitPayload,
+  type StockCommitPayload,
 } from '@/services/firestoreService';
 import type { ClotureCaisse } from '@/stores/useCaisseStore';
 import type { CashSession, CashOut } from '@/stores/useCashSessionStore';
@@ -37,6 +51,10 @@ import type { Expense } from '@/stores/useExpenseStore';
 import type { StockMovement } from '@/stores/useStockStore';
 import type { Payment } from '@/stores/usePaymentStore';
 import type { InventorySession } from '@/stores/useInventoryStore';
+import type { Product } from '@/stores/useProductStore';
+import type { Supplier } from '@/stores/useSupplierStore';
+import type { Customer } from '@/stores/useCustomerStore';
+import type { User } from '@/stores/useAuthStore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,18 +63,33 @@ export type OutboxEntryType =
   | 'refund'
   | 'creditPayment'
   | 'stockAdjust'
+  | 'stockCommit'
   | 'cloture'
   | 'cashSession'
   | 'cashOut'
   | 'expense'
   | 'stockMovement'
   | 'payment'
-  | 'inventorySession';
+  | 'inventorySession'
+  | 'productCreate'
+  | 'productUpdate'
+  | 'productDelete'
+  | 'supplierSave'
+  | 'supplierDelete'
+  | 'customerSave'
+  | 'customerDelete'
+  | 'settingsSave'
+  | 'userSave'
+  | 'userDelete'
+  | 'expenseDelete'
+  | 'cashOutDelete';
 
-export type OutboxStatus = 'pending' | 'failed';
+export type OutboxStatus = 'pending' | 'failed' | 'quarantined';
 
 export interface OutboxEntry {
   id: string;
+  /** Tenant that owned the operation when it was created. */
+  boutiqueId: string;
   type: OutboxEntryType;
   payload: unknown;
   attempts: number;
@@ -71,6 +104,25 @@ type OutboxDispatch = (bid: string, entry: OutboxEntry) => Promise<void>;
 
 const STORAGE_KEY = 'legwan-outbox';
 const MAX_ATTEMPTS = 3;
+
+/** Real fallback when localStorage cannot persist the queue. */
+let volatileEntries: OutboxEntry[] | null = null;
+let lastPersistenceError: string | null = null;
+/**
+ * A startup completion and the browser `online` event may fire together.
+ * Replaying the same snapshot twice is unsafe for legacy/non-idempotent
+ * operations such as `stockAdjust`, so all callers share one in-flight drain.
+ */
+let activeRetry: Promise<OutboxPersistenceState> | null = null;
+
+export interface OutboxPersistenceState {
+  durable: boolean;
+  error: string | null;
+}
+
+export interface OutboxEnqueueResult extends OutboxPersistenceState {
+  entry: OutboxEntry;
+}
 
 // ─── Listeners ───────────────────────────────────────────────────────────────
 
@@ -89,28 +141,52 @@ export function subscribe(listener: Listener): () => void {
 // ─── Storage helpers ──────────────────────────────────────────────────────────
 
 function load(): OutboxEntry[] {
+  if (volatileEntries) return [...volatileEntries];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as OutboxEntry[]) : [];
-  } catch {
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Array<Partial<OutboxEntry>>;
+    if (!Array.isArray(parsed)) throw new Error('invalid outbox payload');
+    lastPersistenceError = null;
+
+    // Legacy entries have no trustworthy tenant. Preserve but never replay them.
+    return parsed.map(entry => entry.boutiqueId
+      ? entry as OutboxEntry
+      : {
+          ...entry,
+          boutiqueId: '__unknown__',
+          status: 'quarantined',
+          lastError: 'Entrée historique sans boutiqueId : rejeu automatique interdit.',
+        } as OutboxEntry
+    );
+  } catch (err) {
+    lastPersistenceError = `Lecture de l'outbox impossible : ${err instanceof Error ? err.message : String(err)}`;
+    console.error(`[outbox] ${lastPersistenceError}`);
     return [];
   }
 }
 
-function save(entries: OutboxEntry[]): void {
+function save(entries: OutboxEntry[]): OutboxPersistenceState {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-  } catch {
-    // localStorage full — keep in memory at least; notify UI
+    volatileEntries = null;
+    lastPersistenceError = null;
+  } catch (err) {
+    volatileEntries = [...entries];
+    lastPersistenceError = `Outbox conservée uniquement en mémoire : ${err instanceof Error ? err.message : String(err)}`;
+    console.error(`[outbox] ${lastPersistenceError}`);
   }
   notify(entries);
+  return { durable: volatileEntries === null && lastPersistenceError === null, error: lastPersistenceError };
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-export function enqueue(type: OutboxEntryType, payload: unknown): void {
+export function enqueue(type: OutboxEntryType, payload: unknown): OutboxEnqueueResult {
+  const boutiqueId = getBoutiqueId();
   const entry: OutboxEntry = {
     id: 'obx' + Date.now() + Math.random().toString(36).slice(2, 6),
+    boutiqueId,
     type,
     payload,
     attempts: 0,
@@ -118,11 +194,22 @@ export function enqueue(type: OutboxEntryType, payload: unknown): void {
     status: 'pending',
   };
   const entries = [...load(), entry];
-  save(entries);
+  const persistence = save(entries);
+  return { entry, ...persistence };
 }
 
 export function getAll(): OutboxEntry[] {
   return load();
+}
+
+export function getPersistenceState(): OutboxPersistenceState {
+  return { durable: volatileEntries === null && lastPersistenceError === null, error: lastPersistenceError };
+}
+
+/** Test-only reset for module-level volatile state. */
+export function resetOutboxMemoryForTests(): void {
+  volatileEntries = null;
+  lastPersistenceError = null;
 }
 
 /** Default dispatcher: calls the matching Firestore function. */
@@ -139,7 +226,11 @@ async function defaultDispatch(bid: string, entry: OutboxEntry): Promise<void> {
       break;
     case 'stockAdjust': {
       const { productId, delta } = entry.payload as { productId: string; delta: number };
-      await fsAdjustStock(bid, productId, delta);
+      await fsCommitLegacyStockAdjustment(bid, entry.id, productId, delta);
+      break;
+    }
+    case 'stockCommit': {
+      await fsCommitStockOperation(bid, entry.payload as StockCommitPayload);
       break;
     }
     case 'cloture':
@@ -155,13 +246,54 @@ async function defaultDispatch(bid: string, entry: OutboxEntry): Promise<void> {
       await fsSaveExpense(bid, entry.payload as Expense);
       break;
     case 'stockMovement':
-      await fsSaveMovement(bid, entry.payload as StockMovement);
+      await fsRestoreMovement(bid, entry.payload as StockMovement);
       break;
     case 'payment':
       await fsSavePayment(bid, entry.payload as Payment);
       break;
     case 'inventorySession':
       await fsSaveInventorySession(bid, entry.payload as InventorySession);
+      break;
+    case 'productCreate':
+      await fsSaveProduct(bid, entry.payload as Product);
+      break;
+    case 'productUpdate': {
+      const payload = entry.payload as {
+        productId: string;
+        fields: Partial<Omit<Product, 'id' | 'stock'>>;
+      };
+      await fsUpdateProductFields(bid, payload.productId, payload.fields);
+      break;
+    }
+    case 'productDelete':
+      await fsDeleteProduct(bid, entry.payload as string);
+      break;
+    case 'supplierSave':
+      await fsSaveSupplier(bid, entry.payload as Supplier);
+      break;
+    case 'supplierDelete':
+      await fsDeleteSupplier(bid, entry.payload as string);
+      break;
+    case 'customerSave':
+      await fsSaveCustomer(bid, entry.payload as Customer);
+      break;
+    case 'customerDelete':
+      await fsDeleteCustomer(bid, entry.payload as string);
+      break;
+    case 'settingsSave':
+      await fsSaveSettings(bid, entry.payload as object);
+      break;
+    case 'userSave':
+      await fsSaveUser(bid, entry.payload as User);
+      break;
+    case 'userDelete':
+      await fsDeleteUser(bid, entry.payload as string);
+      break;
+    case 'expenseDelete':
+      await fsDeleteExpense(bid, entry.payload as string);
+      break;
+    case 'cashOutDelete':
+      await fsDeleteCashOut(bid, entry.payload as string);
       break;
   }
 }
@@ -172,16 +304,26 @@ async function defaultDispatch(bid: string, entry: OutboxEntry): Promise<void> {
  * The optional `dispatch` override is for unit tests — production code
  * always uses the default Firestore dispatcher.
  */
-export async function retryAll(dispatch: OutboxDispatch = defaultDispatch): Promise<void> {
+async function drainPendingEntries(dispatch: OutboxDispatch): Promise<OutboxPersistenceState> {
   const entries = load();
-  if (entries.length === 0) return;
+  if (entries.length === 0) return getPersistenceState();
+  const drainedEntryIds = new Set(entries.map(entry => entry.id));
 
   const bid = getBoutiqueId();
   const updated: OutboxEntry[] = [...entries];
 
   for (let i = 0; i < updated.length; i++) {
     const entry = updated[i];
-    if (entry.status === 'failed') continue; // exhausted — leave as-is
+    if (entry.status === 'failed' || entry.status === 'quarantined') continue;
+
+    if (entry.boutiqueId !== bid) {
+      updated[i] = {
+        ...entry,
+        status: 'quarantined',
+        lastError: `Tenant différent : entrée=${entry.boutiqueId}, session=${bid}. Rejeu interdit.`,
+      };
+      continue;
+    }
 
     try {
       await dispatch(bid, entry);
@@ -199,5 +341,31 @@ export async function retryAll(dispatch: OutboxDispatch = defaultDispatch): Prom
     }
   }
 
-  save(updated);
+  // A write can fail and enqueue a new operation while this asynchronous drain
+  // is awaiting Firestore. Preserve entries that were not part of our snapshot
+  // instead of replacing the queue with the stale `updated` array.
+  const concurrentlyEnqueued = load().filter(entry => !drainedEntryIds.has(entry.id));
+  return save([...updated, ...concurrentlyEnqueued]);
+}
+
+export function retryAll(dispatch: OutboxDispatch = defaultDispatch): Promise<OutboxPersistenceState> {
+  // An operation may be enqueued while a previous drain is awaiting the
+  // network. Chain one more drain so that entry is not left pending until the
+  // next application restart/online event.
+  if (activeRetry) return activeRetry.then(() => retryAll(dispatch));
+
+  activeRetry = drainPendingEntries(dispatch).finally(() => {
+    activeRetry = null;
+  });
+  return activeRetry;
+}
+
+/** Explicit operator action: reset exhausted entries and attempt them again. */
+export function retryFailed(dispatch: OutboxDispatch = defaultDispatch): Promise<OutboxPersistenceState> {
+  const entries = load();
+  const reset = entries.map(entry => entry.status === 'failed'
+    ? { ...entry, status: 'pending' as const, attempts: 0, lastError: undefined }
+    : entry);
+  save(reset);
+  return retryAll(dispatch);
 }

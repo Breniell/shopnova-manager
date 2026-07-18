@@ -142,7 +142,11 @@ export const useExpenseStore = create<ExpenseState>()((set, get) => ({
 
   deleteExpense: (id) => {
     set(state => ({ expenses: state.expenses.filter(e => e.id !== id) }));
-    fsDeleteExpense(getBoutiqueId(), id).catch(console.error);
+    fsDeleteExpense(getBoutiqueId(), id).catch((error) => {
+      enqueue('expenseDelete', id);
+      toast.error("Suppression de dépense en attente de synchronisation");
+      console.warn('[outbox] expense delete enqueued:', error);
+    });
   },
 
   getExpensesInRange: (start, end) =>

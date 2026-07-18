@@ -31,6 +31,8 @@ describe('usePaymentStore — addPayment', () => {
       userId: 'u1', userName: 'Caissier',
     });
     expect(created.id).toBeTruthy();
+    expect(created.operationId).toBe(created.id);
+    expect(created.kind).toBe('payment');
     expect(usePaymentStore.getState().payments).toHaveLength(1);
   });
 
@@ -89,38 +91,39 @@ describe('usePaymentStore — addPayment', () => {
   });
 });
 
-describe('usePaymentStore — deletePayment', () => {
-  it('removes the payment from the list', () => {
+describe('usePaymentStore — immutable reversal', () => {
+  it('keeps the original and appends a reversal operation', () => {
     const p = usePaymentStore.getState().addPayment({
       saleId: 's1', customerId: 'c1', date: new Date(),
       amount: 100, channel: 'especes', userId: 'u1', userName: 'X',
     });
-    usePaymentStore.getState().deletePayment(p.id);
-    expect(usePaymentStore.getState().payments).toHaveLength(0);
+    const reversal = usePaymentStore.getState().reversePayment(p.id, {
+      userId: 'manager', userName: 'Manager', notes: 'Erreur de saisie',
+    });
+    expect(usePaymentStore.getState().payments).toHaveLength(2);
+    expect(usePaymentStore.getState().payments).toContainEqual(p);
+    expect(reversal.kind).toBe('reversal');
+    expect(reversal.reversesPaymentId).toBe(p.id);
+    expect(reversal.amount).toBe(p.amount);
   });
 
-  it('only removes the targeted payment', () => {
-    const p1 = usePaymentStore.getState().addPayment({
+  it('uses a deterministic id and is idempotent when retried', () => {
+    const p = usePaymentStore.getState().addPayment({
       saleId: 's1', customerId: 'c1', date: new Date(),
       amount: 100, channel: 'especes', userId: 'u1', userName: 'X',
     });
-    const p2 = usePaymentStore.getState().addPayment({
-      saleId: 's2', customerId: 'c2', date: new Date(),
-      amount: 200, channel: 'especes', userId: 'u1', userName: 'X',
-    });
-    usePaymentStore.getState().deletePayment(p1.id);
-    const remaining = usePaymentStore.getState().payments;
-    expect(remaining).toHaveLength(1);
-    expect(remaining[0].id).toBe(p2.id);
+    const actor = { userId: 'manager', userName: 'Manager' };
+    const first = usePaymentStore.getState().reversePayment(p.id, actor);
+    const replay = usePaymentStore.getState().reversePayment(p.id, actor);
+    expect(first.id).toBe(`rev-${p.id}`);
+    expect(replay.id).toBe(first.id);
+    expect(usePaymentStore.getState().payments).toHaveLength(2);
   });
 
-  it('is a no-op if the id does not exist', () => {
-    usePaymentStore.getState().addPayment({
-      saleId: 's1', customerId: 'c1', date: new Date(),
-      amount: 100, channel: 'especes', userId: 'u1', userName: 'X',
-    });
-    usePaymentStore.getState().deletePayment('does-not-exist');
-    expect(usePaymentStore.getState().payments).toHaveLength(1);
+  it('rejects a reversal for an unknown operation', () => {
+    expect(() => usePaymentStore.getState().reversePayment('does-not-exist', {
+      userId: 'manager', userName: 'Manager',
+    })).toThrow('Paiement introuvable');
   });
 });
 

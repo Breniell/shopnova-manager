@@ -82,7 +82,12 @@ const CaissePage: React.FC = () => {
         );
         return;
       }
-      addToCart({ productId: product.id, nom: product.nom, prixVente: product.prixVente });
+      addToCart({
+        productId: product.id,
+        nom: product.nom,
+        prixVente: product.prixVente,
+        prixAchat: product.prixAchat,
+      });
       setAddedProductId(product.id);
       setTimeout(() => setAddedProductId(null), 500);
       toast.success(t('caisse.addedToCartName').replace('{name}', product.nom));
@@ -152,7 +157,12 @@ const CaissePage: React.FC = () => {
       );
       return;
     }
-    addToCart({ productId: product.id, nom: product.nom, prixVente: product.prixVente });
+    addToCart({
+      productId: product.id,
+      nom: product.nom,
+      prixVente: product.prixVente,
+      prixAchat: product.prixAchat,
+    });
     setAddedProductId(product.id);
     setTimeout(() => setAddedProductId(null), 500);
     toast.success(t('caisse.addedName').replace('{name}', product.nom));

@@ -32,6 +32,7 @@ import {
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n';
+import { useCurrentDate } from '@/hooks/useCurrentDate';
 
 type Period = 'today' | 'week' | 'month' | 'all';
 
@@ -71,7 +72,7 @@ const DepensesPage: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
 
-  const now = new Date();
+  const now = useCurrentDate();
   const { periodStart, previousPeriodStart, previousPeriodEnd } = useMemo(() => {
     const start = new Date(now);
     let prevStart = new Date(now);
@@ -96,7 +97,7 @@ const DepensesPage: React.FC = () => {
     }
 
     return { periodStart: start, previousPeriodStart: prevStart, previousPeriodEnd: prevEnd };
-  }, [period]);
+  }, [period, now]);
 
   const periodExpenses = useMemo(
     () => expenses.filter(e => new Date(e.date) >= periodStart && new Date(e.date) <= now),

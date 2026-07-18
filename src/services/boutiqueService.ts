@@ -11,16 +11,58 @@
 import {
   EmailAuthProvider,
   linkWithCredential,
+  getIdTokenResult,
   sendPasswordResetEmail,
   signInAnonymously,
   signInWithEmailAndPassword,
   type User as FirebaseUser,
 } from 'firebase/auth';
-import { auth, isFirebaseConfigured } from '@/lib/firebase';
+import {
+  auth,
+  isFirebaseConfigured,
+  disableFirebaseForLocalMode,
+  enableFirebaseAfterLocalMigration,
+  getFirebaseRuntimeConfig,
+} from '@/lib/firebase';
 
 let _boutiqueId: string | null = null;
 const RECOVERY_EMAIL_KEY = 'legwan-recovery-email';
 const REGISTER_CODE_KEY = 'legwan-register-code';
+const BOUTIQUE_ID_KEY = 'legwan-boutique-id';
+
+function cacheBoutiqueId(boutiqueId: string): string {
+  _boutiqueId = boutiqueId;
+  try { localStorage.setItem(BOUTIQUE_ID_KEY, boutiqueId); } catch { /* storage unavailable */ }
+  return boutiqueId;
+}
+
+function getCachedBoutiqueId(): string | null {
+  try { return localStorage.getItem(BOUTIQUE_ID_KEY); } catch { return null; }
+}
+
+/** Stable namespace for tenant-isolated local snapshots. */
+export function getLocalSnapshotTenantId(): string {
+  return getCachedBoutiqueId() ?? 'unregistered';
+}
+
+function isDefinitelyOffline(): boolean {
+  return typeof navigator !== 'undefined' && navigator.onLine === false;
+}
+
+export function activateLocalOfflineBoutique(): string | null {
+  const cachedId = getCachedBoutiqueId();
+  if (cachedId) {
+    // Keep Firebase enabled for an already-known cloud tenant. Firestore can
+    // durably queue offline mutations and sync them after Auth is restored.
+    // Disabling it here would turn service writes into successful no-ops.
+    return cacheBoutiqueId(cachedId);
+  }
+
+  // A genuinely new offline installation has no authenticated cloud target.
+  // Keep it autonomous until the explicit local-to-cloud migration workflow.
+  disableFirebaseForLocalMode();
+  return cacheBoutiqueId(`local-${crypto.randomUUID()}`);
+}
 
 /**
  * Code de caisse stable, propre à cette installation (cet appareil).
@@ -119,6 +161,21 @@ async function getCurrentFirebaseUser(): Promise<FirebaseUser | null> {
   return auth.currentUser;
 }
 
+async function resolveAuthenticatedBoutiqueId(user: FirebaseUser): Promise<string> {
+  try {
+    const token = await getIdTokenResult(user);
+    const claimedBoutiqueId = token.claims.boutiqueId;
+    if (typeof claimedBoutiqueId === 'string' && claimedBoutiqueId && !claimedBoutiqueId.startsWith('local-')) {
+      return claimedBoutiqueId;
+    }
+  } catch {
+    // Cached tenant is the safe offline fallback for an employee-bound device.
+    const cached = getCachedBoutiqueId();
+    if (cached) return cached;
+  }
+  return user.uid;
+}
+
 export async function getBoutiqueRecoveryStatus(): Promise<BoutiqueRecoveryStatus> {
   const boutiqueId = getBoutiqueId();
   const user = await getCurrentFirebaseUser();
@@ -160,9 +217,9 @@ export async function linkBoutiqueRecoveryAccount(email: string, password: strin
   }
 
   const linked = await linkWithCredential(user, credential);
-  _boutiqueId = linked.user.uid;
+  cacheBoutiqueId(linked.user.uid);
   localStorage.setItem(RECOVERY_EMAIL_KEY, normalizedEmail);
-  return _boutiqueId;
+  return linked.user.uid;
 }
 
 export async function signInBoutiqueRecoveryAccount(email: string, password: string): Promise<string> {
@@ -207,10 +264,35 @@ export async function signInBoutiqueRecoveryAccount(email: string, password: str
   }
 
   console.log('[Restore] Boutique verifiee. Rechargement de l\'application…');
-  _boutiqueId = uid;
+  cacheBoutiqueId(uid);
   localStorage.setItem(RECOVERY_EMAIL_KEY, normalizedEmail);
   localStorage.removeItem('legwan-auth');
-  return _boutiqueId;
+  return uid;
+}
+
+/**
+ * Final attachment step for a completed local-to-cloud migration. It changes
+ * no local tenant state until the default Firebase Auth proves the target UID.
+ */
+export async function finalizeLocalToCloudMigrationAccount(
+  email: string,
+  password: string,
+  expectedBoutiqueId: string,
+): Promise<string> {
+  if (!getFirebaseRuntimeConfig()) throw new Error('Firebase n est pas configure sur cette installation.');
+  const normalizedEmail = email.trim().toLowerCase();
+  const credential = await signInWithEmailAndPassword(auth, normalizedEmail, password);
+  if (credential.user.uid !== expectedBoutiqueId) {
+    await auth.signOut().catch(() => {});
+    throw new Error('Le compte authentifie ne correspond pas a la boutique migree.');
+  }
+
+  // Only now is it safe for the default app to leave autonomous local mode.
+  enableFirebaseAfterLocalMigration();
+  cacheBoutiqueId(expectedBoutiqueId);
+  localStorage.setItem(RECOVERY_EMAIL_KEY, normalizedEmail);
+  localStorage.removeItem('legwan-auth');
+  return expectedBoutiqueId;
 }
 
 export async function sendBoutiqueRecoveryPasswordReset(email: string): Promise<void> {
@@ -228,22 +310,42 @@ export async function initBoutique(): Promise<string> {
 
   if (!isFirebaseConfigured) {
     // Offline-only mode: use a stable local ID
-    _boutiqueId = localStorage.getItem('legwan-boutique-id') ?? 'local-boutique';
-    if (!localStorage.getItem('legwan-boutique-id')) {
-      localStorage.setItem('legwan-boutique-id', _boutiqueId);
-    }
-    return _boutiqueId;
+    return cacheBoutiqueId(getCachedBoutiqueId() ?? 'local-boutique');
+  }
+
+  const cachedId = getCachedBoutiqueId();
+  if (cachedId?.startsWith('local-')) {
+    disableFirebaseForLocalMode();
+    return cacheBoutiqueId(cachedId);
   }
 
   // Wait for Firebase to restore auth state from cache
   await auth.authStateReady();
 
   if (auth.currentUser) {
-    _boutiqueId = auth.currentUser.uid;
-  } else {
-    const credential = await signInAnonymously(auth);
-    _boutiqueId = credential.user.uid;
+    return cacheBoutiqueId(await resolveAuthenticatedBoutiqueId(auth.currentUser));
   }
 
-  return _boutiqueId;
+  // A UID is an identifier, not an authentication credential. If Firebase no
+  // longer restores the session of an existing installation, never create a
+  // different anonymous tenant silently: explicit account recovery is needed.
+  if (cachedId) {
+    const error = new Error(
+      isDefinitelyOffline()
+        ? 'Session Firebase locale indisponible hors connexion.'
+        : 'Session Firebase locale perdue. Restaurez la boutique avec son compte de récupération.',
+    );
+    (error as Error & { code: string }).code = 'auth/local-session-missing';
+    throw error;
+  }
+
+  // Anonymous Auth cannot create the first Firebase account without a network.
+  if (isDefinitelyOffline()) {
+    const error = new Error('Connexion indisponible : première identification Firebase impossible.');
+    (error as Error & { code: string }).code = 'auth/network-request-failed';
+    throw error;
+  }
+
+  const credential = await signInAnonymously(auth);
+  return cacheBoutiqueId(credential.user.uid);
 }

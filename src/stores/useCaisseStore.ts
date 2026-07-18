@@ -36,7 +36,8 @@ export const useCaisseStore = create<CaisseState>()((set) => ({
   _setClotures: (clotures) => set({ clotures }),
 
   addCloture: (cloture) => {
-    const id = 'cl' + Date.now();
+    const id = `cl-${globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`}`;
     const newCloture: ClotureCaisse = { ...cloture, id };
     set(state => ({ clotures: [newCloture, ...state.clotures] }));
     fsSaveCloture(getBoutiqueId(), newCloture).catch((err) => {

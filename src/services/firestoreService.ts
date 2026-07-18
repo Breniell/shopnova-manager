@@ -17,10 +17,13 @@ import {
   collection,
   getDoc,
   getDocs,
+  getDocFromCache,
+  getDocsFromCache,
   setDoc,
   updateDoc,
   deleteDoc,
   writeBatch,
+  runTransaction,
   query,
   orderBy,
   where,
@@ -42,6 +45,21 @@ import type { CashSession, CashOut } from '@/stores/useCashSessionStore';
 import type { InventorySession } from '@/stores/useInventoryStore';
 import type { ClotureCaisse } from '@/stores/useCaisseStore';
 
+/**
+ * The default Firestore reads try the server first. On disconnected PCs this
+ * can keep the splash screen waiting before eventually falling back. When the
+ * browser explicitly reports offline, read IndexedDB directly instead.
+ */
+const readDoc: typeof getDoc = (reference) =>
+  typeof navigator !== 'undefined' && navigator.onLine === false
+    ? getDocFromCache(reference)
+    : getDoc(reference);
+
+const readDocs: typeof getDocs = (reference) =>
+  typeof navigator !== 'undefined' && navigator.onLine === false
+    ? getDocsFromCache(reference)
+    : getDocs(reference);
+
 // ─── Login attempt tracking (anti-brute-force) ───────────────────────────────
 
 const pa = (bid: string) => `boutiques/${bid}/security/loginAttempts`;
@@ -54,7 +72,7 @@ export interface LoginAttemptRecord {
 export async function fsGetLoginAttempts(bid: string, userId: string): Promise<LoginAttemptRecord | null> {
   if (!isFirebaseConfigured) return null;
   try {
-    const snap = await getDoc(doc(db, pa(bid)));
+    const snap = await readDoc(doc(db, pa(bid)));
     if (!snap.exists()) return null;
     const data = snap.data() as Record<string, LoginAttemptRecord>;
     return data[userId] ?? null;
@@ -80,14 +98,17 @@ const p = {
   product:       (bid: string, pid: string) => `boutiques/${bid}/products/${pid}`,
   sales:         (bid: string) => `boutiques/${bid}/sales`,
   sale:          (bid: string, sid: string) => `boutiques/${bid}/sales/${sid}`,
+  saleOperation: (bid: string, sid: string) => `boutiques/${bid}/sale_operations/${sid}`,
   movements:     (bid: string) => `boutiques/${bid}/stock_movements`,
   movement:      (bid: string, mid: string) => `boutiques/${bid}/stock_movements/${mid}`,
+  stockOperation:(bid: string, oid: string) => `boutiques/${bid}/stock_operations/${oid}`,
   suppliers:     (bid: string) => `boutiques/${bid}/suppliers`,
   supplier:      (bid: string, sid: string) => `boutiques/${bid}/suppliers/${sid}`,
   customers:     (bid: string) => `boutiques/${bid}/customers`,
   customer:      (bid: string, cid: string) => `boutiques/${bid}/customers/${cid}`,
   payments:      (bid: string) => `boutiques/${bid}/payments`,
   payment:       (bid: string, pid: string) => `boutiques/${bid}/payments/${pid}`,
+  refund:        (bid: string, saleId: string) => `boutiques/${bid}/refunds/${saleId}`,
   expenses:      (bid: string) => `boutiques/${bid}/expenses`,
   expense:       (bid: string, eid: string) => `boutiques/${bid}/expenses/${eid}`,
   cashSessions:  (bid: string) => `boutiques/${bid}/cash_sessions`,
@@ -119,7 +140,7 @@ function toTimestamp(d: Date | string | unknown): Timestamp {
 // ─── Settings ────────────────────────────────────────────────────────────────
 export async function fsLoadSettings(bid: string): Promise<DocumentData | null> {
   if (!isFirebaseConfigured) return null;
-  const snap = await getDoc(doc(db, p.settings(bid)));
+  const snap = await readDoc(doc(db, p.settings(bid)));
   return snap.exists() ? snap.data() : null;
 }
 
@@ -131,7 +152,7 @@ export async function fsSaveSettings(bid: string, settings: object): Promise<voi
 // ─── Users ───────────────────────────────────────────────────────────────────
 export async function fsLoadUsers(bid: string): Promise<User[]> {
   if (!isFirebaseConfigured) return [];
-  const snap = await getDocs(collection(db, p.users(bid)));
+  const snap = await readDocs(collection(db, p.users(bid)));
   return snap.docs.map(d => ({ ...(d.data() as User), id: d.id }));
 }
 
@@ -149,7 +170,7 @@ export async function fsDeleteUser(bid: string, userId: string): Promise<void> {
 // ─── Products ────────────────────────────────────────────────────────────────
 export async function fsLoadProducts(bid: string): Promise<Product[]> {
   if (!isFirebaseConfigured) return [];
-  const snap = await getDocs(collection(db, p.products(bid)));
+  const snap = await readDocs(collection(db, p.products(bid)));
   return snap.docs.map(d => ({ ...(d.data() as Product), id: d.id }));
 }
 
@@ -165,25 +186,30 @@ export async function fsDeleteProduct(bid: string, productId: string): Promise<v
 
 // ─── Sales ───────────────────────────────────────────────────────────────────
 /**
- * Loads sales from the last 90 days (scalability: avoids loading thousands of old records).
- * Older sales are served from IndexedDB cache on subsequent opens.
+ * Loads the bounded recent history plus every credit sale. The second query is
+ * required for correctness: an unpaid debt must remain visible on a new till
+ * even when the originating sale is older than 90 days.
  */
 export async function fsLoadSales(bid: string): Promise<Sale[]> {
   if (!isFirebaseConfigured) return [];
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 90);
-  const snap = await getDocs(
-    query(
-      collection(db, p.sales(bid)),
-      where('date', '>=', Timestamp.fromDate(cutoff)),
-      orderBy('date', 'desc'),
-      limit(2000)
-    )
-  );
-  return snap.docs.map(d => {
+  const [recentSnap, creditSnap] = await Promise.all([
+    readDocs(
+      query(
+        collection(db, p.sales(bid)),
+        where('date', '>=', Timestamp.fromDate(cutoff)),
+        orderBy('date', 'desc'),
+        limit(2000),
+      ),
+    ),
+    readDocs(query(collection(db, p.sales(bid)), where('paymentMode', '==', 'credit'))),
+  ]);
+  const byId = new Map([...recentSnap.docs, ...creditSnap.docs].map(d => [d.id, d]));
+  return [...byId.values()].map(d => {
     const data = d.data();
     return { ...(data as Sale), id: d.id, date: toDate(data.date) };
-  });
+  }).sort((left, right) => right.date.getTime() - left.date.getTime());
 }
 
 export async function fsSaveSale(bid: string, sale: Sale): Promise<void> {
@@ -209,6 +235,8 @@ export async function fsUpdateSale(bid: string, saleId: string, data: Partial<Sa
  * multi-caisses hors-ligne.
  */
 export interface SaleCommitPayload {
+  /** Optional only while replaying a legacy v1 outbox entry. */
+  operation?: SaleOperation;
   sale: Sale;
   /** Deltas de stock : delta est négatif (décrément) pour une vente. */
   stockDeltas: Array<{ productId: string; delta: number }>;
@@ -217,9 +245,24 @@ export interface SaleCommitPayload {
 
 export async function fsCommitSale(bid: string, payload: SaleCommitPayload): Promise<void> {
   if (!isFirebaseConfigured) return;
+  const operation: SaleOperation = payload.operation ?? {
+    operationId: payload.sale.id,
+    saleId: payload.sale.id,
+    date: payload.sale.date,
+    userId: payload.sale.userId,
+    userName: payload.sale.userName,
+  };
+  if (operation.operationId !== payload.sale.id || operation.saleId !== payload.sale.id) {
+    throw new Error('Identifiant d\'opération de vente incohérent');
+  }
+  if (await existsOnServerWhenOnline(p.saleOperation(bid, payload.sale.id))) return;
   const batch = writeBatch(db);
 
   const { id: saleId, ...saleData } = payload.sale;
+  batch.set(doc(db, p.saleOperation(bid, saleId)), {
+    ...operation,
+    date: toTimestamp(operation.date),
+  });
   batch.set(doc(db, p.sale(bid, saleId)), {
     ...saleData,
     date: toTimestamp(payload.sale.date),
@@ -240,15 +283,140 @@ export async function fsCommitSale(bid: string, payload: SaleCommitPayload): Pro
   await batch.commit();
 }
 
-/** Ajuste le stock d'un produit d'un delta (positif = entrée, négatif = sortie). */
-export async function fsAdjustStock(bid: string, productId: string, delta: number): Promise<void> {
+export type StockOperationKind = 'manual' | 'inventory' | 'legacy';
+
+export interface StockOperation {
+  operationId: string;
+  kind: StockOperationKind;
+  date: Date | string;
+  userId: string;
+  userName: string;
+  inventorySessionId?: string;
+}
+
+export interface StockCommitPayload {
+  operation: StockOperation;
+  stockDeltas: Array<{ productId: string; delta: number }>;
+  movements: StockMovement[];
+  /** Present only when an inventory is validated by this operation. */
+  inventorySession?: InventorySession;
+}
+
+/** Firestore batches are limited to 500 writes: marker + session + 2 per line. */
+export const MAX_ATOMIC_INVENTORY_ADJUSTMENTS = 249;
+
+export function validateStockCommit(payload: StockCommitPayload): void {
+  const { operation, stockDeltas, movements, inventorySession } = payload;
+  if (!operation.operationId || operation.operationId.includes('/')) {
+    throw new Error("Identifiant d'opération de stock invalide");
+  }
+  if (!operation.userId || !operation.userName) {
+    throw new Error("Auteur de l'opération de stock manquant");
+  }
+  if (stockDeltas.length !== movements.length && operation.kind !== 'legacy') {
+    throw new Error("Mouvements et deltas de stock incohérents");
+  }
+  const productIds = new Set<string>();
+  for (const { productId, delta } of stockDeltas) {
+    if (!productId || productIds.has(productId) || !Number.isInteger(delta) || delta === 0) {
+      throw new Error("Delta de stock invalide ou produit dupliqué");
+    }
+    productIds.add(productId);
+  }
+  const movementIds = new Set<string>();
+  for (const movement of movements) {
+    if (!movement.id || movementIds.has(movement.id) || movement.operationId !== operation.operationId) {
+      throw new Error("Mouvement de stock invalide ou dupliqué");
+    }
+    movementIds.add(movement.id);
+    const delta = stockDeltas.find(item => item.productId === movement.productId);
+    if (!delta || delta.delta !== movement.quantity) {
+      throw new Error("Quantité du mouvement incohérente avec le delta de stock");
+    }
+  }
+  if (operation.kind === 'inventory') {
+    if (!inventorySession || inventorySession.id !== operation.inventorySessionId ||
+        inventorySession.status !== 'validated') {
+      throw new Error("Session d'inventaire incohérente");
+    }
+    if (stockDeltas.length > MAX_ATOMIC_INVENTORY_ADJUSTMENTS) {
+      throw new Error(`Un inventaire ne peut ajuster que ${MAX_ATOMIC_INVENTORY_ADJUSTMENTS} produits à la fois`);
+    }
+  } else if (inventorySession || operation.inventorySessionId) {
+    throw new Error("Une opération hors inventaire ne peut pas modifier une session d'inventaire");
+  }
+  const writeCount = 1 + (inventorySession ? 1 : 0) + stockDeltas.length + movements.length;
+  if (writeCount > 500) throw new Error('Opération de stock trop volumineuse');
+}
+
+/**
+ * Commits one immutable stock operation. The create-only marker, every product
+ * increment, every ledger movement and the optional validated inventory
+ * session are written in the same batch. A lost acknowledgement can therefore
+ * be retried without applying the increments twice.
+ */
+export async function fsCommitStockOperation(bid: string, payload: StockCommitPayload): Promise<void> {
+  validateStockCommit(payload);
   if (!isFirebaseConfigured) return;
-  await updateDoc(doc(db, p.product(bid, productId)), { stock: increment(delta) });
+  const { operation, stockDeltas, movements, inventorySession } = payload;
+  if (await existsOnServerWhenOnline(p.stockOperation(bid, operation.operationId))) return;
+
+  const batch = writeBatch(db);
+  batch.set(doc(db, p.stockOperation(bid, operation.operationId)), {
+    operationId: operation.operationId,
+    kind: operation.kind,
+    date: toTimestamp(operation.date),
+    userId: operation.userId,
+    userName: operation.userName,
+    ...(operation.inventorySessionId ? { inventorySessionId: operation.inventorySessionId } : {}),
+  });
+
+  if (inventorySession) {
+    const { id, ...data } = inventorySession;
+    batch.set(doc(db, p.inventorySession(bid, id)), data);
+  }
+  for (const { productId, delta } of stockDeltas) {
+    batch.update(doc(db, p.product(bid, productId)), { stock: increment(delta) });
+  }
+  for (const movement of movements) {
+    const { id, ...data } = movement;
+    batch.set(doc(db, p.movement(bid, id)), {
+      ...data,
+      date: toTimestamp(movement.date),
+    });
+  }
+  await batch.commit();
+}
+
+/** Idempotent bridge for stockAdjust entries produced by releases before 1.5. */
+export async function fsCommitLegacyStockAdjustment(
+  bid: string,
+  outboxEntryId: string,
+  productId: string,
+  delta: number,
+): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  if (!outboxEntryId || !productId || !Number.isInteger(delta) || delta === 0) {
+    throw new Error('Ajustement historique invalide');
+  }
+  const operationId = `legacy-${outboxEntryId}`;
+  if (await existsOnServerWhenOnline(p.stockOperation(bid, operationId))) return;
+  const batch = writeBatch(db);
+  batch.set(doc(db, p.stockOperation(bid, operationId)), {
+    operationId,
+    kind: 'legacy',
+    date: Timestamp.now(),
+    userId: '__legacy__',
+    userName: 'Ancienne version',
+  });
+  batch.update(doc(db, p.product(bid, productId)), { stock: increment(delta) });
+  await batch.commit();
 }
 
 /**
  * Met à jour les champs non-stock d'un produit (prix, nom, seuil…).
- * N'écrit jamais le champ stock — les ajustements passent par fsAdjustStock.
+ * N'écrit jamais le champ stock — les ajustements passent par
+ * fsCommitStockOperation avec un mouvement et un marqueur idempotent.
  */
 export async function fsUpdateProductFields(
   bid: string,
@@ -259,12 +427,44 @@ export async function fsUpdateProductFields(
   await updateDoc(doc(db, p.product(bid, productId)), fields as DocumentData);
 }
 
+export interface RefundOperation {
+  /** Equal to saleId: exactly one immutable refund marker per sale. */
+  operationId: string;
+  saleId: string;
+  date: string;
+  reason: string;
+  userId: string;
+  userName: string;
+}
+
 export interface RefundCommitPayload {
+  /** Optional only when replaying a legacy v1 outbox entry. */
+  refund?: RefundOperation;
   saleId: string;
   saleUpdate: Partial<Sale>;
   /** Deltas positifs — le remboursement rend le stock. */
   stockDeltas: Array<{ productId: string; delta: number }>;
   movements: StockMovement[];
+}
+
+export interface SaleOperation {
+  /** Equal to saleId: exactly one stock-affecting commit per sale. */
+  operationId: string;
+  saleId: string;
+  date: Date | string;
+  userId: string;
+  userName: string;
+}
+
+async function existsOnServerWhenOnline(path: string): Promise<boolean> {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
+  try {
+    return (await getDoc(doc(db, path))).exists();
+  } catch {
+    // The immutable create rule remains authoritative if this best-effort
+    // idempotency lookup cannot reach the server.
+    return false;
+  }
 }
 
 /**
@@ -273,8 +473,30 @@ export interface RefundCommitPayload {
  */
 export async function fsCommitRefund(bid: string, payload: RefundCommitPayload): Promise<void> {
   if (!isFirebaseConfigured) return;
+  const refund: RefundOperation = payload.refund ?? {
+    operationId: payload.saleId,
+    saleId: payload.saleId,
+    date: typeof payload.saleUpdate.refundedAt === 'string'
+      ? payload.saleUpdate.refundedAt
+      : new Date().toISOString(),
+    reason: typeof payload.saleUpdate.refundReason === 'string'
+      ? payload.saleUpdate.refundReason
+      : 'Remboursement historique',
+    userId: '__legacy__',
+    userName: typeof payload.saleUpdate.refundedBy === 'string'
+      ? payload.saleUpdate.refundedBy
+      : 'Utilisateur historique',
+  };
+  if (refund.operationId !== payload.saleId || refund.saleId !== payload.saleId) {
+    throw new Error('Identifiant de remboursement incohérent');
+  }
+  // If a previous attempt committed but its acknowledgement was lost, the
+  // marker proves that stock and sale were already updated by the same batch.
+  if (await existsOnServerWhenOnline(p.refund(bid, payload.saleId))) return;
+
   const batch = writeBatch(db);
 
+  batch.set(doc(db, p.refund(bid, payload.saleId)), refund);
   batch.update(doc(db, p.sale(bid, payload.saleId)), payload.saleUpdate as DocumentData);
 
   for (const { productId, delta } of payload.stockDeltas) {
@@ -302,29 +524,83 @@ export async function fsCommitRefund(bid: string, payload: RefundCommitPayload):
  */
 export interface CreditPaymentCommitPayload {
   payment: Payment;
-  saleId: string;
-  saleUpdate: Partial<Sale>;
+  /** Legacy v1 fields accepted only while old outbox entries are drained. */
+  saleId?: string;
+  saleUpdate?: Partial<Sale>;
+}
+
+function normalizePaymentOperation(payment: Payment): Payment {
+  return {
+    ...payment,
+    operationId: payment.operationId ?? payment.id,
+    kind: payment.kind ?? 'payment',
+  };
+}
+
+function normalizeForImmutableComparison(value: unknown): unknown {
+  if (value && typeof value === 'object' && 'toDate' in value &&
+      typeof (value as { toDate?: unknown }).toDate === 'function') {
+    return (value as { toDate: () => Date }).toDate().toISOString();
+  }
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map(normalizeForImmutableComparison);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => item !== undefined)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => [key, normalizeForImmutableComparison(item)]));
+  }
+  return value;
+}
+
+/** Exported for deterministic restore/conflict tests without a live Firestore. */
+export function paymentRestoreContentsMatch(existing: Payment, restored: Payment): boolean {
+  return JSON.stringify(normalizeForImmutableComparison(normalizePaymentOperation(existing))) ===
+    JSON.stringify(normalizeForImmutableComparison(normalizePaymentOperation(restored)));
+}
+
+/**
+ * Restore an immutable payment safely. An identical existing event is a
+ * successful idempotent replay; different content is an explicit conflict.
+ */
+export async function fsRestorePayment(bid: string, restored: Payment): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    throw new Error('restore_immutable_payments_requires_online');
+  }
+  const operation = normalizePaymentOperation(restored);
+  if (operation.operationId !== operation.id) throw new Error('restore_payment_invalid_operation_id');
+  const reference = doc(db, p.payment(bid, operation.id));
+
+  await runTransaction(db, async transaction => {
+    const snapshot = await transaction.get(reference);
+    if (snapshot.exists()) {
+      const existing = { ...(snapshot.data() as Payment), id: snapshot.id };
+      if (paymentRestoreContentsMatch(existing, operation)) return;
+      throw new Error(`restore_payment_conflict:${operation.id}`);
+    }
+    const { id, ...data } = operation;
+    transaction.set(reference, { ...data, date: toTimestamp(operation.date) });
+  });
 }
 
 export async function fsCommitCreditPayment(bid: string, payload: CreditPaymentCommitPayload): Promise<void> {
   if (!isFirebaseConfigured) return;
-  const batch = writeBatch(db);
+  const payment = normalizePaymentOperation(payload.payment);
+  if (payment.operationId !== payment.id) throw new Error('Identifiant de paiement incohérent');
+  if (await existsOnServerWhenOnline(p.payment(bid, payment.id))) return;
 
-  const { id: payId, ...payData } = payload.payment;
-  batch.set(doc(db, p.payment(bid, payId)), {
+  const { id: payId, ...payData } = payment;
+  await setDoc(doc(db, p.payment(bid, payId)), {
     ...payData,
-    date: toTimestamp(payload.payment.date),
+    date: toTimestamp(payment.date),
   });
-
-  batch.set(doc(db, p.sale(bid, payload.saleId)), payload.saleUpdate as DocumentData, { merge: true });
-
-  await batch.commit();
 }
 
 // ─── Stock movements ─────────────────────────────────────────────────────────
 export async function fsLoadMovements(bid: string): Promise<StockMovement[]> {
   if (!isFirebaseConfigured) return [];
-  const snap = await getDocs(
+  const snap = await readDocs(
     query(collection(db, p.movements(bid)), orderBy('date', 'desc'))
   );
   return snap.docs.map(d => {
@@ -333,19 +609,10 @@ export async function fsLoadMovements(bid: string): Promise<StockMovement[]> {
   });
 }
 
-export async function fsSaveMovement(bid: string, movement: StockMovement): Promise<void> {
-  if (!isFirebaseConfigured) return;
-  const { id, ...data } = movement;
-  await setDoc(doc(db, p.movement(bid, id)), {
-    ...data,
-    date: toTimestamp(movement.date),
-  });
-}
-
 // ─── Suppliers ───────────────────────────────────────────────────────────────
 export async function fsLoadSuppliers(bid: string): Promise<Supplier[]> {
   if (!isFirebaseConfigured) return [];
-  const snap = await getDocs(collection(db, p.suppliers(bid)));
+  const snap = await readDocs(collection(db, p.suppliers(bid)));
   return snap.docs.map(d => ({ ...(d.data() as Supplier), id: d.id }));
 }
 
@@ -363,7 +630,7 @@ export async function fsDeleteSupplier(bid: string, supplierId: string): Promise
 // ─── Customers ───────────────────────────────────────────────────────────────
 export async function fsLoadCustomers(bid: string): Promise<Customer[]> {
   if (!isFirebaseConfigured) return [];
-  const snap = await getDocs(collection(db, p.customers(bid)));
+  const snap = await readDocs(collection(db, p.customers(bid)));
   return snap.docs.map(d => ({ ...(d.data() as Customer), id: d.id }));
 }
 
@@ -381,7 +648,7 @@ export async function fsDeleteCustomer(bid: string, customerId: string): Promise
 // ─── Payments (règlements crédit) ────────────────────────────────────────────
 export async function fsLoadPayments(bid: string): Promise<Payment[]> {
   if (!isFirebaseConfigured) return [];
-  const snap = await getDocs(
+  const snap = await readDocs(
     query(collection(db, p.payments(bid)), orderBy('date', 'desc'))
   );
   return snap.docs.map(d => {
@@ -392,22 +659,45 @@ export async function fsLoadPayments(bid: string): Promise<Payment[]> {
 
 export async function fsSavePayment(bid: string, payment: Payment): Promise<void> {
   if (!isFirebaseConfigured) return;
-  const { id, ...data } = payment;
+  const operation = normalizePaymentOperation(payment);
+  if (operation.operationId !== operation.id) throw new Error('Identifiant de paiement incohérent');
+  if (await existsOnServerWhenOnline(p.payment(bid, operation.id))) return;
+  const { id, ...data } = operation;
   await setDoc(doc(db, p.payment(bid, id)), {
     ...data,
-    date: toTimestamp(payment.date),
+    date: toTimestamp(operation.date),
   });
 }
 
-export async function fsDeletePayment(bid: string, paymentId: string): Promise<void> {
+/** Exported for deterministic restore/conflict tests without a live Firestore. */
+export function movementRestoreContentsMatch(existing: StockMovement, restored: StockMovement): boolean {
+  return JSON.stringify(normalizeForImmutableComparison(existing)) ===
+    JSON.stringify(normalizeForImmutableComparison(restored));
+}
+
+/** Create-only restoration for the immutable stock ledger. */
+export async function fsRestoreMovement(bid: string, restored: StockMovement): Promise<void> {
   if (!isFirebaseConfigured) return;
-  await deleteDoc(doc(db, p.payment(bid, paymentId)));
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    throw new Error('restore_immutable_movements_requires_online');
+  }
+  const reference = doc(db, p.movement(bid, restored.id));
+  await runTransaction(db, async transaction => {
+    const snapshot = await transaction.get(reference);
+    if (snapshot.exists()) {
+      const existing = { ...(snapshot.data() as StockMovement), id: snapshot.id };
+      if (movementRestoreContentsMatch(existing, restored)) return;
+      throw new Error(`restore_movement_conflict:${restored.id}`);
+    }
+    const { id, ...data } = restored;
+    transaction.set(reference, { ...data, date: toTimestamp(restored.date) });
+  });
 }
 
 // ─── Expenses (dépenses) ─────────────────────────────────────────────────────
 export async function fsLoadExpenses(bid: string): Promise<Expense[]> {
   if (!isFirebaseConfigured) return [];
-  const snap = await getDocs(
+  const snap = await readDocs(
     query(collection(db, p.expenses(bid)), orderBy('date', 'desc'))
   );
   return snap.docs.map(d => {
@@ -433,7 +723,7 @@ export async function fsDeleteExpense(bid: string, expenseId: string): Promise<v
 // ─── Cash Sessions ───────────────────────────────────────────────────────────
 export async function fsLoadCashSessions(bid: string): Promise<CashSession[]> {
   if (!isFirebaseConfigured) return [];
-  const snap = await getDocs(
+  const snap = await readDocs(
     query(collection(db, p.cashSessions(bid)), orderBy('openedAt', 'desc'))
   );
   return snap.docs.map(d => ({ ...(d.data() as CashSession), id: d.id }));
@@ -448,7 +738,7 @@ export async function fsSaveCashSession(bid: string, session: CashSession): Prom
 // ─── Cash Outs (sorties de caisse) ───────────────────────────────────────────
 export async function fsLoadCashOuts(bid: string): Promise<CashOut[]> {
   if (!isFirebaseConfigured) return [];
-  const snap = await getDocs(
+  const snap = await readDocs(
     query(collection(db, p.cashOuts(bid)), orderBy('date', 'desc'))
   );
   return snap.docs.map(d => {
@@ -474,7 +764,7 @@ export async function fsDeleteCashOut(bid: string, cashOutId: string): Promise<v
 // ─── Inventory Sessions ──────────────────────────────────────────────────────
 export async function fsLoadInventorySessions(bid: string): Promise<InventorySession[]> {
   if (!isFirebaseConfigured) return [];
-  const snap = await getDocs(
+  const snap = await readDocs(
     query(collection(db, p.inventorySessions(bid)), orderBy('createdAt', 'desc'))
   );
   return snap.docs.map(d => ({ ...(d.data() as InventorySession), id: d.id }));
@@ -494,7 +784,7 @@ export async function fsDeleteInventorySession(bid: string, sessionId: string): 
 // ─── Clotures ────────────────────────────────────────────────────────────────
 export async function fsLoadClotures(bid: string): Promise<ClotureCaisse[]> {
   if (!isFirebaseConfigured) return [];
-  const snap = await getDocs(
+  const snap = await readDocs(
     query(collection(db, p.clotures(bid)), orderBy('date', 'desc'))
   );
   return snap.docs.map(d => ({ ...(d.data() as ClotureCaisse), id: d.id }));
@@ -509,7 +799,7 @@ export async function fsSaveCloture(bid: string, cloture: ClotureCaisse): Promis
 // ─── Sale counter ─────────────────────────────────────────────────────────────
 export async function fsLoadSaleCounter(bid: string): Promise<number> {
   if (!isFirebaseConfigured) return 0;
-  const snap = await getDoc(doc(db, p.saleCounter(bid)));
+  const snap = await readDoc(doc(db, p.saleCounter(bid)));
   if (!snap.exists()) return 0;
   return (snap.data().value as number) ?? 0;
 }
@@ -524,7 +814,7 @@ export async function fsSaveSaleCounter(bid: string, value: number): Promise<voi
 /** Returns true if this boutique already has data in Firestore */
 export async function fsIsBoutiqueInitialized(bid: string): Promise<boolean> {
   if (!isFirebaseConfigured) return false;
-  const snap = await getDoc(doc(db, p.settings(bid)));
+  const snap = await readDoc(doc(db, p.settings(bid)));
   return snap.exists();
 }
 

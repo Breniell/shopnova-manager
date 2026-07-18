@@ -22,12 +22,16 @@ import { create } from 'zustand';
 import { getBoutiqueId } from '@/services/boutiqueService';
 import {
   fsSaveInventorySession,
-  fsDeleteInventorySession,
+  MAX_ATOMIC_INVENTORY_ADJUSTMENTS,
+  validateStockCommit,
+  type StockCommitPayload,
 } from '@/services/firestoreService';
-import { enqueue } from '@/lib/outbox';
+import { enqueue, retryAll } from '@/lib/outbox';
+import { isFirebaseConfigured } from '@/lib/firebase';
+import { runLocalStateTransaction } from '@/lib/localStateTransaction';
 import { toast } from 'sonner';
-import type { Product } from '@/stores/useProductStore';
-import type { AdjustmentReason } from '@/stores/useStockStore';
+import { useProductStore, type Product } from '@/stores/useProductStore';
+import { useStockStore, type AdjustmentReason, type StockMovement } from '@/stores/useStockStore';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -124,18 +128,6 @@ interface InventoryState {
     userName: string,
     deps: {
       getProductPrixAchat: (productId: string) => number;
-      addMovementAndUpdateStock: (params: {
-        productId: string;
-        productName: string;
-        ecart: number;
-        stockTheorique: number;
-        stockCompte: number;
-        reason: AdjustmentReason;
-        notes?: string;
-        inventorySessionId: string;
-        userId: string;
-        userName: string;
-      }) => void;
     }
   ) => { success: true; session: InventorySession } | { success: false; missingReasons: string[] };
 
@@ -274,25 +266,38 @@ export const useInventoryStore = create<InventoryState>()((set, get) => ({
       return { success: false, missingReasons };
     }
 
-    // Génération des mouvements d'ajustement + maj des stocks via callback
+    if (linesWithEcart.length > MAX_ATOMIC_INVENTORY_ADJUSTMENTS) {
+      throw new Error(
+        `Trop d'écarts pour une validation atomique (${linesWithEcart.length}/${MAX_ATOMIC_INVENTORY_ADJUSTMENTS})`,
+      );
+    }
+
     let totalEcartQty = 0;
     let totalEcartValue = 0;
+    const operationId = sessionId;
+    const operationDate = new Date();
+    const stockDeltas: Array<{ productId: string; delta: number }> = [];
+    const movements: StockMovement[] = [];
     linesWithEcart.forEach(line => {
       const prixAchat = deps.getProductPrixAchat(line.productId);
       totalEcartQty += line.ecart;
-      totalEcartValue += line.ecart * prixAchat; // négatif si perte
-
-      deps.addMovementAndUpdateStock({
+      totalEcartValue += line.ecart * prixAchat;
+      stockDeltas.push({ productId: line.productId, delta: line.ecart });
+      movements.push({
+        id: `inventory-${sessionId}-${line.productId}`,
+        operationId,
+        date: operationDate,
         productId: line.productId,
         productName: line.productName,
-        ecart: line.ecart,
-        stockTheorique: line.stockTheorique,
-        stockCompte: line.stockCompte!,
-        reason: line.reason!,
-        notes: line.notes,
-        inventorySessionId: sessionId,
+        type: 'ajustement',
+        quantity: line.ecart,
+        stockBefore: line.stockTheorique,
+        stockAfter: line.stockCompte!,
         userId,
         userName,
+        reason: line.reason!,
+        inventorySessionId: sessionId,
+        notes: line.notes,
       });
     });
 
@@ -306,12 +311,41 @@ export const useInventoryStore = create<InventoryState>()((set, get) => ({
       totalEcartValue,
     };
 
-    set(state => ({ sessions: state.sessions.map(s => s.id === sessionId ? validated : s) }));
-    fsSaveInventorySession(getBoutiqueId(), validated).catch((err) => {
-      enqueue('inventorySession', validated);
-      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
-      console.warn('[outbox] inventorySession enqueued:', err);
+    const payload: StockCommitPayload = {
+      operation: {
+        operationId,
+        kind: 'inventory',
+        date: operationDate,
+        userId,
+        userName,
+        inventorySessionId: sessionId,
+      },
+      stockDeltas,
+      movements,
+      inventorySession: validated,
+    };
+    validateStockCommit(payload);
+
+    if (isFirebaseConfigured) {
+      const queued = enqueue('stockCommit', payload);
+      if (!queued.durable) {
+        toast.error("Journal local non durable : gardez l'application ouverte jusqu'à la synchronisation");
+      }
+    }
+
+    runLocalStateTransaction(() => {
+      const deltasByProduct = new Map(stockDeltas.map(delta => [delta.productId, delta.delta]));
+      useProductStore.setState(state => ({
+        products: state.products.map(product => {
+          const delta = deltasByProduct.get(product.id);
+          return delta === undefined ? product : { ...product, stock: product.stock + delta };
+        }),
+      }));
+      useStockStore.setState(state => ({ movements: [...movements, ...state.movements] }));
+      set(state => ({ sessions: state.sessions.map(s => s.id === sessionId ? validated : s) }));
     });
+
+    if (isFirebaseConfigured) void retryAll();
     return { success: true, session: validated };
   },
 

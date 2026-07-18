@@ -9,16 +9,21 @@ import { useInventoryStore } from '@/stores/useInventoryStore';
 import { usePaymentStore } from '@/stores/usePaymentStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useCaisseStore } from '@/stores/useCaisseStore';
 import { getBoutiqueId } from '@/services/boutiqueService';
+import { isFirebaseConfigured } from '@/lib/firebase';
 
 import {
   type BackupData,
   type BackupFile,
+  type BackupManifest,
   BACKUP_FORMAT,
   BACKUP_VERSION,
   BACKUP_REMINDER_KEY,
 } from './types';
 import { computeChecksum, encryptBackupData } from './backupCrypto';
+import { buildBackupManifest } from './manifest';
+import { loadAuthoritativeCloudBackupData } from './firestoreSource';
 
 const APP_VERSION = __APP_VERSION__;
 
@@ -37,6 +42,156 @@ export function collectBackupData(): BackupData {
     inventorySessions:  useInventoryStore.getState().sessions,
     payments:           usePaymentStore.getState().payments,
     users:              useAuthStore.getState().users,
+    clotures:           useCaisseStore.getState().clotures,
+    saleCounter:        useSaleStore.getState().saleCounter,
+  };
+}
+
+function mergeById<T extends { id: string }>(cloud: T[] = [], local: T[] = []): T[] {
+  const merged = new Map(cloud.map(item => [item.id, item]));
+  local.forEach(item => merged.set(item.id, item));
+  return [...merged.values()];
+}
+
+/** Merge unsynchronised device state over the complete cloud history. */
+export function mergeCloudAndLocalBackupData(cloud: BackupData, local: BackupData): BackupData {
+  return {
+    settings: local.settings,
+    products: mergeById(cloud.products, local.products),
+    sales: mergeById(cloud.sales, local.sales),
+    customers: mergeById(cloud.customers, local.customers),
+    suppliers: mergeById(cloud.suppliers, local.suppliers),
+    expenses: mergeById(cloud.expenses, local.expenses),
+    cashSessions: mergeById(cloud.cashSessions, local.cashSessions),
+    cashOuts: mergeById(cloud.cashOuts, local.cashOuts),
+    stockMovements: mergeById(cloud.stockMovements, local.stockMovements),
+    inventorySessions: mergeById(cloud.inventorySessions, local.inventorySessions),
+    payments: mergeById(cloud.payments, local.payments),
+    users: mergeById(cloud.users, local.users),
+    clotures: mergeById(cloud.clotures, local.clotures),
+    saleCounter: Math.max(cloud.saleCounter ?? 0, local.saleCounter ?? 0),
+  };
+}
+
+export interface CompleteBackupSnapshot {
+  data: BackupData;
+  source: BackupManifest['source'];
+  complete: boolean;
+  warnings: string[];
+}
+
+/** Integrity failures must never be hidden behind a less complete fallback. */
+export class CompleteBackupIntegrityError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CompleteBackupIntegrityError';
+  }
+}
+
+export interface CompleteBackupResolutionInput {
+  local: BackupData;
+  boutiqueId: string;
+  firebaseConfigured: boolean;
+  online: boolean;
+  loadCloud: (boutiqueId: string) => Promise<BackupData>;
+}
+
+export async function resolveCompleteBackupSnapshot({
+  local,
+  boutiqueId,
+  firebaseConfigured,
+  online,
+  loadCloud,
+}: CompleteBackupResolutionInput): Promise<CompleteBackupSnapshot> {
+  if (firebaseConfigured && online && !boutiqueId.startsWith('local-')) {
+    try {
+      const cloud = await loadCloud(boutiqueId);
+      return {
+        data: mergeCloudAndLocalBackupData(cloud, local),
+        source: 'cloud-full',
+        complete: true,
+        warnings: [],
+      };
+    } catch (error) {
+      if (error instanceof CompleteBackupIntegrityError) throw error;
+      const reason = error instanceof Error ? error.message : String(error);
+      return {
+        data: local,
+        source: 'local-device',
+        complete: false,
+        warnings: [`Lecture cloud indisponible (${reason}) : sauvegarde locale de secours.`],
+      };
+    }
+  }
+
+  const isAuthoritativeLocal = !firebaseConfigured || boutiqueId.startsWith('local-');
+  return {
+    data: local,
+    source: 'local-device',
+    complete: isAuthoritativeLocal,
+    warnings: isAuthoritativeLocal
+      ? []
+      : ['Export hors connexion : l\u2019historique cloud non present sur cet appareil peut etre absent.'],
+  };
+}
+
+/**
+ * Use Firestore as the authority when it is reachable. In pure-local mode the
+ * local stores are authoritative. A disconnected cloud installation can still
+ * export its durable device copy, but the manifest states that cloud history
+ * completeness could not be proven.
+ */
+export async function collectCompleteBackupData(): Promise<CompleteBackupSnapshot> {
+  const boutiqueId = getBoutiqueId();
+  const online = typeof navigator === 'undefined' || navigator.onLine !== false;
+  return resolveCompleteBackupSnapshot({
+    local: collectBackupData(),
+    boutiqueId,
+    firebaseConfigured: isFirebaseConfigured,
+    online,
+    loadCloud: loadAuthoritativeCloudBackupData,
+  });
+}
+
+export async function buildBackupFile(
+  snapshot: CompleteBackupSnapshot,
+  password: string | null,
+  boutiqueId: string,
+  exportedAt = new Date(),
+): Promise<BackupFile> {
+  const checksum = await computeChecksum(snapshot.data);
+  const manifest = buildBackupManifest(
+    snapshot.data,
+    checksum,
+    snapshot.source,
+    snapshot.complete,
+    snapshot.warnings,
+  );
+
+  if (password) {
+    return {
+      format: BACKUP_FORMAT,
+      version: BACKUP_VERSION,
+      exportedAt: exportedAt.toISOString(),
+      boutiqueId,
+      appVersion: APP_VERSION,
+      checksum,
+      encrypted: true,
+      manifest,
+      data: await encryptBackupData(snapshot.data, password),
+    };
+  }
+
+  return {
+    format: BACKUP_FORMAT,
+    version: BACKUP_VERSION,
+    exportedAt: exportedAt.toISOString(),
+    boutiqueId,
+    appVersion: APP_VERSION,
+    checksum,
+    encrypted: false,
+    manifest,
+    data: snapshot.data,
   };
 }
 
@@ -46,37 +201,11 @@ export function collectBackupData(): BackupData {
  *                   Pass null to export unencrypted.
  */
 export async function exportBackup(password: string | null): Promise<void> {
-  const data      = collectBackupData();
-  const checksum  = await computeChecksum(data);
+  const snapshot = await collectCompleteBackupData();
+  const data = snapshot.data;
   const boutiqueId = getBoutiqueId();
   const now        = new Date();
-
-  let file: BackupFile;
-
-  if (password) {
-    const encryptedData = await encryptBackupData(data, password);
-    file = {
-      format:     BACKUP_FORMAT,
-      version:    BACKUP_VERSION,
-      exportedAt: now.toISOString(),
-      boutiqueId,
-      appVersion: APP_VERSION,
-      checksum,
-      encrypted:  true,
-      data:       encryptedData,
-    };
-  } else {
-    file = {
-      format:     BACKUP_FORMAT,
-      version:    BACKUP_VERSION,
-      exportedAt: now.toISOString(),
-      boutiqueId,
-      appVersion: APP_VERSION,
-      checksum,
-      encrypted:  false,
-      data,
-    };
-  }
+  const file = await buildBackupFile(snapshot, password, boutiqueId, now);
 
   const shopName  = data.settings.nom.replace(/[^a-zA-Z0-9À-ɏ]/g, '-').slice(0, 30);
   const dateStr   = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;

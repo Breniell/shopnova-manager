@@ -10,6 +10,7 @@ export const getApps = () => [];
 // firebase/auth
 export const getAuth = () => ({ authStateReady: async () => {}, currentUser: null });
 export const signInAnonymously = async () => ({ user: { uid: 'test-boutique-id' } });
+export const getIdTokenResult = async () => ({ claims: {} });
 export const signInWithEmailAndPassword = async () => ({ user: { uid: 'test-boutique-id', email: 'test@example.com', isAnonymous: false } });
 export const linkWithCredential = async (user: unknown) => ({ user });
 export const sendPasswordResetEmail = async () => {};
@@ -32,6 +33,8 @@ export const orderBy = () => ({});
 
 export const getDoc = async () => ({ exists: () => false, data: () => null });
 export const getDocs = async () => ({ docs: [] });
+export const getDocFromCache = getDoc;
+export const getDocsFromCache = getDocs;
 export const setDoc = async () => {};
 export const updateDoc = async () => {};
 export const deleteDoc = async () => {};

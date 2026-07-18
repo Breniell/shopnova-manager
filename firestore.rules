@@ -7,28 +7,368 @@ rules_version = '2';
 // The boutiqueId is the Firebase Auth UID. A boutique starts anonymous, then can
 // be linked to Email/Password so the same UID can be restored on a new machine.
 //
-// Rule: only the authenticated user whose UID matches the boutiqueId can
-//       read or write their boutique's data. No other user can access it.
+// Access: the boutique owner UID remains the recovery/administration identity.
+// Individually provisioned staff identities use custom boutiqueId, employeeId
+// and role claims. Each collection below chooses its own least-privilege ACL.
 // ─────────────────────────────────────────────────────────────────────────────
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Boutique root document and all subcollections ────────────────────────
-    match /boutiques/{boutiqueId} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == boutiqueId;
+    function isOwner(boutiqueId) {
+      return request.auth != null && request.auth.uid == boutiqueId;
     }
 
-    match /boutiques/{boutiqueId}/{subcollection}/{docId} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == boutiqueId;
+    // Forward-compatible employee identities. The current boutique account is
+    // treated as the owner/manager; individually provisioned employees carry
+    // boutiqueId, employeeId and role custom claims.
+    function isStaffMember(boutiqueId) {
+      return request.auth != null
+             && request.auth.token.get('boutiqueId', '') == boutiqueId
+             && request.auth.token.get('employeeId', '') is string
+             && request.auth.token.get('employeeId', '').size() > 0
+             && (request.auth.token.get('role', '') == 'manager'
+                 || request.auth.token.get('role', '') == 'cashier');
+    }
+
+    function hasBoutiqueAccess(boutiqueId) {
+      return isOwner(boutiqueId) || isStaffMember(boutiqueId);
+    }
+
+    function isManager(boutiqueId) {
+      return isOwner(boutiqueId)
+             || (isStaffMember(boutiqueId)
+                 && request.auth.token.get('role', '') == 'manager');
+    }
+
+    function actorMatches(boutiqueId, data) {
+      return isOwner(boutiqueId)
+             || (isStaffMember(boutiqueId)
+                 && data.userId == request.auth.token.get('employeeId', ''));
+    }
+
+    function isSuperAdmin() {
+      return request.auth != null && request.auth.token.superadmin == true;
+    }
+
+    function isValidLicenseDocument(data) {
+      return data.keys().hasAll([
+               'licenseStr', 'licenseId', 'plan', 'issuedAt', 'expiresAt', 'revoked'
+             ])
+             && data.keys().hasOnly([
+               'licenseStr', 'licenseId', 'plan', 'issuedAt', 'expiresAt', 'revoked', 'updatedAt'
+             ])
+             && data.licenseStr is string
+             && data.licenseStr.size() <= 4096
+             && data.licenseId is string
+             && data.licenseId.size() <= 128
+             && data.plan is string
+             && data.plan.size() <= 50
+             && data.issuedAt is number
+             && data.expiresAt is number
+             && data.expiresAt > data.issuedAt
+             && data.revoked is bool;
+    }
+
+    function isValidPaymentBase(paymentId, data) {
+      return data.keys().hasAll([
+               'operationId', 'kind', 'saleId', 'customerId', 'date',
+               'amount', 'channel', 'userId', 'userName'
+             ])
+             && data.operationId == paymentId
+             && data.saleId is string
+             && data.saleId.size() > 0
+             && data.saleId.size() <= 256
+             && data.customerId is string
+             && data.customerId.size() > 0
+             && data.customerId.size() <= 256
+             && data.date is timestamp
+             && data.amount is number
+             && data.amount > 0
+             && (data.channel == 'especes' || data.channel == 'mobile_money')
+             && data.userId is string
+             && data.userId.size() > 0
+             && data.userName is string
+             && data.userName.size() > 0
+             && data.userName.size() <= 200;
+    }
+
+    function isValidPaymentOperation(boutiqueId, paymentId, data) {
+      return isValidPaymentBase(paymentId, data)
+             && (
+               data.kind == 'payment'
+               || (
+                 data.kind == 'reversal'
+                 && data.reversesPaymentId is string
+                 && data.reversesPaymentId != paymentId
+                 && paymentId == 'rev-' + data.reversesPaymentId
+                 && exists(/databases/$(database)/documents/boutiques/$(boutiqueId)/payments/$(data.reversesPaymentId))
+                 && get(/databases/$(database)/documents/boutiques/$(boutiqueId)/payments/$(data.reversesPaymentId)).data.get('kind', 'payment') == 'payment'
+                 && get(/databases/$(database)/documents/boutiques/$(boutiqueId)/payments/$(data.reversesPaymentId)).data.saleId == data.saleId
+                 && get(/databases/$(database)/documents/boutiques/$(boutiqueId)/payments/$(data.reversesPaymentId)).data.customerId == data.customerId
+                 && get(/databases/$(database)/documents/boutiques/$(boutiqueId)/payments/$(data.reversesPaymentId)).data.amount == data.amount
+               )
+             );
+    }
+
+    // Transitional compatibility for already-installed owner clients. These
+    // documents remain immutable; only the newer format can create reversals.
+    function isValidLegacyPayment(data) {
+      return data.keys().hasAll([
+               'saleId', 'customerId', 'date', 'amount', 'channel', 'userId', 'userName'
+             ])
+             && data.saleId is string
+             && data.saleId.size() > 0
+             && data.customerId is string
+             && data.customerId.size() > 0
+             && data.date is timestamp
+             && data.amount is number
+             && data.amount > 0
+             && (data.channel == 'especes' || data.channel == 'mobile_money')
+             && data.userId is string
+             && data.userId.size() > 0
+             && data.userName is string
+             && data.userName.size() > 0
+             && data.userName.size() <= 200;
+    }
+
+    function isValidRefundOperation(refundId, data) {
+      return data.keys().hasAll([
+               'operationId', 'saleId', 'date', 'reason', 'userId', 'userName'
+             ])
+             && refundId == data.saleId
+             && data.operationId == data.saleId
+             && data.saleId is string
+             && data.saleId.size() > 0
+             && data.saleId.size() <= 256
+             && data.date is string
+             && data.reason is string
+             && data.reason.size() > 0
+             && data.reason.size() <= 1000
+             && data.userId is string
+             && data.userId.size() > 0
+             && data.userName is string
+             && data.userName.size() > 0
+             && data.userName.size() <= 200;
+    }
+
+    function isValidSaleOperation(saleId, data) {
+      return data.keys().hasAll(['operationId', 'saleId', 'date', 'userId', 'userName'])
+             && data.keys().hasOnly(['operationId', 'saleId', 'date', 'userId', 'userName'])
+             && data.operationId == saleId
+             && data.saleId == saleId
+             && data.date is timestamp
+             && data.userId is string
+             && data.userId.size() > 0
+             && data.userName is string
+             && data.userName.size() > 0
+             && data.userName.size() <= 200;
+    }
+
+    function isValidStockOperation(boutiqueId, operationId, data) {
+      return data.keys().hasAll(['operationId', 'kind', 'date', 'userId', 'userName'])
+             && data.keys().hasOnly([
+               'operationId', 'kind', 'date', 'userId', 'userName', 'inventorySessionId'
+             ])
+             && data.operationId == operationId
+             && (data.kind == 'manual' || data.kind == 'inventory' || data.kind == 'legacy')
+             && data.date is timestamp
+             && data.userId is string
+             && data.userId.size() > 0
+             && data.userName is string
+             && data.userName.size() > 0
+             && data.userName.size() <= 200
+             && (
+               (data.kind == 'inventory'
+                && data.inventorySessionId is string
+                && data.inventorySessionId.size() > 0
+                && getAfter(/databases/$(database)/documents/boutiques/$(boutiqueId)/inventory_sessions/$(data.inventorySessionId)).data.status == 'validated'
+                && getAfter(/databases/$(database)/documents/boutiques/$(boutiqueId)/inventory_sessions/$(data.inventorySessionId)).data.validatedBy == data.userId)
+               || (data.kind != 'inventory' && !data.keys().hasAny(['inventorySessionId']))
+             );
+    }
+
+    // ── Boutique root document and all subcollections ────────────────────────
+    match /boutiques/{boutiqueId} {
+      allow read: if hasBoutiqueAccess(boutiqueId);
+      allow create, update, delete: if isManager(boutiqueId);
+    }
+
+    match /boutiques/{boutiqueId}/settings/{docId} {
+      allow read: if hasBoutiqueAccess(boutiqueId);
+      allow write: if isManager(boutiqueId);
+    }
+
+    match /boutiques/{boutiqueId}/users/{docId} {
+      allow read: if hasBoutiqueAccess(boutiqueId);
+      allow write: if isManager(boutiqueId);
+    }
+
+    match /boutiques/{boutiqueId}/products/{docId} {
+      allow read: if hasBoutiqueAccess(boutiqueId);
+      allow create, delete: if isManager(boutiqueId);
+      allow update: if isManager(boutiqueId)
+                    || (isStaffMember(boutiqueId)
+                        && resource.data.diff(request.resource.data).affectedKeys()
+                             .hasOnly(['stock', 'updatedAt']));
+    }
+
+    match /boutiques/{boutiqueId}/sales/{docId} {
+      allow read: if hasBoutiqueAccess(boutiqueId);
+      allow create: if hasBoutiqueAccess(boutiqueId)
+                    && actorMatches(boutiqueId, request.resource.data);
+      allow update, delete: if isManager(boutiqueId);
+    }
+
+    // One create-only marker guards every stock-affecting sale batch. A replay
+    // becomes an update to this document and the whole batch is rejected.
+    match /boutiques/{boutiqueId}/sale_operations/{saleId} {
+      allow read: if hasBoutiqueAccess(boutiqueId);
+      allow create: if hasBoutiqueAccess(boutiqueId)
+                    && actorMatches(boutiqueId, request.resource.data)
+                    && isValidSaleOperation(saleId, request.resource.data)
+                    && getAfter(/databases/$(database)/documents/boutiques/$(boutiqueId)/sales/$(saleId)).data.userId
+                         == request.resource.data.userId;
+      allow update, delete: if false;
+    }
+
+    match /boutiques/{boutiqueId}/stock_movements/{docId} {
+      allow read: if hasBoutiqueAccess(boutiqueId);
+      allow create: if hasBoutiqueAccess(boutiqueId)
+                    && actorMatches(boutiqueId, request.resource.data);
+      allow update, delete: if false;
+    }
+
+    // Marker created in the same batch as every manual/inventory stock delta.
+    // Replaying a lost acknowledgement attempts to update this immutable doc,
+    // so Firestore rejects the entire batch before a delta can be doubled.
+    match /boutiques/{boutiqueId}/stock_operations/{operationId} {
+      allow read: if hasBoutiqueAccess(boutiqueId);
+      allow create: if isManager(boutiqueId)
+                    && actorMatches(boutiqueId, request.resource.data)
+                    && isValidStockOperation(boutiqueId, operationId, request.resource.data)
+                    && (request.resource.data.kind != 'legacy' || isOwner(boutiqueId));
+      allow update, delete: if false;
+    }
+
+    match /boutiques/{boutiqueId}/customers/{docId} {
+      allow read, create, update: if hasBoutiqueAccess(boutiqueId);
+      allow delete: if isManager(boutiqueId);
+    }
+
+    match /boutiques/{boutiqueId}/cash_sessions/{docId} {
+      allow read: if hasBoutiqueAccess(boutiqueId);
+      allow create: if hasBoutiqueAccess(boutiqueId)
+                    && actorMatches(boutiqueId, request.resource.data)
+                    && request.resource.data.status == 'open'
+                    && request.resource.data.fondInitial is number
+                    && request.resource.data.fondInitial >= 0;
+      allow update: if (isManager(boutiqueId)
+                        || (isStaffMember(boutiqueId)
+                            && actorMatches(boutiqueId, resource.data)
+                            && actorMatches(boutiqueId, request.resource.data)))
+                    && (
+                      request.resource.data == resource.data
+                      || (resource.data.status == 'open'
+                          && request.resource.data.status == 'closed'
+                          && request.resource.data.userId == resource.data.userId
+                          && request.resource.data.openedAt == resource.data.openedAt
+                          && request.resource.data.fondInitial == resource.data.fondInitial
+                          && resource.data.diff(request.resource.data).affectedKeys().hasOnly([
+                            'closedAt', 'totalCompte', 'details', 'ecart', 'notesCloture', 'status'
+                          ]))
+                    );
+      allow delete: if false;
+    }
+
+    match /boutiques/{boutiqueId}/cash_outs/{docId} {
+      allow read: if hasBoutiqueAccess(boutiqueId);
+      allow create: if hasBoutiqueAccess(boutiqueId)
+                    && actorMatches(boutiqueId, request.resource.data);
+      allow update, delete: if isManager(boutiqueId);
+    }
+
+    match /boutiques/{boutiqueId}/clotures/{docId} {
+      allow read: if hasBoutiqueAccess(boutiqueId);
+      allow create: if hasBoutiqueAccess(boutiqueId)
+                    && actorMatches(boutiqueId, request.resource.data);
+      // A closure is an accounting record. Identical setDoc retries are
+      // accepted after a lost acknowledgement, but its contents are immutable.
+      allow update: if hasBoutiqueAccess(boutiqueId)
+                    && request.resource.data == resource.data;
+      allow delete: if false;
+    }
+
+    match /boutiques/{boutiqueId}/meta/{docId} {
+      allow read, write: if hasBoutiqueAccess(boutiqueId);
+    }
+
+    match /boutiques/{boutiqueId}/suppliers/{docId} {
+      allow read: if hasBoutiqueAccess(boutiqueId);
+      allow write: if isManager(boutiqueId);
+    }
+
+    match /boutiques/{boutiqueId}/expenses/{docId} {
+      allow read: if hasBoutiqueAccess(boutiqueId);
+      allow write: if isManager(boutiqueId);
+    }
+
+    match /boutiques/{boutiqueId}/inventory_sessions/{docId} {
+      allow read: if hasBoutiqueAccess(boutiqueId);
+      allow create: if isManager(boutiqueId);
+      allow update: if isManager(boutiqueId)
+                    && (
+                      request.resource.data == resource.data
+                      || ((resource.data.status == 'draft' || resource.data.status == 'in_progress')
+                          && (
+                            request.resource.data.status == 'draft'
+                            || request.resource.data.status == 'in_progress'
+                            || request.resource.data.status == 'cancelled'
+                            || (request.resource.data.status == 'validated'
+                                && existsAfter(/databases/$(database)/documents/boutiques/$(boutiqueId)/stock_operations/$(docId))
+                                && getAfter(/databases/$(database)/documents/boutiques/$(boutiqueId)/stock_operations/$(docId)).data.inventorySessionId == docId)
+                          ))
+                    );
+      allow delete: if false;
     }
 
     // ── Nested sub-subcollections (e.g. settings/main) ───────────────────────
     match /boutiques/{boutiqueId}/{subcollection}/{docId}/{rest=**} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == boutiqueId;
+      // No nested business collection is currently part of the data model.
+      // Deny by default so a future collection cannot inherit broad access.
+      allow read, write: if false;
+    }
+
+    // Financial ledger: immutable, create-only events. Historical documents
+    // remain readable; they can never be overwritten or deleted.
+    match /boutiques/{boutiqueId}/payments/{paymentId} {
+      allow read: if hasBoutiqueAccess(boutiqueId);
+      allow create: if hasBoutiqueAccess(boutiqueId)
+                    && actorMatches(boutiqueId, request.resource.data)
+                    && ((request.resource.data.get('kind', '') == 'payment'
+                         && isValidPaymentOperation(boutiqueId, paymentId, request.resource.data))
+                        || (request.resource.data.get('kind', '') == 'reversal'
+                            && isManager(boutiqueId)
+                            && isValidPaymentOperation(boutiqueId, paymentId, request.resource.data))
+                        || (isOwner(boutiqueId)
+                            && !request.resource.data.keys().hasAny(['operationId', 'kind'])
+                            && isValidLegacyPayment(request.resource.data)));
+      allow update, delete: if false;
+    }
+
+    // A deterministic refunds/{saleId} marker is created in the same batch as
+    // the sale update, stock increments and movements. A concurrent terminal or
+    // outbox replay would be an update and is therefore rejected atomically.
+    match /boutiques/{boutiqueId}/refunds/{refundId} {
+      allow read: if hasBoutiqueAccess(boutiqueId);
+      allow create: if isManager(boutiqueId)
+                    && actorMatches(boutiqueId, request.resource.data)
+                    && isValidRefundOperation(refundId, request.resource.data)
+                    && exists(/databases/$(database)/documents/boutiques/$(boutiqueId)/sales/$(refundId))
+                    && get(/databases/$(database)/documents/boutiques/$(boutiqueId)/sales/$(refundId)).data.get('status', 'completed') != 'refunded'
+                    && getAfter(/databases/$(database)/documents/boutiques/$(boutiqueId)/sales/$(refundId)).data.status == 'refunded'
+                    && getAfter(/databases/$(database)/documents/boutiques/$(boutiqueId)/sales/$(refundId)).data.refundOperationId == refundId;
+      allow update, delete: if false;
     }
 
     // ── Platform registry (developer super-admin monitoring) ─────────────────
@@ -56,22 +396,55 @@ service cloud.firestore {
 
     // Security events (login attempts) — boutique writes, no external read
     match /boutiques/{boutiqueId}/security/{document} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == boutiqueId;
+      allow read: if hasBoutiqueAccess(boutiqueId);
+      allow create: if isOwner(boutiqueId)
+                    || (isStaffMember(boutiqueId)
+                        && document == 'loginAttempts'
+                        && request.resource.data.keys()
+                             .hasOnly([request.auth.token.get('employeeId', '')]));
+      allow update: if isOwner(boutiqueId)
+                    || (isStaffMember(boutiqueId)
+                        && document == 'loginAttempts'
+                        && resource.data.diff(request.resource.data).affectedKeys()
+                             .hasOnly([request.auth.token.get('employeeId', '')]));
+      allow delete: if isOwner(boutiqueId);
     }
 
-    // Super-admin can revoke a boutique licence (sets revoked:true on _license/current)
+    // Fresh trusted-time probe used by the offline-capable licence gate. The
+    // client may only write the server's own request timestamp to one fixed doc.
+    match /boutiques/{boutiqueId}/_clock/{docId} {
+      allow read: if hasBoutiqueAccess(boutiqueId) && docId == 'tick';
+      allow create, update: if hasBoutiqueAccess(boutiqueId)
+                            && docId == 'tick'
+                            && request.resource.data.keys().hasOnly(['at'])
+                            && request.resource.data.at == request.time;
+      allow delete: if false;
+    }
+
+    // A boutique may create/update its signed licence metadata while it has not
+    // been revoked. Once the super-admin flips revoked=true, only a super-admin
+    // can change or delete the document, so re-entering the key cannot clear it.
     match /boutiques/{boutiqueId}/_license/{docId} {
-      allow read, write: if request.auth != null
-                         && request.auth.token.superadmin == true;
+      allow read: if hasBoutiqueAccess(boutiqueId) || isSuperAdmin();
+      allow create: if isSuperAdmin()
+                    || (isManager(boutiqueId)
+                        && docId == 'current'
+                        && isValidLicenseDocument(request.resource.data)
+                        && request.resource.data.revoked == false);
+      allow update: if isSuperAdmin()
+                    || (isManager(boutiqueId)
+                        && docId == 'current'
+                        && isValidLicenseDocument(request.resource.data)
+                        && resource.data.get('revoked', false) == false
+                        && request.resource.data.revoked == false);
+      allow delete: if isSuperAdmin();
     }
 
     // ── Licences registry (super-admin manages, boutiques never touch) ────────
     // One doc per issued licence. Created and updated by the super-admin;
     // revocation flag propagated separately to boutiques/{bid}/_license/current.
     match /licenses/{licenseId} {
-      allow read, write: if request.auth != null
-                         && request.auth.token.superadmin == true;
+      allow read, write: if isSuperAdmin();
     }
 
     // ── Deny everything else ─────────────────────────────────────────────────

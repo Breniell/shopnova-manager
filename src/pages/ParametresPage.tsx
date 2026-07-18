@@ -33,6 +33,7 @@ import { parseBackupFile, restoreBackupData, type ParseResult } from '@/lib/back
 import type { BackupData } from '@/lib/backup/types';
 import { useLicenseGate } from '@/components/LicenseGate';
 import { LicenseActivationForm } from '@/components/LicenseActivationForm';
+import { LocalCloudMigrationAssistant } from '@/components/LocalCloudMigrationAssistant';
 
 const SUPPORT_CONTACT = import.meta.env.VITE_SUPPORT_CONTACT ?? 'knbdevsolutions@gmail.com';
 
@@ -675,6 +676,8 @@ const ParametresPage: React.FC = () => {
             )}
           </div>
         </NovaCard>
+
+        <LocalCloudMigrationAssistant />
 
         <NovaCard className="mt-6">
           <div className="flex items-start justify-between gap-4">

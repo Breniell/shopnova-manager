@@ -1,0 +1,11 @@
+# Distribution-only overrides. Local developer packages may remain unsigned,
+# but every public release must provide a Windows signing certificate.
+extends: electron-builder.yml
+forceCodeSigning: true
+
+win:
+  signAndEditExecutable: true
+  # electron-updater uses this exact certificate publisher to reject an
+  # installer signed by an unexpected identity.
+  publisherName:
+    - "${env.WIN_CSC_PUBLISHER}"

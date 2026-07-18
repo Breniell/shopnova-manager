@@ -20,12 +20,20 @@ const ROOT = path.join(__dirname, '..');
 
 // ── Variant detection ────────────────────────────────────────────────────────
 const isAdmin = process.argv.includes('--variant=admin');
+const isRelease = process.argv.includes('--release') || process.env.LEGWAN_RELEASE_BUILD === '1';
+if (isAdmin && isRelease) {
+  console.error('ERROR: the internal admin variant has no public release channel.');
+  process.exit(1);
+}
 const VARIANT_LABEL   = isAdmin ? 'ÉDITEUR (super-admin inclus)' : 'CLIENT (sans super-admin)';
 const VITE_SCRIPT     = isAdmin ? 'electron:build:admin' : 'electron:build:client';
-const EB_CONFIG       = isAdmin ? 'electron-builder.admin.yml' : 'electron-builder.yml';
+const EB_CONFIG       = isAdmin
+  ? 'electron-builder.admin.yml'
+  : isRelease ? 'electron-builder.release.yml' : 'electron-builder.yml';
 const ARTIFACT_PREFIX = isAdmin ? 'Legwan-Admin' : 'Legwan';
 
 console.log(`\n▶  Variante : ${VARIANT_LABEL}\n`);
+console.log(`Mode de distribution : ${isRelease ? 'PUBLIC SIGNÉ' : 'LOCAL NON SIGNÉ'}\n`);
 
 function fail(message, details = []) {
   console.error(`\nERROR: ${message}`);
@@ -182,7 +190,7 @@ const envPath = path.join(ROOT, '.env');
 if (!fs.existsSync(envPath)) {
   fail('Missing .env file', [
     'Copy .env.example to .env.',
-    'Fill the Firebase values before building Electron.',
+    'Fill the Firebase and licence values before building Electron.',
   ]);
 }
 
@@ -191,6 +199,7 @@ const requiredVars = [
   'VITE_FIREBASE_API_KEY',
   'VITE_FIREBASE_AUTH_DOMAIN',
   'VITE_FIREBASE_PROJECT_ID',
+  'VITE_LICENSE_PUBKEY',
 ];
 const missing = requiredVars.filter((name) => {
   const match = envContent.match(new RegExp(`^${name}=(.*)$`, 'm'));
@@ -198,9 +207,20 @@ const missing = requiredVars.filter((name) => {
 });
 
 if (missing.length > 0) {
-  fail('Firebase variables are missing or empty in .env', missing);
+  fail('Required production variables are missing or empty in .env', missing);
 }
 console.log('OK: .env');
+
+if (isRelease) {
+  const signingCertificate = process.env.CSC_LINK || process.env.WIN_CSC_LINK;
+  if (!signingCertificate) {
+    fail('Missing Windows signing certificate for a public release', [
+      'Set CSC_LINK (or WIN_CSC_LINK) to a PFX path, HTTPS URL or base64 certificate.',
+      'Set CSC_KEY_PASSWORD when the PFX is password protected.',
+    ]);
+  }
+  run('node scripts/release-preflight.mjs --release');
+}
 
 console.log('Checking app icon...');
 const iconPath = path.join(ROOT, 'build', 'icon.ico');
@@ -222,13 +242,27 @@ if (!fs.existsSync(distIndex)) {
 
 console.log('\nStep 2/2: Windows installer build...');
 await prepareWindowsPackagingWorkaround();
+const packageJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+const expectedArtifact = path.join(ROOT, 'release', `Legwan-Setup-${packageJson.version}.exe`);
+const buildStartedAt = new Date().toISOString();
+for (const generatedPath of [expectedArtifact, `${expectedArtifact}.blockmap`, path.join(ROOT, 'release', 'latest.yml')]) {
+  fs.rmSync(generatedPath, { force: true });
+}
+
 run(`npx electron-builder --win nsis --x64 --config ${EB_CONFIG} --publish never`, {
-  CSC_IDENTITY_AUTO_DISCOVERY: 'false',
-  WIN_CSC_LINK: '',
+  CSC_IDENTITY_AUTO_DISCOVERY: isRelease ? 'true' : 'false',
+  ...(isRelease ? {
+    CSC_LINK: process.env.CSC_LINK || process.env.WIN_CSC_LINK,
+    CSC_KEY_PASSWORD: process.env.CSC_KEY_PASSWORD || process.env.WIN_CSC_KEY_PASSWORD || '',
+  } : {
+    CSC_LINK: '',
+    WIN_CSC_LINK: '',
+  }),
   // Workaround: évite l'échec de packaging si certains DLL natives
   // (SwiftShader/angle) ne sont pas trouvées sur la machine de build.
   ELECTRON_BUILDER_EXTRA_ARGS: '--ignoreMissingFiles',
 });
 
+run(`node scripts/verify-release.mjs --artifact="${expectedArtifact}" --built-after="${buildStartedAt}"${isRelease ? ' --require-signature' : ''}`);
 
 console.log(`\nDone. Installeur ${ARTIFACT_PREFIX}-Setup-*.exe disponible dans release/.`);

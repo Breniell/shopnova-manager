@@ -4,7 +4,7 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { formatDateLong } from '@/utils/formatters';
 import { useTranslation } from '@/i18n';
 import { CloudOff } from 'lucide-react';
-import { subscribe, getAll } from '@/lib/outbox';
+import { subscribe, getAll, retryFailed } from '@/lib/outbox';
 
 const ROUTE_TO_KEY: Record<string, string> = {
   '/':             'nav.dashboard',
@@ -26,10 +26,17 @@ export const TopBar: React.FC = () => {
   const { t } = useTranslation();
   const location = useLocation();
   const shop = useSettingsStore(s => s.shop);
-  const [pendingCount, setPendingCount] = useState(() => getAll().length);
+  const initialEntries = getAll();
+  const [syncState, setSyncState] = useState(() => ({
+    total: initialEntries.length,
+    failed: initialEntries.filter(entry => entry.status === 'failed').length,
+  }));
 
   useEffect(() => {
-    const unsub = subscribe(entries => setPendingCount(entries.length));
+    const unsub = subscribe(entries => setSyncState({
+      total: entries.length,
+      failed: entries.filter(entry => entry.status === 'failed').length,
+    }));
     return unsub;
   }, []);
 
@@ -48,14 +55,19 @@ export const TopBar: React.FC = () => {
       </div>
 
       <div className="flex items-center gap-2">
-        {pendingCount > 0 && (
-          <div
+        {syncState.total > 0 && (
+          <button
+            type="button"
+            onClick={() => { if (syncState.failed > 0) void retryFailed(); }}
+            disabled={syncState.failed === 0}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-700"
-            title={`${pendingCount} enregistrement(s) en attente de synchronisation`}
+            title={syncState.failed > 0
+              ? `${syncState.failed} enregistrement(s) en échec — cliquer pour relancer`
+              : `${syncState.total} enregistrement(s) en attente de synchronisation`}
           >
             <CloudOff className="w-3.5 h-3.5" />
-            <span className="text-xs font-semibold tabular-nums">{pendingCount}</span>
-          </div>
+            <span className="text-xs font-semibold tabular-nums">{syncState.total}</span>
+          </button>
         )}
       </div>
     </div>

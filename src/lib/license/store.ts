@@ -18,6 +18,7 @@ import type { LicensePayload } from './types';
 export const LICENSE_LS_KEY   = 'legwan-license';
 export const INSTALL_DATE_KEY = 'legwan-install-date';
 export const LAST_SEEN_KEY    = 'legwan-last-seen-time';
+export const REVOKED_LICENSE_KEY = 'legwan-revoked-license-id';
 
 // ─── Key derivation ───────────────────────────────────────────────────────────
 
@@ -74,11 +75,21 @@ export function getLicenseString(): string | null {
 }
 
 export function setLicenseString(str: string): void {
-  try { localStorage.setItem(LICENSE_LS_KEY, str); } catch {}
+  try { localStorage.setItem(LICENSE_LS_KEY, str); } catch { /* Storage can be disabled or full. */ }
 }
 
 export function clearLicense(): void {
-  try { localStorage.removeItem(LICENSE_LS_KEY); } catch {}
+  try { localStorage.removeItem(LICENSE_LS_KEY); } catch { /* Storage can be disabled. */ }
+}
+
+/** Persist an observed server revocation for subsequent offline launches. */
+export function rememberRevokedLicense(licenseId: string): void {
+  if (!licenseId) return;
+  try { localStorage.setItem(REVOKED_LICENSE_KEY, licenseId); } catch { /* Best-effort offline cache. */ }
+}
+
+export function getRememberedRevokedLicense(): string | null {
+  try { return localStorage.getItem(REVOKED_LICENSE_KEY); } catch { return null; }
 }
 
 // ─── Install date ─────────────────────────────────────────────────────────────
@@ -87,24 +98,29 @@ export function clearLicense(): void {
  * Returns the install date (ms). Creates and persists it on first call.
  * The install date is the base of the 30-day trial.
  */
-export async function getOrCreateInstallDate(boutiqueId: string): Promise<number> {
+export async function getOrCreateInstallDate(
+  boutiqueId: string,
+  trustedNow: number = Date.now(),
+): Promise<number> {
   const key    = await deriveKey(boutiqueId);
-  const stored = localStorage.getItem(INSTALL_DATE_KEY);
+  let stored: string | null = null;
+  try { stored = localStorage.getItem(INSTALL_DATE_KEY); } catch { /* Storage can be disabled. */ }
   if (stored) {
     const val = await decryptMs(stored, key);
-    if (val && val > 0) return val;
+    if (val && val > 0 && val <= trustedNow) return val;
   }
-  const now       = Date.now();
-  const encrypted = await encryptMs(now, key);
-  try { localStorage.setItem(INSTALL_DATE_KEY, encrypted); } catch {}
-  return now;
+  // Anchor a new (or future-corrupted) trial to an already vetted clock.
+  const encrypted = await encryptMs(trustedNow, key);
+  try { localStorage.setItem(INSTALL_DATE_KEY, encrypted); } catch { /* Continue with the in-memory date. */ }
+  return trustedNow;
 }
 
 // ─── Last-seen trusted time ───────────────────────────────────────────────────
 
 /** Returns the last stored trusted timestamp, or null if never set. */
 export async function getLastSeenTime(boutiqueId: string): Promise<number | null> {
-  const stored = localStorage.getItem(LAST_SEEN_KEY);
+  let stored: string | null = null;
+  try { stored = localStorage.getItem(LAST_SEEN_KEY); } catch { /* Storage can be disabled. */ }
   if (!stored) return null;
   const key = await deriveKey(boutiqueId);
   return decryptMs(stored, key);
@@ -114,7 +130,7 @@ export async function getLastSeenTime(boutiqueId: string): Promise<number | null
 export async function setLastSeenTime(ms: number, boutiqueId: string): Promise<void> {
   const key       = await deriveKey(boutiqueId);
   const encrypted = await encryptMs(ms, key);
-  try { localStorage.setItem(LAST_SEEN_KEY, encrypted); } catch {}
+  try { localStorage.setItem(LAST_SEEN_KEY, encrypted); } catch { /* A failed cache write must not block startup. */ }
 }
 
 // ─── Firestore persistence ────────────────────────────────────────────────────
