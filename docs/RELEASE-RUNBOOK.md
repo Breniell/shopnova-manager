@@ -21,6 +21,29 @@ Paquet local non signé, réservé aux contrôles internes :
 npm run dist:client
 ```
 
+Kit interne non signé avec somme SHA-256 et consignes destinées aux PC pilotes :
+
+```powershell
+npm run dist:internal
+```
+
+Si l'installateur de la version courante existe déjà dans `release`, éviter une
+reconstruction inutile avec :
+
+```powershell
+npm run internal:prepare
+```
+
+Le kit est placé dans `release/Legwan-<version>-INTERNE-NON-SIGNE`. Il est
+réservé aux PC contrôlés par l'entreprise. Windows peut afficher SmartScreen :
+ne jamais désactiver SmartScreen globalement. Vérifier d'abord la somme fournie,
+puis utiliser **Informations complémentaires > Exécuter quand même** uniquement
+si le fichier vient directement de la source interne connue.
+
+Pour une boutique cloud, effectuer la première connexion et le chargement des
+données avec Internet sur chaque nouveau PC. Couper ensuite le réseau, redémarrer
+Legwan et réaliser la recette hors ligne avant la mise en service.
+
 Publication signée stricte :
 
 ```powershell
