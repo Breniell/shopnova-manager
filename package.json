@@ -28,6 +28,8 @@
     "electron:dist:x64": "node scripts/build-electron.js",
     "electron:dist:safe": "node scripts/build-electron.js",
     "dist:client": "node scripts/build-electron.js",
+    "dist:internal": "npm run dist:client && node scripts/prepare-internal-package.mjs",
+    "internal:prepare": "node scripts/prepare-internal-package.mjs",
     "dist:admin": "node scripts/build-electron.js --variant=admin",
     "release:preflight": "node scripts/release-preflight.mjs --release",
     "release:verify": "node scripts/verify-release.mjs --require-signature",
