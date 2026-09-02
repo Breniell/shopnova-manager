@@ -274,7 +274,11 @@ const CaissePage: React.FC = () => {
     p.codeBarre.includes(search)
   );
 
-  const getProductImage = (product: Product) => productImages[product.id] || null;
+  const getProductImage = (product: Product) => product.imageUrl || productImages[product.id] || null;
+  const getProductImageById = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    return product ? getProductImage(product) : (productImages[productId] || null);
+  };
 
   const firstNegotiableProductId = cart.find(item => {
     const p = products.find(pp => pp.id === item.productId);
@@ -338,8 +342,8 @@ const CaissePage: React.FC = () => {
                 className="flex items-center gap-2 lg:gap-3 p-2 lg:p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors animate-slide-in-right"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
-                {productImages[item.productId] ? (
-                  <img src={productImages[item.productId]} alt={item.nom} className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg object-cover shrink-0" />
+                {getProductImageById(item.productId) ? (
+                  <img src={getProductImageById(item.productId)!} alt={item.nom} className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg object-cover shrink-0" />
                 ) : (
                   <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
                     <Package className="w-4 h-4 text-muted-foreground" />

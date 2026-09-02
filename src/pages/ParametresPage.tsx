@@ -3,8 +3,9 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useAuthStore, User } from '@/stores/useAuthStore';
 import { NovaCard } from '@/components/ui/NovaCard';
 import { cn } from '@/lib/utils';
-import { Store, Users, KeyRound, Trash2, Plus, X, Copy, Check, Cloud, Mail, Pencil, MapPin, LocateFixed, Loader2, PenLine, Smartphone, Printer, HardDrive, Download, Upload, ShieldCheck, ShieldOff, AlertTriangle, RotateCcw, Navigation } from 'lucide-react';
+import { Store, Users, KeyRound, Trash2, Plus, X, Copy, Check, Cloud, Mail, Pencil, MapPin, LocateFixed, Loader2, PenLine, Smartphone, Printer, HardDrive, Download, Upload, ShieldCheck, ShieldOff, AlertTriangle, RotateCcw, Navigation, Image as ImageIcon } from 'lucide-react';
 import { isThermalAvailable } from '@/lib/thermalPrint';
+import { compressImageToDataUrl } from '@/lib/imageUtils';
 import LocationPicker from '@/components/LocationPicker';
 import {
   getStoredLocation,
@@ -91,6 +92,8 @@ const ParametresPage: React.FC = () => {
   const [restoreProgress, setRestoreProgress]       = useState<{ done: number; total: number } | null>(null);
 
   const [localShop, setLocalShop] = useState(shop);
+  const [isLogoProcessing, setIsLogoProcessing] = useState(false);
+  const logoFileRef = React.useRef<HTMLInputElement>(null);
 
   const boutiqueId = getBoutiqueId();
   const boutiqueCode = getBoutiqueCode(boutiqueId);
@@ -298,7 +301,31 @@ const ParametresPage: React.FC = () => {
   const handleSaveShop = () => {
     updateShop(localShop);
     try { localStorage.setItem('legwan-locale', localShop.langue); } catch { /* ignore */ }
+    // Keep the super-admin registry in sync with shop-identity changes
+    // (name, address, etc.) — previously only a map-location confirmation
+    // triggered a heartbeat, so renames never reached the registry until
+    // the app's next cold start.
+    sendRegistryHeartbeat(recoveryStatus?.isRecoveryEnabled ?? false);
     toast.success(t('settings.boutique.saved'));
+  };
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setIsLogoProcessing(true);
+    try {
+      const dataUrl = await compressImageToDataUrl(file, { maxDimension: 320 });
+      setLocalShop({ ...localShop, logoDataUrl: dataUrl });
+    } catch {
+      toast.error(t('settings.boutique.logoTooLarge'));
+    } finally {
+      setIsLogoProcessing(false);
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setLocalShop({ ...localShop, logoDataUrl: undefined });
   };
 
   const handleAddUser = async () => {
@@ -345,6 +372,53 @@ const ParametresPage: React.FC = () => {
               <label className="text-xs text-muted-foreground mb-1 block">{t('settings.boutique.name')}</label>
               <input type="text" value={localShop.nom} onChange={e => setLocalShop({ ...localShop, nom: e.target.value })} className="nova-input w-full" />
             </div>
+
+            {/* ── Logo de la boutique ──────────────────────────────────── */}
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('settings.boutique.logoTitle')}</label>
+              <p className="text-[11px] text-muted-foreground mb-2">{t('settings.boutique.logoSubtitle')}</p>
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-16 rounded-lg border border-border bg-muted/40 flex items-center justify-center overflow-hidden shrink-0">
+                  {localShop.logoDataUrl ? (
+                    <img src={localShop.logoDataUrl} alt="" className="w-full h-full object-contain" />
+                  ) : (
+                    <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => logoFileRef.current?.click()}
+                      disabled={isLogoProcessing}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-muted hover:bg-muted/80 text-foreground transition-colors text-xs disabled:opacity-60"
+                    >
+                      {isLogoProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                      {t('settings.boutique.logoChoose')}
+                    </button>
+                    {localShop.logoDataUrl && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveLogo}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-muted hover:bg-destructive/20 hover:text-destructive text-foreground transition-colors text-xs"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        {t('settings.boutique.logoRemove')}
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">{t('settings.boutique.logoHint')}</p>
+                </div>
+                <input
+                  ref={logoFileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleLogoChange}
+                />
+              </div>
+            </div>
+
             {/* Address — auto-detected, manual as fallback */}
             <div>
               <div className="flex items-center justify-between mb-1.5">

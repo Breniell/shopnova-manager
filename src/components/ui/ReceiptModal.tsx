@@ -51,6 +51,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ sale, open, onClose 
           {/* Receipt */}
           <div className="receipt-print bg-white text-gray-900 w-[320px] rounded-xl overflow-hidden shadow-2xl" data-paper-width={shop.paperWidth}>
             <div className="p-6 text-center border-b border-dashed -gray-300">
+              {shop.logoDataUrl && (
+                <img src={shop.logoDataUrl} alt="" className="max-h-14 mx-auto mb-2 object-contain" />
+              )}
               <h2 className="font-bold text-lg">{shop.nom}</h2>
               <p className="text-xs text-gray-500 mt-1">{shop.adresse}</p>
               <p className="text-xs text-gray-500">{shop.telephone}</p>

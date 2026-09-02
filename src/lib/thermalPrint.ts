@@ -41,6 +41,7 @@ export interface ThermalReceiptData {
   shopPhone?: string;
   shopHeader?: string;
   shopFooter?: string;
+  shopLogoDataUrl?: string;
   receiptNumber: number | string;
   date: Date;
   cashierName: string;
@@ -152,6 +153,7 @@ export function buildReceiptHtml(sale: Sale, shop: ShopSettings, paymentLabel: s
     shopPhone:      shop.telephone || undefined,
     shopHeader:     shop.enteteRecu || undefined,
     shopFooter:     shop.piedPageRecu || undefined,
+    shopLogoDataUrl: shop.logoDataUrl || undefined,
     receiptNumber:  sale.saleNumber,
     date:           new Date(sale.date),
     cashierName:    sale.userName,
@@ -207,8 +209,11 @@ export function buildReceiptHtml(sale: Sale, shop: ShopSettings, paymentLabel: s
   .c  { text-align: center; }
   .b  { font-weight: bold; }
   .dh { font-size: 12pt; font-weight: bold; }
+  .logo-wrap { text-align: center; margin-bottom: 2mm; }
+  .logo { max-height: 18mm; max-width: 80%; object-fit: contain; }
 </style>
 </head><body>
+${data.shopLogoDataUrl ? `<div class="logo-wrap"><img class="logo" src="${data.shopLogoDataUrl}" /></div>` : ''}
 ${lineHtml}
 </body></html>`;
 }

@@ -13,6 +13,7 @@ export interface ShopSettings {
   nui: string;
   enteteRecu: string;
   piedPageRecu: string;
+  logoDataUrl?: string;
   devise: string;
   langue: SupportedLocale;
   momoMerchantCodeMtn?: string;

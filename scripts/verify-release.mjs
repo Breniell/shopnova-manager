@@ -32,7 +32,11 @@ if (fs.existsSync(latestPath) && fs.existsSync(artifact)) {
   const declaredPath = latest.match(/^path:\s*(.+)$/m)?.[1]?.trim();
   const hashes = [...latest.matchAll(/^\s*sha512:\s*(\S+)$/gm)].map(match => match[1]);
   const actualHash = crypto.createHash('sha512').update(fs.readFileSync(artifact)).digest('base64');
-  if (declaredPath !== path.basename(artifact)) errors.push(`latest.yml path mismatch: ${declaredPath}`);
+  // electron-builder sometimes normalizes spaces to hyphens in latest.yml's
+  // `path:` field while keeping the literal productName (with spaces) as the
+  // artifact's actual filename on disk — compare with that quirk neutralized.
+  const normalize = (s) => s?.replace(/[ -]/g, '-');
+  if (normalize(declaredPath) !== normalize(path.basename(artifact))) errors.push(`latest.yml path mismatch: ${declaredPath}`);
   if (!hashes.includes(actualHash)) errors.push('latest.yml SHA-512 does not match the installer');
 }
 

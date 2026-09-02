@@ -11,9 +11,26 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from '@/i18n';
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
-import MarkerClusterGroup from 'react-leaflet-cluster';
+import * as ReactLeafletCluster from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+
+// Defensive namespace import: under Vite's dev pre-bundling, this package's
+// default export comes back double-wrapped — `ReactLeafletCluster.default`
+// is itself `{ default: <the real forwardRef component> }`, not the
+// component. Passing either the raw namespace or the once-unwrapped object
+// to React crashes with "Element type is invalid... got: object". Unwrap
+// until we reach something that isn't a plain `{ default: ... }` wrapper —
+// verified against the actual dev-server module shape (confirms the real
+// component carries `$$typeof: Symbol(react.forward_ref)`).
+function unwrapDefault(mod: unknown): unknown {
+  let current = mod;
+  while (current && typeof current === 'object' && 'default' in current && !('$$typeof' in current)) {
+    current = (current as { default: unknown }).default;
+  }
+  return current;
+}
+const MarkerClusterGroup = unwrapDefault(ReactLeafletCluster) as typeof import('react-leaflet-cluster').default;
 import type { RegistryEntry } from '@/services/registryService';
 import { getBoutiqueStatus, STATUS_COLORS } from '@/stores/useSuperAdminStore';
 import { cn } from '@/lib/utils';

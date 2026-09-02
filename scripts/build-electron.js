@@ -30,7 +30,9 @@ const VITE_SCRIPT     = isAdmin ? 'electron:build:admin' : 'electron:build:clien
 const EB_CONFIG       = isAdmin
   ? 'electron-builder.admin.yml'
   : isRelease ? 'electron-builder.release.yml' : 'electron-builder.yml';
-const ARTIFACT_PREFIX = isAdmin ? 'Legwan-Admin' : 'Legwan';
+// Must match each config's `productName` exactly — electron-builder's
+// artifactName template is "${productName}-Setup-${version}.${ext}".
+const ARTIFACT_PREFIX = isAdmin ? 'Legwan Admin' : 'Legwan';
 
 console.log(`\n▶  Variante : ${VARIANT_LABEL}\n`);
 console.log(`Mode de distribution : ${isRelease ? 'PUBLIC SIGNÉ' : 'LOCAL NON SIGNÉ'}\n`);
@@ -243,7 +245,7 @@ if (!fs.existsSync(distIndex)) {
 console.log('\nStep 2/2: Windows installer build...');
 await prepareWindowsPackagingWorkaround();
 const packageJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-const expectedArtifact = path.join(ROOT, 'release', `Legwan-Setup-${packageJson.version}.exe`);
+const expectedArtifact = path.join(ROOT, 'release', `${ARTIFACT_PREFIX}-Setup-${packageJson.version}.exe`);
 const buildStartedAt = new Date().toISOString();
 for (const generatedPath of [expectedArtifact, `${expectedArtifact}.blockmap`, path.join(ROOT, 'release', 'latest.yml')]) {
   fs.rmSync(generatedPath, { force: true });

@@ -204,8 +204,8 @@ const DashboardPage: React.FC = () => {
                 {alertProducts.map(p => (
                   <div key={p.id} className="flex items-center gap-2 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                     <div className="shrink-0">
-                      {productImages[p.id] ? (
-                        <img src={productImages[p.id]} alt={p.nom} className="w-9 h-9 rounded-lg object-cover" />
+                      {p.imageUrl || productImages[p.id] ? (
+                        <img src={p.imageUrl || productImages[p.id]} alt={p.nom} className="w-9 h-9 rounded-lg object-cover" />
                       ) : (
                         <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
                           <Package className="w-4 h-4 text-muted-foreground" />

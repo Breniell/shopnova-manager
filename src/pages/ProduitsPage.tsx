@@ -10,7 +10,8 @@ import { BarcodeScanner } from '@/components/ui/BarcodeScanner';
 import { LabelPrint } from '@/components/ui/LabelPrint';
 import { getStockStatus, generateInternalBarcode, isValidEAN13, cn } from '@/lib/utils';
 import { productImages } from '@/assets/productImages';
-import { Search, Plus, Edit, Trash2, Package, X, Camera, Hash, Tag } from 'lucide-react';
+import { compressImageToDataUrl } from '@/lib/imageUtils';
+import { Search, Plus, Edit, Trash2, Package, X, Camera, Hash, Tag, Upload, Loader2, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ProduitsPage: React.FC = () => {
@@ -25,11 +26,13 @@ const ProduitsPage: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
   const [showScanner, setShowScanner] = useState(false);
   const [labelProduct, setLabelProduct] = useState<Product | null>(null);
+  const [isImageProcessing, setIsImageProcessing] = useState(false);
+  const imageFileRef = React.useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     nom: '', categorie: 'Alimentation' as Category, codeBarre: '', prixAchat: '',
     prixVente: '', prixCible: '', prixPlancher: '', negociable: false,
-    stock: '', seuilAlerte: '5', description: '',
+    stock: '', seuilAlerte: '5', description: '', imageUrl: '',
   });
 
   const openAdd = () => {
@@ -37,7 +40,7 @@ const ProduitsPage: React.FC = () => {
     setForm({
       nom: '', categorie: 'Alimentation', codeBarre: '', prixAchat: '',
       prixVente: '', prixCible: '', prixPlancher: '', negociable: false,
-      stock: '', seuilAlerte: '5', description: '',
+      stock: '', seuilAlerte: '5', description: '', imageUrl: '',
     });
     setShowModal(true);
   };
@@ -51,9 +54,27 @@ const ProduitsPage: React.FC = () => {
       prixPlancher: p.prixPlancher !== undefined ? String(p.prixPlancher) : '',
       negociable: p.negociable === true,
       stock: String(p.stock), seuilAlerte: String(p.seuilAlerte), description: p.description || '',
+      imageUrl: p.imageUrl || '',
     });
     setShowModal(true);
   };
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setIsImageProcessing(true);
+    try {
+      const dataUrl = await compressImageToDataUrl(file, { maxDimension: 640 });
+      setForm(f => ({ ...f, imageUrl: dataUrl }));
+    } catch {
+      toast.error(t('produits.imageTooLarge'));
+    } finally {
+      setIsImageProcessing(false);
+    }
+  };
+
+  const handleRemoveImage = () => setForm(f => ({ ...f, imageUrl: '' }));
 
   // Non-blocking EAN-13 validation (only when field is non-empty)
   const barcodeWarning = form.codeBarre.trim() && !isValidEAN13(form.codeBarre.trim())
@@ -106,6 +127,7 @@ const ProduitsPage: React.FC = () => {
       negociable: form.negociable,
       stock: editingProduct ? editingProduct.stock : (parseInt(form.stock, 10) || 0),
       seuilAlerte: parseInt(form.seuilAlerte, 10) || 5, description: form.description,
+      imageUrl: form.imageUrl,
     };
     if (editingProduct) {
       updateProduct(editingProduct.id, data);
@@ -202,8 +224,8 @@ const ProduitsPage: React.FC = () => {
                       <td className="p-3 text-sm text-muted-foreground">{i + 1}</td>
                       <td className="p-3">
                         <div className="flex items-center gap-2 lg:gap-3">
-                          {productImages[p.id] ? (
-                            <img src={productImages[p.id]} alt={p.nom} className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg object-cover shrink-0" />
+                          {p.imageUrl || productImages[p.id] ? (
+                            <img src={p.imageUrl || productImages[p.id]} alt={p.nom} className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg object-cover shrink-0" />
                           ) : (
                             <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
                               <Package className="w-4 h-4 text-muted-foreground" />
@@ -287,6 +309,51 @@ const ProduitsPage: React.FC = () => {
                 <select value={form.categorie} onChange={e => setForm({ ...form, categorie: e.target.value as Category })} className="nova-input w-full">
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
+              </div>
+
+              {/* ── Image du produit ────────────────────────────────────── */}
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">{t('produits.labelImage')}</label>
+                <div className="flex items-center gap-3">
+                  <div className="w-14 h-14 rounded-lg border border-border bg-muted/40 flex items-center justify-center overflow-hidden shrink-0">
+                    {form.imageUrl ? (
+                      <img src={form.imageUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => imageFileRef.current?.click()}
+                        disabled={isImageProcessing}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-muted hover:bg-muted/80 text-foreground transition-colors text-xs disabled:opacity-60"
+                      >
+                        {isImageProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                        {t('produits.imageChoose')}
+                      </button>
+                      {form.imageUrl && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-muted hover:bg-destructive/20 hover:text-destructive text-foreground transition-colors text-xs"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          {t('produits.imageRemove')}
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">{t('produits.imageHint')}</p>
+                  </div>
+                  <input
+                    ref={imageFileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageChange}
+                  />
+                </div>
               </div>
 
               {/* ── Code-barres ─────────────────────────────────────────── */}

@@ -196,7 +196,9 @@ service cloud.firestore {
 
     match /boutiques/{boutiqueId}/settings/{docId} {
       allow read: if hasBoutiqueAccess(boutiqueId);
-      allow write: if isManager(boutiqueId);
+      allow write: if isManager(boutiqueId)
+                   && (!('logoDataUrl' in request.resource.data)
+                       || request.resource.data.logoDataUrl.size() <= 250000);
     }
 
     match /boutiques/{boutiqueId}/users/{docId} {
@@ -206,8 +208,13 @@ service cloud.firestore {
 
     match /boutiques/{boutiqueId}/products/{docId} {
       allow read: if hasBoutiqueAccess(boutiqueId);
-      allow create, delete: if isManager(boutiqueId);
-      allow update: if isManager(boutiqueId)
+      allow create: if isManager(boutiqueId)
+                    && (!('imageUrl' in request.resource.data)
+                        || request.resource.data.imageUrl.size() <= 250000);
+      allow delete: if isManager(boutiqueId);
+      allow update: if (isManager(boutiqueId)
+                        && (!('imageUrl' in request.resource.data)
+                            || request.resource.data.imageUrl.size() <= 250000))
                     || (isStaffMember(boutiqueId)
                         && resource.data.diff(request.resource.data).affectedKeys()
                              .hasOnly(['stock', 'updatedAt']));
