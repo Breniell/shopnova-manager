@@ -60,6 +60,14 @@ if (isFirebaseConfigured) {
         cacheSizeBytes: CACHE_SIZE_UNLIMITED,
         tabManager: persistentMultipleTabManager(),
       }),
+      // Several write paths (products, customers, cash sessions...) pass
+      // optional fields through as literal `undefined` when unset (e.g.
+      // Product.prixCible when negociable is off, the common case). The
+      // Firestore SDK rejects `undefined` outright by default, so those
+      // writes were silently failing and looping forever in the outbox
+      // retry queue since a retry resends the exact same payload. This
+      // tells the SDK to drop undefined fields instead of erroring.
+      ignoreUndefinedProperties: true,
     });
   } catch {
     _db = getFirestore(app);
@@ -88,7 +96,11 @@ export function getSuperAdminFirebase(): { saAuth: Auth; saDb: Firestore } | nul
     const existing = getApps().find(a => a.name === SA_APP_NAME);
     const saApp = existing ?? initializeApp(_firebaseConfig, SA_APP_NAME);
     _saAuth = getAuth(saApp);
-    _saDb   = getFirestore(saApp);
+    try {
+      _saDb = initializeFirestore(saApp, { ignoreUndefinedProperties: true });
+    } catch {
+      _saDb = getFirestore(saApp);
+    }
   }
 
   return { saAuth: _saAuth, saDb: _saDb };
