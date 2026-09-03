@@ -103,6 +103,15 @@ function createWindow() {
         updaterTimer = null;
         if (!win.isDestroyed()) setupAutoUpdater();
       }, 5000);
+      // The app is a POS terminal typically left open all day — a single
+      // check at launch means anyone already running when a release goes
+      // out never hears about it until their next restart. Re-check
+      // periodically so a same-day release is still discovered.
+      const updaterInterval = setInterval(() => {
+        if (win.isDestroyed()) { clearInterval(updaterInterval); return; }
+        setupAutoUpdater();
+      }, 30 * 60 * 1000);
+      win.on('closed', () => clearInterval(updaterInterval));
     }
   };
 
