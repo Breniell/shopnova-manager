@@ -168,8 +168,17 @@ export function saveAutomaticBackup({ backupDir, payload, appVersion, reason = '
   }
 
   const parsed = JSON.parse(payload);
-  if (parsed?.format !== 'legwan-backup' || parsed?.version !== 1 || !parsed?.checksum || !parsed?.data) {
-    throw new Error('Invalid Legwan backup document');
+  // Keep in sync with SUPPORTED_BACKUP_VERSIONS in src/lib/backup/types.ts.
+  // This was pinned to version 1 while the app emits version 2, so every
+  // automatic backup threw "Invalid Legwan backup document" on launch. That
+  // also silently blocked update installation, since quitAndInstall is gated
+  // on a successful pre-update backup.
+  const supportedBackupVersions = [1, 2];
+  if (parsed?.format !== 'legwan-backup'
+    || !supportedBackupVersions.includes(parsed?.version)
+    || !parsed?.checksum
+    || !parsed?.data) {
+    throw new Error(`Invalid Legwan backup document (format=${parsed?.format}, version=${parsed?.version})`);
   }
 
   fs.mkdirSync(backupDir, { recursive: true, mode: 0o700 });

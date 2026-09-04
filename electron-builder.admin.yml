@@ -24,7 +24,10 @@ files:
   - electron/**/*
   - package.json
 
-  - "!node_modules/**/*"
+  # See electron-builder.yml: no "!node_modules/**/*" here. That exclusion kept
+  # electron-updater out of the package and silently killed auto-update.
+  # package.json now declares only electron-updater as a runtime dependency, so
+  # electron-builder collects the right closure on its own.
   - "!src/**/*"
   - "!tests/**/*"
   - "!*.test.*"

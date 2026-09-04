@@ -55,7 +55,10 @@ if (!isDev) {
     autoUpdater.autoInstallOnAppQuit = false;
     autoUpdater.logger = null;
   } catch (e) {
-    // electron-updater unavailable — silently skip
+    // Never swallow this silently: when electron-updater was missing from the
+    // package, auto-update was dead in every shipped build and nothing said so.
+    // This lands in the diagnostics log (Menu > Legwan > Diagnostics locaux).
+    console.error('[Legwan updater] electron-updater failed to load, auto-update disabled:', e);
   }
 }
 

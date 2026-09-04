@@ -137,6 +137,30 @@ test('automatic backups are atomic, daily and retained', () => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+test('automatic backup accepts the version the app actually emits', () => {
+  // Regression: the validator was pinned to version 1 while the renderer
+  // emits BACKUP_VERSION = 2, so every automatic backup threw on launch and
+  // update installs were blocked (quitAndInstall requires a fresh backup).
+  // Keep in sync with SUPPORTED_BACKUP_VERSIONS in src/lib/backup/types.ts.
+  for (const version of [1, 2]) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), `legwan-backup-v${version}-`));
+    const payload = JSON.stringify({
+      format: 'legwan-backup',
+      version,
+      checksum: 'abc123',
+      data: { products: [] },
+    });
+    const result = saveAutomaticBackup({
+      backupDir: root,
+      payload,
+      appVersion: '1.7.0',
+      now: new Date('2026-07-13T10:00:00Z'),
+    });
+    assert.equal(result.saved, true, `version ${version} should be accepted`);
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('automatic backup rejects an unrelated JSON document', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'legwan-backup-invalid-'));
   assert.throws(() => saveAutomaticBackup({

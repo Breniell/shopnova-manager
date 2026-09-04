@@ -33,7 +33,16 @@ files:
   - package.json
   # Ensure packaged entry points are present for launcher/policy/runtime
 
-  - "!node_modules/**/*"
+  # NOTE: do not add "!node_modules/**/*" here. It was excluding
+  # electron-updater from the package, so electron/main.mjs's runtime import
+  # threw ERR_MODULE_NOT_FOUND, the surrounding catch swallowed it, and
+  # auto-update silently never ran in any shipped build. Hand-listing the
+  # closure does not work either: electron-builder strips nested node_modules
+  # from user globs, and some packages ship "files": [] which filters them out
+  # entirely. Instead, package.json keeps exactly one runtime dependency
+  # (electron-updater) and everything Vite bundles into dist/ lives in
+  # devDependencies, so electron-builder's own production-dependency
+  # collection ships the correct closure and nothing more.
   - "!src/**/*"
   - "!tests/**/*"
   - "!*.test.*"
