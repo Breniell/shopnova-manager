@@ -14,7 +14,7 @@
     "build:admin": "cross-env VITE_ENABLE_SUPERADMIN=true vite build",
     "lint": "eslint .",
     "typecheck": "tsc -b --pretty false",
-    "security:prod": "npm audit --omit=dev --audit-level=high",
+    "security:prod": "npm audit --audit-level=high",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -44,6 +44,9 @@
   },
   "dependencies": {
     "electron-updater": "^6.8.3"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
