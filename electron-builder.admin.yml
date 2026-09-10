@@ -72,5 +72,16 @@ nsis:
   installerHeaderIcon: build/icon.ico
   runAfterFinish: true
 
-# Pas de publish : l'éditeur met à jour sa version admin en reconstruisant manuellement.
-# electron-updater échouera silencieusement (catch dans main.mjs) — comportement attendu.
+# L'éditeur met à jour sa version admin en la reconstruisant manuellement.
+#
+# publish: null est indispensable, pas seulement l'absence d'un bloc publish :
+# sans lui, electron-builder déduit un canal depuis le dépôt Git et écrit un
+# app-update.yml pointant sur Breniell/shopnova-manager, où seules les releases
+# CLIENT sont publiées. La variante admin proposerait alors de "se mettre à
+# jour" en téléchargeant l'installeur client, qui s'installe à côté (appId et
+# GUID distincts) au lieu de la remplacer : on se retrouve avec le client
+# installé et l'admin figé, en croyant l'avoir mis à jour.
+#
+# Sans canal, checkForUpdates() échoue et part dans le gestionnaire d'erreur de
+# main.mjs (console.warn dans le journal de diagnostic). C'est voulu.
+publish: null
