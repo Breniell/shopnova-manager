@@ -1,0 +1,39 @@
+{
+  /**
+   * Type-checks the Playwright harness and specs under tests/.
+   *
+   * tsconfig.app.json covers only src/, and tsconfig.node.json only
+   * vite.config.ts, so before this project existed `npm run typecheck` said
+   * nothing at all about tests/. Playwright transpiles TypeScript without
+   * checking it, so a broken harness would surface as a confusing runtime
+   * failure in the middle of a five-minute e2e run instead of an instant
+   * compile error. These files are the tools used to trust a release; they get
+   * checked like the rest.
+   *
+   * Separate from the app project because this is Node/Playwright context
+   * (node:fs, node:http, process) rather than browser context.
+   */
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "types": ["node"],
+
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "resolveJsonModule": true,
+
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": [
+    "tests/electron-harness.ts",
+    "tests/e2e-electron/**/*.ts",
+    "playwright.electron.config.ts"
+  ]
+}
