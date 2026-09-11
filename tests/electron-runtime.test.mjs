@@ -6,6 +6,7 @@ import test from 'node:test';
 import {
   createDiagnosticLogger,
   createRendererRecoveryController,
+  pickAutoUpdater,
   sanitizeDiagnosticValue,
   saveAutomaticBackup,
 } from '../electron/runtime-support.mjs';
@@ -185,6 +186,63 @@ test('every packaging config unpacks node_modules beside the ESM runtime', () =>
         + `imports cannot resolve at runtime; got ${patterns.join(', ')}`,
     );
   }
+});
+
+test('pickAutoUpdater reads autoUpdater off the CJS default export', () => {
+  // Regression: 1.7.4 finally loaded electron-updater, then destructured
+  // `autoUpdater` straight off the namespace and got undefined, dying one line
+  // later on "Cannot set properties of undefined (setting 'autoDownload')".
+  const updater = { autoDownload: true };
+  const namespace = {
+    NsisUpdater: class {},
+    AppUpdater: class {},
+    default: Object.defineProperty({}, 'autoUpdater', {
+      get: () => updater,
+      enumerable: true,
+      configurable: true,
+    }),
+  };
+  assert.equal(pickAutoUpdater(namespace), updater);
+});
+
+test('pickAutoUpdater prefers a real named export when one exists', () => {
+  const named = { id: 'named' };
+  assert.equal(
+    pickAutoUpdater({ autoUpdater: named, default: { autoUpdater: { id: 'default' } } }),
+    named,
+  );
+});
+
+test('pickAutoUpdater reports nothing found instead of returning undefined', () => {
+  assert.equal(pickAutoUpdater({ NsisUpdater: class {} }), null);
+  assert.equal(pickAutoUpdater(undefined), null);
+  assert.equal(pickAutoUpdater({ autoUpdater: undefined }), null);
+});
+
+test('pickAutoUpdater does not touch getters it is not looking for', () => {
+  // Reading autoUpdater constructs a platform updater and needs a live Electron
+  // app, so probing an object that lacks the key must not evaluate anything.
+  let reads = 0;
+  const namespace = {
+    default: Object.defineProperty({}, 'somethingElse', {
+      get: () => { reads += 1; return null; },
+      enumerable: true,
+    }),
+  };
+  assert.equal(pickAutoUpdater(namespace), null);
+  assert.equal(reads, 0);
+});
+
+test('the installed electron-updater exposes autoUpdater where pickAutoUpdater looks', async () => {
+  // The test that would have caught 1.7.4: it probes the real dependency, not a
+  // fixture. Use `in` only - reading the property builds an NsisUpdater and
+  // requires a running Electron app, which node --test does not have.
+  const namespace = await import('electron-updater');
+  const sources = [namespace, namespace.default].filter(Boolean);
+  assert.ok(
+    sources.some(source => 'autoUpdater' in source),
+    'electron-updater exposes autoUpdater on neither its ESM namespace nor its default export',
+  );
 });
 
 test('automatic backup rejects an unrelated JSON document', () => {

@@ -217,3 +217,27 @@ export function saveAutomaticBackup({ backupDir, payload, appVersion, reason = '
 
   return { saved: true, skipped: false, path: target };
 }
+
+/**
+ * Extract the `autoUpdater` singleton from an imported electron-updater module.
+ *
+ * electron-updater is CommonJS and publishes `autoUpdater` through a lazy
+ * `Object.defineProperty(exports, 'autoUpdater', { get })`. cjs-module-lexer
+ * cannot see that pattern, so the ESM namespace produced by
+ * `await import('electron-updater')` carries every class (NsisUpdater,
+ * AppUpdater...) but NOT `autoUpdater` - it exists only on the default export.
+ * Destructuring it off the namespace yielded undefined, and 1.7.4 died one line
+ * later on `Cannot set properties of undefined (setting 'autoDownload')`.
+ *
+ * Reading the property constructs a platform updater and needs a live Electron
+ * app, so probe with `in` first and only read where the key actually exists.
+ */
+export function pickAutoUpdater(moduleNamespace) {
+  for (const candidate of [moduleNamespace, moduleNamespace?.default]) {
+    if (!candidate || typeof candidate !== 'object') continue;
+    if (!('autoUpdater' in candidate)) continue;
+    const updater = candidate.autoUpdater;
+    if (updater) return updater;
+  }
+  return null;
+}

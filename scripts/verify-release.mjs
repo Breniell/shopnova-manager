@@ -43,7 +43,11 @@ if (builtAfter && fs.existsSync(artifact) && fs.statSync(artifact).mtimeMs + 1_0
   errors.push('installer predates the current build');
 }
 
-if (fs.existsSync(latestPath) && fs.existsSync(artifact)) {
+// Guard on hasUpdateChannel too, not just on the file existing: release/ is
+// shared by both variants, so after a client build the client's latest.yml sits
+// right there and an admin build would be checked against a manifest that
+// describes a different installer.
+if (hasUpdateChannel && fs.existsSync(latestPath) && fs.existsSync(artifact)) {
   const latest = fs.readFileSync(latestPath, 'utf8');
   const declaredPath = latest.match(/^path:\s*(.+)$/m)?.[1]?.trim();
   const hashes = [...latest.matchAll(/^\s*sha512:\s*(\S+)$/gm)].map(match => match[1]);

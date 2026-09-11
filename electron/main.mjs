@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   createDiagnosticLogger,
   createRendererRecoveryController,
+  pickAutoUpdater,
   saveAutomaticBackup,
 } from './runtime-support.mjs';
 
@@ -48,7 +49,12 @@ let updateInstallInProgress = false;
 let printInProgress = false;
 if (!isDev) {
   try {
-    const { autoUpdater: updater } = await import('electron-updater');
+    // Do not destructure `autoUpdater` here: it is a lazy CJS getter that the
+    // ESM namespace never exposes. See pickAutoUpdater in runtime-support.mjs.
+    const updater = pickAutoUpdater(await import('electron-updater'));
+    if (!updater) {
+      throw new Error('electron-updater loaded but exposed no autoUpdater export');
+    }
     autoUpdater = updater;
     autoUpdater.autoDownload = false;
     // Installation is explicit and gated by a fresh automatic backup.
