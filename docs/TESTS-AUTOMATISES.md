@@ -31,6 +31,7 @@ variable **avant** toute autre hypothèse.
 | `npm run test:electron-runtime` | processus principal : journal, sauvegardes, interop updater, packaging | ~5 s |
 | `npm run e2e:electron` | **l'app packagée réelle**, mise à jour de bout en bout | ~45 s |
 | `npm run e2e:flows` | parcours métier sur émulateur Firebase (voir plus bas) | ~55 s |
+| `npm run e2e:print` | rendu du reçu thermique, logo compris (voir plus bas) | ~13 s |
 | `npm run smoke:offline:packaged` | démarrage hors-ligne de l'app packagée | ~40 s |
 
 `npm run e2e:electron` exige un build préalable : `npm run dist:client`.
@@ -120,6 +121,40 @@ Trois protections indépendantes :
   `dev:emulator` utilise 8099 avec `--strictPort`.
 - **L'UI est en français, le schéma ne l'est pas** : la collection des ventes
   s'appelle `sales`, pas `ventes`.
+
+## Impression thermique : ce qui se teste sans imprimante
+
+**Legwan n'émet pas d'ESC/POS.** `electron/main.mjs` construit un document HTML,
+le charge dans une fenêtre masquée et appelle
+`webContents.print({ deviceName })`. C'est donc Chromium qui met le reçu en page,
+puis le spouleur Windows qui remet le résultat au pilote de l'imprimante.
+(Conséquence documentée dans le code : l'ouverture du tiroir-caisse, qui exige
+une impulsion ESC/POS brute, n'est pas possible par cette voie.)
+
+Cette architecture a une conséquence heureuse pour les tests : rendre le même
+HTML dans Chromium exerce **exactement** l'étape de mise en page réelle - même
+moteur, même CSS, même boîte de page en millimètres.
+
+`npm run e2e:print` fait cela sur le vrai `buildReceiptHtml()`, en 58 mm et en
+80 mm, et vérifie que le logo :
+
+- est présent dans le document,
+- **se décode réellement** (`naturalWidth > 0`) - un `data:` URI corrompu
+  passerait sinon inaperçu et sortirait comme un blanc sur le rouleau,
+- tient dans la largeur du papier,
+- respecte le plafond de 18 mm de hauteur de la feuille de style,
+
+et qu'une boutique sans logo ne produit **aucune** balise `<img>` (une balise
+vide s'imprimerait comme une icône d'image cassée).
+
+### Ce qui exige encore du matériel
+
+Une seule chose : la façon dont un pilote thermique particulier convertit
+l'image en noir et blanc sur un bit (tramage). C'est une propriété du pilote,
+pas de Legwan. Pour la vérifier sans rouleau, on peut imprimer une fois vers
+`Microsoft Print to PDF` depuis Paramètres > Imprimante : le trajet est le même
+jusqu'au pilote. Ces imprimantes virtuelles demandent un nom de fichier, donc
+c'est une vérification manuelle, pas automatisable.
 
 ## Emplacement d'installation : un piège opérationnel
 

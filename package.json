@@ -39,6 +39,7 @@
     "emulators": "firebase emulators:start --only auth,firestore --project demo-legwan",
     "dev:emulator": "vite --mode emulator --port 8099 --strictPort",
     "e2e:flows": "playwright test --config playwright.flows.config.ts",
+    "e2e:print": "playwright test --config playwright.print.config.ts",
     "smoke:offline": "node scripts/smoke-electron.mjs",
     "smoke:offline:packaged": "node scripts/smoke-electron.mjs --packaged",
     "staff:claims": "node scripts/set-staff-claims.mjs",

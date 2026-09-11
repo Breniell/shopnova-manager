@@ -35,7 +35,9 @@
     "tests/electron-harness.ts",
     "tests/e2e-electron/**/*.ts",
     "tests/e2e-flows/**/*.ts",
+    "tests/e2e-print/**/*.ts",
     "playwright.electron.config.ts",
-    "playwright.flows.config.ts"
+    "playwright.flows.config.ts",
+    "playwright.print.config.ts"
   ]
 }
