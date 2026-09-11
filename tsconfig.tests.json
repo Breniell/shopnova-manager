@@ -34,6 +34,8 @@
   "include": [
     "tests/electron-harness.ts",
     "tests/e2e-electron/**/*.ts",
-    "playwright.electron.config.ts"
+    "tests/e2e-flows/**/*.ts",
+    "playwright.electron.config.ts",
+    "playwright.flows.config.ts"
   ]
 }

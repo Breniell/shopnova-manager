@@ -30,6 +30,7 @@ variable **avant** toute autre hypothèse.
 | `npm test` | 650+ tests unitaires et composants (dont la bannière de mise à jour) | ~5 min |
 | `npm run test:electron-runtime` | processus principal : journal, sauvegardes, interop updater, packaging | ~5 s |
 | `npm run e2e:electron` | **l'app packagée réelle**, mise à jour de bout en bout | ~45 s |
+| `npm run e2e:flows` | parcours métier sur émulateur Firebase (voir plus bas) | ~55 s |
 | `npm run smoke:offline:packaged` | démarrage hors-ligne de l'app packagée | ~40 s |
 
 `npm run e2e:electron` exige un build préalable : `npm run dist:client`.
@@ -69,17 +70,56 @@ donc découpée en deux, volontairement :
   une bannière** : le texte exact affiché au commerçant, le bouton qui déclenche
   le téléchargement, la progression, l'état « prête à installer », le rejet.
 
-## Ce qui n'est pas encore automatisé
+## Les parcours métier, sur émulateur Firebase
 
-Les parcours métier (gérant, caissier, super-admin : produits, ventes, session
-de caisse, rapports) touchent le projet Firebase de production `legwan-82a09`.
-Il n'y a pas d'émulateur configuré : `firebase.json` n'a pas de bloc
-`emulators` et `src/lib/firebase.ts` n'a aucun branchement.
+`npm run e2e:flows` démarre les émulateurs Auth et Firestore, lance un serveur
+Vite branché dessus, et joue les parcours réels : onboarding d'une boutique
+neuve, création du gérant, connexion, création d'un produit, ouverture de
+session de caisse, vente en espèces, reçu.
 
-Tant que ce n'est pas fait, ces parcours se testent comme lors de l'audit QA du
-19/08 : boutiques préfixées `TEST -`, puis nettoyage via `service-account.json`
-et `db.recursiveDelete()` (Firestore `boutiques/{id}` + `registry/{id}` + le
-compte Auth du même uid).
+Les assertions portent sur **la base de données autant que sur l'écran**.
+Dans une application hors-ligne d'abord avec file d'attente de réémission,
+« le produit s'affiche dans la liste » et « le produit est enregistré » sont
+deux affirmations différentes ; le harnais lit donc Firestore directement.
+
+Les règles de `firestore.rules` sont chargées par l'émulateur : ces parcours
+les exercent réellement, ce qui n'était possible nulle part ailleurs jusqu'ici.
+
+### Pourquoi la base réelle ne risque rien
+
+Trois protections indépendantes :
+
+1. **Le code livré ne peut pas parler à un émulateur.** Le branchement dans
+   `src/lib/firebase.ts` est gardé par `import.meta.env.DEV`, que Vite remplace
+   par le littéral `false` en build de production : la branche disparaît et les
+   deux fonctions `connect*Emulator` sont éliminées avec elle.
+   `scripts/verify-release.mjs` le vérifie sur l'archive `app.asar` livrée et
+   refuse la release si un de ces symboles y apparaît.
+2. **Le projet de test s'appelle `demo-legwan`.** Firebase traite le préfixe
+   `demo-` comme réservé à l'émulateur : les SDK refusent de contacter la
+   production pour un tel projet.
+3. **Les tests exigent une preuve de mode émulateur.** `requireEmulatorMode()`
+   échoue si l'application n'a pas annoncé la bascule, plutôt que de laisser
+   une suite mal configurée écrire dans les vraies données.
+
+### Pièges rencontrés en montant ce harnais
+
+- **`.env` gagne contre la ligne de commande.** Passer
+  `VITE_FIREBASE_PROJECT_ID` devant `vite` ne surcharge pas le `.env` du projet,
+  qui pointe sur `legwan-82a09`. D'où `.env.emulator`, chargé par
+  `vite --mode emulator` : la précédence `.env.[mode]` sur `.env` est la seule
+  qui tienne.
+- **Les lectures REST de l'émulateur exigent `Authorization: Bearer owner`**,
+  sinon elles répondent `403 Metadata operations require admin authentication`.
+  Une première version avalait ce 403 et renvoyait un tableau vide, ce qui se
+  lisait comme « rien n'a été enregistré » et a envoyé l'enquête chercher un bug
+  de persistance inexistant.
+- **Le port 8080 est souvent pris** (un Apache livré avec EDB Postgres l'occupe
+  sur la machine actuelle). `reuseExistingServer` de Playwright voit alors une
+  réponse HTTP valide et lance toute la suite contre un serveur étranger.
+  `dev:emulator` utilise 8099 avec `--strictPort`.
+- **L'UI est en français, le schéma ne l'est pas** : la collection des ventes
+  s'appelle `sales`, pas `ventes`.
 
 ## Emplacement d'installation : un piège opérationnel
 

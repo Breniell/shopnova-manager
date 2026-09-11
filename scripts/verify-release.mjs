@@ -5,7 +5,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { listPackage } from '@electron/asar';
+import { listPackage, extractFile } from '@electron/asar';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
@@ -61,7 +61,11 @@ if (hasUpdateChannel && fs.existsSync(latestPath) && fs.existsSync(artifact)) {
 }
 
 if (fs.existsSync(asarPath)) {
-  const entries = listPackage(asarPath).map(name => name.replace(/\\/g, '/'));
+  // Keep both forms: on Windows listPackage yields backslash paths and
+  // extractFile only accepts them back in that exact shape, while every
+  // comparison below is written against forward slashes.
+  const rawEntries = listPackage(asarPath);
+  const entries = rawEntries.map(name => name.replace(/\\/g, '/'));
   for (const requiredEntry of ['/dist/index.html', '/electron/launcher.cjs', '/electron/main.mjs']) {
     if (!entries.includes(requiredEntry)) errors.push(`app.asar is missing ${requiredEntry}`);
   }
@@ -86,6 +90,41 @@ if (fs.existsSync(asarPath)) {
   const notUnpacked = packedModules.filter(name => !fs.existsSync(path.join(unpackedRoot, name.slice(1))));
   if (notUnpacked.length) {
     errors.push(`${notUnpacked.length} node_modules entries are packed but never unpacked, e.g. ${notUnpacked.slice(0, 3).join(', ')}`);
+  }
+
+  // src/lib/firebase.ts can redirect Firebase at the local emulator suite, which
+  // must never be reachable in a shipped build: an installer that talked to
+  // 127.0.0.1 instead of the real project would silently lose a shop's data.
+  // The guard is `import.meta.env.DEV`, which Vite replaces with the literal
+  // false so the branch and both connect* imports are stripped. That is a
+  // compiler optimisation, not a promise - so check the shipped bundle itself.
+  // Do NOT look for connectFirestoreEmulator/connectAuthEmulator here. Those are
+  // exports of the Firebase SDK and sit in the vendor chunk whether or not this
+  // app ever calls them, so they report a leak on a perfectly clean build.
+  // These markers are ours: the log line printed next to the connect calls, and
+  // the env flag, both inside the branch the DEV guard removes. Confirmed by
+  // building with VITE_USE_FIREBASE_EMULATOR=true - with the guard in place they
+  // are absent, with the guard removed they appear.
+  const emulatorMarkers = ['Firebase emulators active', 'VITE_USE_FIREBASE_EMULATOR'];
+  const leaked = [];
+  let scannedBundles = 0;
+  for (const rawEntry of rawEntries) {
+    const entry = rawEntry.replace(/\\/g, '/');
+    if (!/^\/dist\/.*\.js$/.test(entry)) continue;
+    // Deliberately unguarded: an earlier version wrapped this in a catch that
+    // skipped the entry, and because the path separator was wrong on Windows it
+    // skipped every entry and reported success on a bundle that really did
+    // contain connectFirestoreEmulator. A check that cannot fail is worse than
+    // no check, so let an extraction problem stop the release.
+    const source = extractFile(asarPath, rawEntry.replace(/^[\\/]/, '')).toString('utf8');
+    scannedBundles += 1;
+    for (const marker of emulatorMarkers) {
+      if (source.includes(marker)) leaked.push(`${entry} contains ${marker}`);
+    }
+  }
+  if (!scannedBundles) errors.push('no dist/*.js bundle could be scanned for emulator wiring');
+  if (leaked.length) {
+    errors.push(`Firebase emulator wiring leaked into the shipped bundle: ${leaked.join(', ')}`);
   }
 
   const unpackedMain = path.join(unpackedRoot, 'electron', 'main.mjs');
