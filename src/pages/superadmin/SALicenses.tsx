@@ -51,7 +51,7 @@ function buildCliCommand(opts: {
 
 function DaysLeftBadge({ expiresAt, pending, revoked }: { expiresAt: number; pending: boolean; revoked: boolean }) {
   const { t } = useTranslation();
-  if (pending || revoked) return <span className="text-muted-foreground text-xs">—</span>;
+  if (pending || revoked) return <span className="text-muted-foreground text-xs">-</span>;
   const dl = daysLeft(expiresAt);
   if (dl > 30)  return <span className="text-green-600 text-xs font-mono font-semibold">{dl}j</span>;
   if (dl > 0)   return <span className="text-orange-500 text-xs font-mono font-semibold">{dl}j</span>;
@@ -397,7 +397,7 @@ function NewLicenseModal({ boutiques, onClose, onCreated }: NewLicenseModalProps
                   <option value="">{t('superadmin.licenseFieldBoutiqueSelect')}</option>
                   {boutiques.map(b => (
                     <option key={b.boutiqueId} value={b.boutiqueId}>
-                      {b.nom || b.boutiqueId} — {b.boutiqueId.slice(0, 8)}…
+                      {b.nom || b.boutiqueId} - {b.boutiqueId.slice(0, 8)}…
                     </option>
                   ))}
                 </select>
@@ -828,7 +828,7 @@ function LicenseRow({ lic, boutiqueName, onPaste, onRevoke }: {
       {/* Expires */}
       <td className="px-4 py-3 hidden md:table-cell">
         <span className="text-xs text-muted-foreground">
-          {lic.pending ? '—' : new Date(lic.expiresAt).toLocaleDateString()}
+          {lic.pending ? '-' : new Date(lic.expiresAt).toLocaleDateString()}
         </span>
       </td>
       {/* Days left */}

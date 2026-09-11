@@ -1,5 +1,5 @@
 /**
- * ClientsPage — gestion des clients de la boutique.
+ * ClientsPage - gestion des clients de la boutique.
  *
  * Fonctionnalités :
  *   • Liste avec KPI (total, nb d'achats, encours futur)
@@ -643,7 +643,7 @@ const ClientsPage: React.FC = () => {
                       <div className="min-w-0">
                         <p className="font-medium text-foreground truncate">{s.saleNumber}</p>
                         <p className="text-muted-foreground">
-                          {formatDateShort(new Date(s.date))} —{' '}
+                          {formatDateShort(new Date(s.date))} -{' '}
                           {s.items.length > 1
                             ? t('clients.saleArticlePlural').replace('{n}', String(s.items.length))
                             : t('clients.saleArticle').replace('{n}', String(s.items.length))}

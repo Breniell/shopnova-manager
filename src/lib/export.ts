@@ -1,5 +1,5 @@
 /**
- * Export utilities — CSV and PDF.
+ * Export utilities - CSV and PDF.
  *
  * Security hardening:
  * - CSV: cells starting with =, +, -, @, | are prefixed with ' to prevent
@@ -71,7 +71,7 @@ export function exportPDF(title: string, headers: string[], rows: string[][], su
 ${safeSummary ? `<div class="summary">${safeSummary.map(s => `<div class="summary-item">${s}</div>`).join('')}</div>` : ''}
 <table><thead><tr>${safeHeaders.map(h => `<th>${h}</th>`).join('')}</tr></thead>
 <tbody>${safeRows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>
-<div class="footer">Legwan — La gestion, réinventée.</div>
+<div class="footer">Legwan - La gestion, réinventée.</div>
 </body></html>`;
 
   const win = window.open('', '_blank');

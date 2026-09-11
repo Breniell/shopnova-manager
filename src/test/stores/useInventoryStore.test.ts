@@ -24,13 +24,13 @@ beforeEach(() => {
   useStockStore.setState({ movements: [] });
 });
 
-describe('useInventoryStore — initial state', () => {
+describe('useInventoryStore - initial state', () => {
   it('starts with empty sessions', () => {
     expect(useInventoryStore.getState().sessions).toHaveLength(0);
   });
 });
 
-describe('useInventoryStore — createSession', () => {
+describe('useInventoryStore - createSession', () => {
   it('creates a session in draft state with lines generated from products', () => {
     const products = [makeProduct({ id: 'p1', stock: 10 }), makeProduct({ id: 'p2', stock: 20 })];
     const s = useInventoryStore.getState().createSession({
@@ -89,7 +89,7 @@ describe('useInventoryStore — createSession', () => {
   });
 });
 
-describe('useInventoryStore — updateLine', () => {
+describe('useInventoryStore - updateLine', () => {
   it('updates stockCompte and recomputes ecart', () => {
     const products = [makeProduct({ id: 'p1', stock: 10 })];
     const s = useInventoryStore.getState().createSession({
@@ -155,7 +155,7 @@ describe('useInventoryStore — updateLine', () => {
   });
 });
 
-describe('useInventoryStore — cancelSession', () => {
+describe('useInventoryStore - cancelSession', () => {
   it('marks session as cancelled', () => {
     const s = useInventoryStore.getState().createSession({
       scope: 'complet', products: [makeProduct()], userId: 'u1', userName: 'X',
@@ -181,7 +181,7 @@ describe('useInventoryStore — cancelSession', () => {
   });
 });
 
-describe('useInventoryStore — validateSession', () => {
+describe('useInventoryStore - validateSession', () => {
   const setupSession = (lines: { id: string; stock: number; counted: number | null; reason?: string }[]) => {
     const products = lines.map(l => makeProduct({ id: l.id, stock: l.stock }));
     useProductStore.setState({ products });
@@ -276,7 +276,7 @@ describe('useInventoryStore — validateSession', () => {
   });
 });
 
-describe('useInventoryStore — selectors', () => {
+describe('useInventoryStore - selectors', () => {
   it('getOpenSessions returns only draft + in_progress', () => {
     const products = [makeProduct()];
     const s1 = useInventoryStore.getState().createSession({

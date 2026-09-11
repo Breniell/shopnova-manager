@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Legwan — générateur de licences Ed25519
+ * Legwan - générateur de licences Ed25519
  *
  * USAGE :
  *   node generate.mjs --init

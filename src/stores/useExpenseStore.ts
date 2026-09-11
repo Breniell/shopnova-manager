@@ -1,5 +1,5 @@
 /**
- * useExpenseStore — dépenses opérationnelles de la boutique.
+ * useExpenseStore - dépenses opérationnelles de la boutique.
  *
  * Une dépense = sortie d'argent qui n'est pas un remboursement de vente :
  * loyer, électricité, eau, transport, salaires, achats marchandises, etc.
@@ -49,7 +49,7 @@ export interface Expense {
   paymentMode: ExpensePaymentMode;
   beneficiaire?: string;          // "Eneo", "Bailleur X", "MTN"...
   reference?: string;             // n° facture, ref MoMo, n° chèque
-  justificatifUrl?: string;       // upload photo — pour évolution future, vide en v1.1.3
+  justificatifUrl?: string;       // upload photo - pour évolution future, vide en v1.1.3
   userId: string;                 // qui a saisi
   userName: string;
   notes?: string;
@@ -122,7 +122,7 @@ export const useExpenseStore = create<ExpenseState>()((set, get) => ({
     set(state => ({ expenses: [newExpense, ...state.expenses] }));
     fsSaveExpense(getBoutiqueId(), newExpense).catch((err) => {
       enqueue('expense', newExpense);
-      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      toast.error("Échec d'enregistrement - nouvelle tentative automatique");
       console.warn('[outbox] expense enqueued:', err);
     });
     return newExpense;
@@ -135,7 +135,7 @@ export const useExpenseStore = create<ExpenseState>()((set, get) => ({
     const updated = get().expenses.find(e => e.id === id);
     if (updated) fsSaveExpense(getBoutiqueId(), updated).catch((err) => {
       enqueue('expense', updated);
-      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      toast.error("Échec d'enregistrement - nouvelle tentative automatique");
       console.warn('[outbox] expense (update) enqueued:', err);
     });
   },

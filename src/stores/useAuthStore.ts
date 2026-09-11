@@ -14,7 +14,7 @@ export interface User {
   prenom: string;
   nom: string;
   role: UserRole;
-  pin: string;     // hex hash — ALWAYS set alongside hashAlgo
+  pin: string;     // hex hash - ALWAYS set alongside hashAlgo
   salt?: string;   // per-user random 128-bit hex salt (required when hashAlgo === 'pbkdf2')
   /**
    * Identifies which algorithm produced `pin`.
@@ -26,7 +26,7 @@ export interface User {
    * INVARIANT: every User object created in application code MUST set this field.
    * The only valid source of undefined is old documents already in Firestore.
    * Keeping it optional (vs required) avoids breaking Firestore-loaded legacy users
-   * that pre-date the field — they are migrated to PBKDF2 silently on next login.
+   * that pre-date the field - they are migrated to PBKDF2 silently on next login.
    */
   hashAlgo?: HashAlgo;
   color: string;
@@ -42,7 +42,7 @@ interface AuthState {
   users: User[];
   currentUser: User | null;
   isAuthenticated: boolean;
-  // Local cache of attempt counts — Firestore is the authoritative source
+  // Local cache of attempt counts - Firestore is the authoritative source
   loginAttempts: Record<string, { count: number; lockedUntil: number | null }>;
 
   _setUsers: (users: User[]) => void;
@@ -74,7 +74,7 @@ function persistUserDeletion(userId: string): void {
   });
 }
 
-/** Exported for unit-testing only — do not call from application code. */
+/** Exported for unit-testing only - do not call from application code. */
 export async function verifyPin(pin: string, user: User): Promise<boolean> {
   if (user.hashAlgo === 'pbkdf2' && user.salt) {
     const hash = await hashPinPbkdf2(pin, user.salt);
@@ -117,7 +117,7 @@ export const useAuthStore = create<AuthState>()(
               return { success: false, locked: true, remainingSeconds: Math.ceil((remote.lockedUntil - Date.now()) / 1000) };
             }
           }
-        } catch { /* Offline — fall back to local */ }
+        } catch { /* Offline - fall back to local */ }
 
         const user = state.users.find(u => u.id === userId);
         if (!user) return { success: false };

@@ -1,5 +1,5 @@
 /**
- * DepensesPage — gestion des dépenses opérationnelles.
+ * DepensesPage - gestion des dépenses opérationnelles.
  *
  * Fonctionnalités :
  *   • Filtre par période (aujourd'hui / semaine / mois / tout)
@@ -345,7 +345,7 @@ const DepensesPage: React.FC = () => {
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground">{t('depenses.biggestCategory')}</p>
               <p className="text-sm font-bold text-foreground truncate">
-                {topCategory ? topCategory.label : '—'}
+                {topCategory ? topCategory.label : '-'}
               </p>
               {topCategory && (
                 <p className="text-[10px] text-muted-foreground tabular-nums">
@@ -374,7 +374,7 @@ const DepensesPage: React.FC = () => {
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground">{t('depenses.vsPrev')}</p>
               {period === 'all' ? (
-                <p className="text-sm font-bold text-muted-foreground">—</p>
+                <p className="text-sm font-bold text-muted-foreground">-</p>
               ) : (
                 <p className={cn(
                   'text-base font-bold tabular-nums',
@@ -706,7 +706,7 @@ const DepensesPage: React.FC = () => {
             <p className="text-sm text-muted-foreground mb-6">
               <strong className="text-foreground">{deleteTarget.description}</strong>
               <br />
-              {formatFCFA(deleteTarget.montant)} — {formatDateShort(new Date(deleteTarget.date))}
+              {formatFCFA(deleteTarget.montant)} - {formatDateShort(new Date(deleteTarget.date))}
               <br />
               {t('depenses.deleteIrreversible')}
             </p>

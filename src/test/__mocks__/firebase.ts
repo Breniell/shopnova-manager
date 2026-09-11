@@ -1,5 +1,5 @@
 /**
- * Firebase mock for Vitest — replaces all firebase/* imports in tests.
+ * Firebase mock for Vitest - replaces all firebase/* imports in tests.
  * All functions are no-ops or return minimal stubs.
  */
 

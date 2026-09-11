@@ -1,8 +1,8 @@
 /**
- * License store — persists the active licence and tamper-resistant timestamps.
+ * License store - persists the active licence and tamper-resistant timestamps.
  *
  * localStorage keys:
- *   'legwan-license'          raw LGW1-… string (not encrypted — it's just a signed token)
+ *   'legwan-license'          raw LGW1-… string (not encrypted - it's just a signed token)
  *   'legwan-install-date'     AES-GCM encrypted ms timestamp of first launch
  *   'legwan-last-seen-time'   AES-GCM encrypted ms timestamp of last confirmed-good time
  *
@@ -22,7 +22,7 @@ export const REVOKED_LICENSE_KEY = 'legwan-revoked-license-id';
 
 // ─── Key derivation ───────────────────────────────────────────────────────────
 
-// Not a secret — source code is readable. Goal: add meaningful friction against
+// Not a secret - source code is readable. Goal: add meaningful friction against
 // trivial localStorage editing (clock cheating / trial extension).
 const TS_PASSWORD = 'legwan-ts-guard-v1';
 const TS_SALT     = 'lgw-ts-v1';
@@ -167,7 +167,7 @@ export async function fsSaveLicense(
       },
       { merge: true },
     );
-  } catch { /* offline — local is enough */ }
+  } catch { /* offline - local is enough */ }
 }
 
 /** Load the licence from Firestore. Returns null if not found or offline. */
@@ -178,6 +178,6 @@ export async function fsGetLicense(bid: string): Promise<LicenseFirestoreDoc | n
     if (!snap.exists()) return null;
     return snap.data() as LicenseFirestoreDoc;
   } catch {
-    return null; // offline — caller falls back to localStorage
+    return null; // offline - caller falls back to localStorage
   }
 }

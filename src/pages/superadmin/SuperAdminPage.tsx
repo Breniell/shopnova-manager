@@ -1,10 +1,10 @@
 /**
  * Console Super-Admin Legwan
  *
- * Route: /superadmin (hidden — not linked from sidebar)
+ * Route: /superadmin (hidden - not linked from sidebar)
  * Auth: email/password via secondary Firebase app (saAuth)
  * Access: compte avec custom claim { superadmin: true } uniquement
- *         (source de vérité : firestore.rules — token.superadmin == true)
+ *         (source de vérité : firestore.rules - token.superadmin == true)
  */
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useSuperAdminStore } from '@/stores/useSuperAdminStore';
@@ -202,7 +202,7 @@ export const SuperAdminPage: React.FC = () => {
           </div>
         )}
 
-        {/* Licenses tab — always available regardless of registry boutiques count */}
+        {/* Licenses tab - always available regardless of registry boutiques count */}
         {isLicensesTab && (
           <>
             <div>

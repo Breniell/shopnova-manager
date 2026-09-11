@@ -11,8 +11,8 @@
  *   - app version, platform
  *   - isActive (boolean: any completed sale in the last 30 days)
  *   - usersCount (number of user accounts)
- *   - lastActivityAt (date of most recent sale — no amounts)
- *   - location (lat/lng/city/country — only with explicit geo consent)
+ *   - lastActivityAt (date of most recent sale - no amounts)
+ *   - location (lat/lng/city/country - only with explicit geo consent)
  *
  * NOT transmitted: revenue, sale amounts, products, customers, suppliers, expenses.
  */
@@ -73,7 +73,7 @@ export interface RegistryEntry {
   isRecoveryEnabled: boolean;
   health: RegistryHealth;
   location: RegistryLocation | null;
-  // Legacy field — present in pre-migration Firestore docs; never written from this version
+  // Legacy field - present in pre-migration Firestore docs; never written from this version
   stats?: Record<string, number>;
 }
 
@@ -88,7 +88,7 @@ function getPlatform(): string {
   return 'web';
 }
 
-// ─── GPS lock — localStorage persistence ─────────────────────────────────────
+// ─── GPS lock - localStorage persistence ─────────────────────────────────────
 
 const GEO_LOCK_KEY = 'legwan-geo-lock';
 
@@ -109,7 +109,7 @@ function saveLockedPosition(loc: RegistryLocation): void {
  * Sends a health heartbeat to registry/{boutiqueId}.
  * No financial data is included.
  * Geo lock strategy: reuse localStorage lock → try GPS → IP fallback.
- * Fire-and-forget — never throws.
+ * Fire-and-forget - never throws.
  */
 export async function sendRegistryHeartbeat(isRecoveryEnabled: boolean): Promise<void> {
   if (!isFirebaseConfigured) return;
@@ -122,7 +122,7 @@ export async function sendRegistryHeartbeat(isRecoveryEnabled: boolean): Promise
     const users    = useAuthStore.getState().users;
     const { sales } = useSaleStore.getState();
 
-    // Health: activity signals only — no financial data
+    // Health: activity signals only - no financial data
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
     const completedSales = sales.filter(s => s.status === 'completed');
     const isActive = completedSales.some(s => new Date(s.date).getTime() >= thirtyDaysAgo);
@@ -138,14 +138,14 @@ export async function sendRegistryHeartbeat(isRecoveryEnabled: boolean): Promise
       appVersion: APP_VERSION,
     };
 
-    // Geolocation — only if the user has explicitly consented
+    // Geolocation - only if the user has explicitly consented
     let location: RegistryLocation | null = null;
     if (hasGeoConsent()) {
       const stored = loadLockedPosition();
-      // 1. Manual placement: merchant placed the pin themselves — always authoritative
+      // 1. Manual placement: merchant placed the pin themselves - always authoritative
       if (stored?.source === 'manual') {
         location = stored;
-      // 2. Reuse locked GPS position from localStorage — never re-query once locked
+      // 2. Reuse locked GPS position from localStorage - never re-query once locked
       } else if (stored?.locked) {
         location = stored;
       } else {
@@ -184,7 +184,7 @@ export async function sendRegistryHeartbeat(isRecoveryEnabled: boolean): Promise
           saveLockedPosition(newLoc);
           location = newLoc;
         } else {
-          // 3. IP fallback — locked: false so GPS is retried next startup
+          // 3. IP fallback - locked: false so GPS is retried next startup
           const ip = await getIPLocation();
           if (ip) {
             location = {

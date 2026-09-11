@@ -1,7 +1,7 @@
 /**
  * Tests for the pure state machine in src/lib/license/gate.ts
  *
- * No React, no I/O — just deterministic input/output.
+ * No React, no I/O - just deterministic input/output.
  */
 import { describe, it, expect } from 'vitest';
 import {
@@ -42,9 +42,9 @@ function gate(
   });
 }
 
-// ─── No licence — trial window ────────────────────────────────────────────────
+// ─── No licence - trial window ────────────────────────────────────────────────
 
-describe('computeGateStatus — no licence', () => {
+describe('computeGateStatus - no licence', () => {
   it('returns trial when install is recent (within 30 days)', () => {
     expect(gate(null, 5)).toBe('trial');
     expect(gate(null, 29)).toBe('trial');
@@ -67,7 +67,7 @@ describe('computeGateStatus — no licence', () => {
 
 // ─── Valid licence ────────────────────────────────────────────────────────────
 
-describe('computeGateStatus — valid licence', () => {
+describe('computeGateStatus - valid licence', () => {
   it('returns valid when licence is active', () => {
     expect(gate(validResult())).toBe('valid');
   });
@@ -77,9 +77,9 @@ describe('computeGateStatus — valid licence', () => {
   });
 });
 
-// ─── Expired licence — grace period ──────────────────────────────────────────
+// ─── Expired licence - grace period ──────────────────────────────────────────
 
-describe('computeGateStatus — expired licence', () => {
+describe('computeGateStatus - expired licence', () => {
   it('returns grace when expired < 7 days ago', () => {
     expect(gate(expiredResult(1))).toBe('grace');
     expect(gate(expiredResult(6))).toBe('grace');
@@ -101,7 +101,7 @@ describe('computeGateStatus — expired licence', () => {
 
 // ─── Invalid licence ──────────────────────────────────────────────────────────
 
-describe('computeGateStatus — invalid licence', () => {
+describe('computeGateStatus - invalid licence', () => {
   it('returns invalid for bad_signature', () => {
     expect(gate({ valid: false, reason: 'bad_signature' })).toBe('invalid');
   });
@@ -121,7 +121,7 @@ describe('computeGateStatus — invalid licence', () => {
 
 // ─── Revocation ───────────────────────────────────────────────────────────────
 
-describe('computeGateStatus — revocation', () => {
+describe('computeGateStatus - revocation', () => {
   it('returns revoked when Firestore revocation flag is set', () => {
     expect(gate(validResult(), 5, true)).toBe('revoked');
   });
@@ -142,16 +142,16 @@ describe('computeGateStatus — revocation', () => {
 // ─── Activation during trial ─────────────────────────────────────────────────
 //
 // Key acceptance criterion: activating a valid licence while the app is in
-// 'trial' state must immediately yield 'valid' — the user should not have to
+// 'trial' state must immediately yield 'valid' - the user should not have to
 // wait for the trial to expire before the licence takes effect.
 
-describe('computeGateStatus — activation during trial', () => {
+describe('computeGateStatus - activation during trial', () => {
   it('no licence within trial → trial', () => {
     expect(gate(null, 5)).toBe('trial');
   });
 
   it('activating a valid licence while in trial → valid immediately', () => {
-    // User is 5 days into the trial (no licence) — normally 'trial'.
+    // User is 5 days into the trial (no licence) - normally 'trial'.
     // As soon as a valid licence is supplied, status flips to 'valid'.
     expect(gate(validResult(), 5)).toBe('valid');
   });

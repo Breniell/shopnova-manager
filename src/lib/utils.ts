@@ -8,7 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 /**
  * Generates an EAN-13 barcode for internal (shop) use.
  *
- * Prefix '2' is globally reserved for in-store/internal use by GS1 — it is
+ * Prefix '2' is globally reserved for in-store/internal use by GS1 - it is
  * never assigned to a real manufacturer. Using '690' (Chinese prefix) was
  * incorrect and could collide with real products.
  *
@@ -31,7 +31,7 @@ export const generateInternalBarcode = (): string => {
   return code + checkDigit;
 };
 
-// Backward-compatible alias — callers that imported generateEAN13 keep working.
+// Backward-compatible alias - callers that imported generateEAN13 keep working.
 export const generateEAN13 = generateInternalBarcode;
 
 /**

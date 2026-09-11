@@ -1,4 +1,4 @@
-# Legwan — Générateur de licences
+# Legwan - Générateur de licences
 
 Script Node.js autonome pour créer et signer des licences Ed25519.  
 **Ce dossier ne doit jamais être importé depuis `src/`.**
@@ -55,8 +55,8 @@ La commande imprime la chaîne `LGW1-…` à envoyer au client (WhatsApp, SMS, e
 | `--boutique <id>` | ✅ | Boutique ID (visible dans Paramètres → Boutique) |
 | `--plan trial\|standard` | ✅ | Type de licence |
 | `--days <n>` | ✅ | Durée en jours (≥ 1) |
-| `--name <nom>` | — | Nom du titulaire (stocké dans le payload) |
-| `--contact <contact>` | — | Contact / WhatsApp du titulaire |
+| `--name <nom>` | - | Nom du titulaire (stocké dans le payload) |
+| `--contact <contact>` | - | Contact / WhatsApp du titulaire |
 
 ---
 
@@ -88,8 +88,8 @@ LGW1-<base64url(UTF-8(JSON(payload)))>.<base64url(signature Ed25519)>
 
 ---
 
-## Sécurité — rappel
+## Sécurité - rappel
 
 - `license-private.pem` est bloqué par `.gitignore` (`*.pem`).  
 - Ne jamais copier la clé privée dans `src/`, dans un `.env` commité, ou dans Firestore.  
-- La clé publique dans `VITE_LICENSE_PUBKEY` est **publique** — aucun risque à la commiter dans `.env.example`.
+- La clé publique dans `VITE_LICENSE_PUBKEY` est **publique** - aucun risque à la commiter dans `.env.example`.

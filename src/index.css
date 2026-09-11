@@ -362,7 +362,7 @@
     background: #fff !important;
   }
 
-  /* Thermal 58mm — override via JS-set data-paper-width attr on receipt-print */
+  /* Thermal 58mm - override via JS-set data-paper-width attr on receipt-print */
   .receipt-print[data-paper-width="58"] {
     max-width: 58mm;
   }

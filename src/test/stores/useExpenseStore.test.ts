@@ -18,7 +18,7 @@ beforeEach(() => {
   useExpenseStore.setState({ expenses: [] });
 });
 
-describe('useExpenseStore — initial state', () => {
+describe('useExpenseStore - initial state', () => {
   it('starts with an empty list', () => {
     expect(useExpenseStore.getState().expenses).toHaveLength(0);
   });
@@ -33,7 +33,7 @@ describe('useExpenseStore — initial state', () => {
   });
 });
 
-describe('useExpenseStore — addExpense', () => {
+describe('useExpenseStore - addExpense', () => {
   it('creates an expense with an id', () => {
     const created = useExpenseStore.getState().addExpense(makeExpense({
       categorie: 'loyer', montant: 50000, description: 'Loyer mai',
@@ -69,7 +69,7 @@ describe('useExpenseStore — addExpense', () => {
   });
 });
 
-describe('useExpenseStore — updateExpense', () => {
+describe('useExpenseStore - updateExpense', () => {
   it('updates fields without changing id', () => {
     const created = useExpenseStore.getState().addExpense(makeExpense({ montant: 1000 }));
     useExpenseStore.getState().updateExpense(created.id, { montant: 2500, notes: 'corrigé' });
@@ -93,7 +93,7 @@ describe('useExpenseStore — updateExpense', () => {
   });
 });
 
-describe('useExpenseStore — deleteExpense', () => {
+describe('useExpenseStore - deleteExpense', () => {
   it('removes the targeted expense', () => {
     const e1 = useExpenseStore.getState().addExpense(makeExpense({ description: 'A' }));
     const e2 = useExpenseStore.getState().addExpense(makeExpense({ description: 'B' }));
@@ -110,7 +110,7 @@ describe('useExpenseStore — deleteExpense', () => {
   });
 });
 
-describe('useExpenseStore — getExpensesInRange', () => {
+describe('useExpenseStore - getExpensesInRange', () => {
   const seedDates = () => {
     useExpenseStore.getState().addExpense(makeExpense({
       date: new Date('2026-05-10T10:00:00Z'), description: 'In range', montant: 100,
@@ -154,7 +154,7 @@ describe('useExpenseStore — getExpensesInRange', () => {
   });
 });
 
-describe('useExpenseStore — getTotalInRange', () => {
+describe('useExpenseStore - getTotalInRange', () => {
   it('returns 0 when no expense matches', () => {
     expect(useExpenseStore.getState().getTotalInRange(
       new Date('2027-01-01'), new Date('2027-12-31'),
@@ -179,7 +179,7 @@ describe('useExpenseStore — getTotalInRange', () => {
   });
 });
 
-describe('useExpenseStore — getByCategoryInRange', () => {
+describe('useExpenseStore - getByCategoryInRange', () => {
   it('returns 0 for all categories when no expenses', () => {
     const result = useExpenseStore.getState().getByCategoryInRange(
       new Date('2026-05-01'), new Date('2026-05-31'),
@@ -220,7 +220,7 @@ describe('useExpenseStore — getByCategoryInRange', () => {
   });
 });
 
-describe('useExpenseStore — category metadata', () => {
+describe('useExpenseStore - category metadata', () => {
   it('getCategoryMeta returns the right label for known category', () => {
     expect(getCategoryMeta('loyer').label).toBe('Loyer');
     expect(getCategoryMeta('electricite').label).toBe('Électricité');

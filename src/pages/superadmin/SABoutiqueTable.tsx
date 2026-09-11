@@ -20,7 +20,7 @@ function toDate(v: unknown): Date {
 
 function fmtDate(d: Date): string {
   return d.getTime() === 0
-    ? '—'
+    ? '-'
     : d.toLocaleString(getCurrentBcp47(), { dateStyle: 'short', timeStyle: 'short' });
 }
 
@@ -260,7 +260,7 @@ export const SABoutiqueTable: React.FC<Props> = ({ boutiques }) => {
                   const lastSeen = toDate(b.lastSeen);
                   const status   = getBoutiqueStatus(lastSeen);
                   const color    = STATUS_COLORS[status];
-                  const location = b.location?.city ?? b.location?.country ?? b.adresse ?? '—';
+                  const location = b.location?.city ?? b.location?.country ?? b.adresse ?? '-';
                   const isActive30j = b.health?.isActive ?? false;
                   return (
                     <tr
@@ -285,9 +285,9 @@ export const SABoutiqueTable: React.FC<Props> = ({ boutiques }) => {
                           </div>
                           <div>
                             <p className="font-medium text-foreground text-sm leading-tight">
-                              {b.nom || '—'}
+                              {b.nom || '-'}
                             </p>
-                            <p className="text-[10px] text-muted-foreground">{b.telephone || '—'}</p>
+                            <p className="text-[10px] text-muted-foreground">{b.telephone || '-'}</p>
                           </div>
                         </div>
                       </td>
@@ -298,7 +298,7 @@ export const SABoutiqueTable: React.FC<Props> = ({ boutiques }) => {
                         {fmtDate(lastSeen)}
                       </td>
                       <td className="px-4 py-3 text-center text-xs font-medium text-foreground">
-                        {b.health?.usersCount ?? '—'}
+                        {b.health?.usersCount ?? '-'}
                       </td>
                       <td className="px-4 py-3 text-center hidden sm:table-cell">
                         <span className={cn(
@@ -307,7 +307,7 @@ export const SABoutiqueTable: React.FC<Props> = ({ boutiques }) => {
                             ? 'bg-secondary/15 text-secondary'
                             : 'bg-muted text-muted-foreground',
                         )}>
-                          {isActive30j ? '✓' : '—'}
+                          {isActive30j ? '✓' : '-'}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center hidden xl:table-cell">

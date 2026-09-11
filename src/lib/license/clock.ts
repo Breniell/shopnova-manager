@@ -1,5 +1,5 @@
 /**
- * Trusted clock — résout le problème de l'horloge dérèglée au Cameroun.
+ * Trusted clock - résout le problème de l'horloge dérèglée au Cameroun.
  *
  * Contexte terrain (Cameroun, 2024-2026)
  * ───────────────────────────────────────
@@ -63,7 +63,7 @@ async function defaultFetchNetworkTime(): Promise<number | null> {
     try { bid = getBoutiqueId(); } catch { return null; }
 
     const clockRef = doc(db, `boutiques/${bid}/_clock/tick`);
-    // Write a server timestamp. merge:true is idempotent — no data is lost.
+    // Write a server timestamp. merge:true is idempotent - no data is lost.
     await setDoc(clockRef, { at: serverTimestamp() }, { merge: true });
     // Never accept an IndexedDB tick as current network time.
     const snap = await getDocFromServer(clockRef);
@@ -82,7 +82,7 @@ async function defaultFetchNetworkTime(): Promise<number | null> {
  * @param lastSeenMs   The last confirmed-good timestamp from localStorage.
  *                     Pass null on first launch.
  * @param fetchFn      Injectable network-time function (override in tests).
- * @param _systemNow   Override Date.now() — for deterministic tests only.
+ * @param _systemNow   Override Date.now() - for deterministic tests only.
  */
 export async function getTrustedNow(
   lastSeenMs:  number | null,
@@ -93,7 +93,7 @@ export async function getTrustedNow(
 
   // ── 1. Try network time ───────────────────────────────────────────────────
   // When online, the server timestamp is the single source of truth.
-  // We do NOT update lastSeenMs here — the caller is responsible for that,
+  // We do NOT update lastSeenMs here - the caller is responsible for that,
   // so it can persist it before the next offline session.
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -122,7 +122,7 @@ export async function getTrustedNow(
 
   // Case 2a: system clock is BEFORE 2020 → almost certainly a BIOS reset
   // (power outage that drained the CMOS battery).
-  // We do NOT block the app — it would be an unfair penalty on an honest user.
+  // We do NOT block the app - it would be an unfair penalty on an honest user.
   if (systemNow < EPOCH_FLOOR) {
     return {
       now:          lastSeen > EPOCH_FLOOR ? lastSeen : EPOCH_FLOOR,
@@ -137,7 +137,7 @@ export async function getTrustedNow(
     return { now: lastSeen, clockWarning: true };
   }
 
-  // Case 2c: system clock is reasonable — use it (or last-seen if somehow higher).
+  // Case 2c: system clock is reasonable - use it (or last-seen if somehow higher).
   return {
     now:          lastSeen > 0 ? Math.max(systemNow, lastSeen) : systemNow,
     clockWarning: false,

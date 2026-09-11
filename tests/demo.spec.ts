@@ -1,5 +1,5 @@
 /**
- * demo.spec.ts — Démo complète de Legwan
+ * demo.spec.ts - Démo complète de Legwan
  * Lancer : npm run demo  (avec npx vite déjà actif dans un autre terminal)
  */
 import { test, Page } from "@playwright/test";
@@ -79,12 +79,12 @@ test("Démo complète Legwan", async ({ page }) => {
   await page.waitForTimeout(READ);
 
   // ══════════════════════════════════════════════════════
-  // 4. Tableau de bord — aperçu des KPIs
+  // 4. Tableau de bord - aperçu des KPIs
   // ══════════════════════════════════════════════════════
   await page.waitForTimeout(READ);
 
   // ══════════════════════════════════════════════════════
-  // 5. Produits — ajouter un nouveau produit
+  // 5. Produits - ajouter un nouveau produit
   // ══════════════════════════════════════════════════════
   await navSidebar(page, "Produits");
   await page.waitForTimeout(NORMAL);
@@ -122,7 +122,7 @@ test("Démo complète Legwan", async ({ page }) => {
   await page.waitForTimeout(READ);
 
   // ══════════════════════════════════════════════════════
-  // 6. Point de vente — faire une vente complète
+  // 6. Point de vente - faire une vente complète
   // ══════════════════════════════════════════════════════
   await navSidebar(page, "Point de vente");
   await page.waitForTimeout(READ);
@@ -187,7 +187,7 @@ test("Démo complète Legwan", async ({ page }) => {
   await page.waitForTimeout(READ);
 
   // ══════════════════════════════════════════════════════
-  // 8. Stock — entrée + alertes
+  // 8. Stock - entrée + alertes
   // ══════════════════════════════════════════════════════
   await navSidebar(page, "Stock");
   await page.waitForTimeout(SLOW);
@@ -253,7 +253,7 @@ test("Démo complète Legwan", async ({ page }) => {
   // Note de clôture
   const notes = page.locator("textarea[placeholder*='Observations']").first();
   if (await notes.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await notes.fill("Clôture fin de journée — tout est conforme.");
+    await notes.fill("Clôture fin de journée - tout est conforme.");
     await page.waitForTimeout(NORMAL);
   }
   await page.waitForTimeout(READ);

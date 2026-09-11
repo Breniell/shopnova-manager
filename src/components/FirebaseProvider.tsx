@@ -88,7 +88,7 @@ type BootstrapData = [
  * Priority 1: legwan-pending-admin set by PolicyGate (real owner account).
  * Priority 2: demo accounts for dev/local mode when no admin was configured.
  */
-/** Exported for integration-testing only — do not call from application code. */
+/** Exported for integration-testing only - do not call from application code. */
 export async function buildDefaultUsers(): Promise<User[]> {
   const pendingRaw = localStorage.getItem(PENDING_ADMIN_KEY);
   if (pendingRaw) {
@@ -114,10 +114,10 @@ export async function buildDefaultUsers(): Promise<User[]> {
     }
   }
 
-  // Fallback: seeded demo accounts — DEV / LOCAL MODE ONLY.
+  // Fallback: seeded demo accounts - DEV / LOCAL MODE ONLY.
   // In production (Firebase configured), the real admin always comes from
   // PENDING_ADMIN_KEY set by PolicyGate at first install. We must never seed
-  // accounts with hardcoded, well-known PINs into a real boutique — that would
+  // accounts with hardcoded, well-known PINs into a real boutique - that would
   // be a standing backdoor (e.g. a "gérant" account with PIN 1234).
   if (isFirebaseConfigured) {
     return [];
@@ -406,7 +406,7 @@ function subscribeToRealtime(bid: string): Array<() => void> {
 
 // ─── Main bootstrap ─────────────────────────────────────────────────────────────
 
-/** Exported for integration-testing only — do not call from application code. */
+/** Exported for integration-testing only - do not call from application code. */
 export async function bootstrapFirebase(localSnapshotAvailable = false): Promise<void> {
   // 1. Authenticate + get boutiqueId
   const boutiqueId = await initBoutique();
@@ -427,7 +427,7 @@ export async function bootstrapFirebase(localSnapshotAvailable = false): Promise
     const pendingAdmin = localStorage.getItem(PENDING_ADMIN_KEY);
     if (isFirebaseConfigured && !pendingAdmin) {
       // Expected on a genuine first launch (PolicyGate hasn't written pendingAdmin yet).
-      // Unexpected after a restore — signInBoutiqueRecoveryAccount should have caught this.
+      // Unexpected after a restore - signInBoutiqueRecoveryAccount should have caught this.
       // If you see this after a restore attempt, check [Restore] logs above for the cause.
       console.error('[Restore] No boutique data and no pending admin for UID:', boutiqueId);
     }
@@ -447,7 +447,7 @@ export async function bootstrapFirebase(localSnapshotAvailable = false): Promise
         users: defaultUsers,
       });
     } catch (err) {
-      // Offline on first launch — still seed local state so app is usable
+      // Offline on first launch - still seed local state so app is usable
       console.error('[Restore] fsInitializeBoutique failed (offline or permission error):', err);
     }
 

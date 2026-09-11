@@ -368,7 +368,7 @@ const ProduitsPage: React.FC = () => {
                     placeholder="EAN-13"
                     maxLength={13}
                   />
-                  {/* Camera scan — for packaged products with a manufacturer barcode */}
+                  {/* Camera scan - for packaged products with a manufacturer barcode */}
                   <button
                     type="button"
                     onClick={() => setShowScanner(true)}
@@ -377,7 +377,7 @@ const ProduitsPage: React.FC = () => {
                   >
                     <Camera className="w-4 h-4" />
                   </button>
-                  {/* Generate internal code — for bulk/loose products without a factory barcode */}
+                  {/* Generate internal code - for bulk/loose products without a factory barcode */}
                   <button
                     type="button"
                     onClick={() => setForm({ ...form, codeBarre: generateInternalBarcode() })}
@@ -504,14 +504,14 @@ const ProduitsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Camera barcode scanner — for reading manufacturer codes on packaged products */}
+      {/* Camera barcode scanner - for reading manufacturer codes on packaged products */}
       <BarcodeScanner
         open={showScanner}
         onClose={() => setShowScanner(false)}
         onScan={code => { setForm(f => ({ ...f, codeBarre: code })); }}
       />
 
-      {/* Label print — only shown for internal (prefix '2') products */}
+      {/* Label print - only shown for internal (prefix '2') products */}
       <LabelPrint
         product={labelProduct}
         onClose={() => setLabelProduct(null)}

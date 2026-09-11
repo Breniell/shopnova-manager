@@ -62,7 +62,7 @@ export const TopBar: React.FC = () => {
             disabled={syncState.failed === 0}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-700"
             title={syncState.failed > 0
-              ? `${syncState.failed} enregistrement(s) en échec — cliquer pour relancer`
+              ? `${syncState.failed} enregistrement(s) en échec - cliquer pour relancer`
               : `${syncState.total} enregistrement(s) en attente de synchronisation`}
           >
             <CloudOff className="w-3.5 h-3.5" />

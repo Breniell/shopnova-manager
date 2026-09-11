@@ -13,7 +13,7 @@ export interface LicensePayload {
   issuedAt:    number;       // ms timestamp
   expiresAt:   number;       // ms timestamp
   features?:   string[];     // reserved for future module gating
-  machineId?:  string | null;// reserved — machine binding (future)
+  machineId?:  string | null;// reserved - machine binding (future)
   holder?:     LicenseHolder;
 }
 
@@ -30,5 +30,5 @@ export interface LicenseVerifyResult {
   payload?: LicensePayload;
 }
 
-/** Wire-format prefix — allows instant visual identification. */
+/** Wire-format prefix - allows instant visual identification. */
 export const LICENSE_PREFIX = 'LGW1-' as const;

@@ -20,7 +20,7 @@ beforeEach(() => {
 });
 
 // ─── Initial state ────────────────────────────────────────────────────────────
-describe('useAuthStore — initial state', () => {
+describe('useAuthStore - initial state', () => {
   it('starts with 3 seed users', () => {
     expect(useAuthStore.getState().users).toHaveLength(3);
   });
@@ -40,7 +40,7 @@ describe('useAuthStore — initial state', () => {
 });
 
 // ─── login ────────────────────────────────────────────────────────────────────
-describe('useAuthStore — login', () => {
+describe('useAuthStore - login', () => {
   beforeEach(async () => {
     await useAuthStore.getState().updateUserPin('1', '1234');
     await useAuthStore.getState().updateUserPin('2', '5678');
@@ -102,7 +102,7 @@ describe('useAuthStore — login', () => {
 });
 
 // ─── logout ───────────────────────────────────────────────────────────────────
-describe('useAuthStore — logout', () => {
+describe('useAuthStore - logout', () => {
   it('clears current user and authentication state', async () => {
     await useAuthStore.getState().updateUserPin('1', '1234');
     await useAuthStore.getState().login('1', '1234');
@@ -113,7 +113,7 @@ describe('useAuthStore — logout', () => {
 });
 
 // ─── addUser ──────────────────────────────────────────────────────────────────
-describe('useAuthStore — addUser', () => {
+describe('useAuthStore - addUser', () => {
   it('adds a new user to the list', async () => {
     const before = useAuthStore.getState().users.length;
     await useAuthStore.getState().addUser({
@@ -143,7 +143,7 @@ describe('useAuthStore — addUser', () => {
 });
 
 // ─── updateUserPin ────────────────────────────────────────────────────────────
-describe('useAuthStore — updateUserPin', () => {
+describe('useAuthStore - updateUserPin', () => {
   it('changes the PIN hash for the user', async () => {
     const user = useAuthStore.getState().users[0];
     const oldHash = user.pin;
@@ -168,7 +168,7 @@ describe('useAuthStore — updateUserPin', () => {
 });
 
 // ─── deleteUser ───────────────────────────────────────────────────────────────
-describe('useAuthStore — deleteUser', () => {
+describe('useAuthStore - deleteUser', () => {
   it('removes the user from the list', () => {
     const before = useAuthStore.getState().users.length;
     useAuthStore.getState().deleteUser('2');

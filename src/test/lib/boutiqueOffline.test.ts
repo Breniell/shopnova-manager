@@ -31,7 +31,7 @@ function setOnline(online: boolean) {
   Object.defineProperty(window.navigator, 'onLine', { configurable: true, value: online });
 }
 
-describe('initBoutique — offline identity restoration', () => {
+describe('initBoutique - offline identity restoration', () => {
   beforeEach(() => {
     vi.resetModules();
     localStorage.clear();

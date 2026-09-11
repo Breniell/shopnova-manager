@@ -495,7 +495,7 @@ const CaissePage: React.FC = () => {
             )}
             {paymentMode === 'mobile_money' && (
               <div className="space-y-3">
-                {/* Step 1 — operator */}
+                {/* Step 1 - operator */}
                 <div className="flex gap-2">
                   <button
                     onClick={() => { setMobileOperator('mtn'); setConfirmationReceived(false); }}
@@ -513,7 +513,7 @@ const CaissePage: React.FC = () => {
                   </button>
                 </div>
 
-                {/* Step 2 — instructions or warning */}
+                {/* Step 2 - instructions or warning */}
                 {momoMerchantCode ? (
                   <div className="rounded-xl bg-primary/5 border border-primary/20 p-3 space-y-1.5">
                     <p className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide">
@@ -538,7 +538,7 @@ const CaissePage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Step 3 — SMS confirmation checkbox */}
+                {/* Step 3 - SMS confirmation checkbox */}
                 <label className="flex items-center gap-3 cursor-pointer select-none">
                   <input
                     type="checkbox"
@@ -549,7 +549,7 @@ const CaissePage: React.FC = () => {
                   <span className="text-xs font-medium text-foreground">{t('caisse.momoSmsConfirm')}</span>
                 </label>
 
-                {/* Step 4 — reference input */}
+                {/* Step 4 - reference input */}
                 <div>
                   <label className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wide block mb-1">
                     {t('caisse.momoRefLabel')}

@@ -9,7 +9,7 @@ describe('exportCSV', () => {
   beforeEach(() => {
     createdUrl = 'blob:http://localhost/fake-url';
 
-    // jsdom does not implement these APIs — define them before spying
+    // jsdom does not implement these APIs - define them before spying
     URL.createObjectURL = vi.fn().mockReturnValue(createdUrl);
     URL.revokeObjectURL = vi.fn();
 

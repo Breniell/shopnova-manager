@@ -46,7 +46,7 @@ export const LabelPrint: React.FC<LabelPrintProps> = ({ product, onClose }) => {
     const win = window.open('', '_blank', 'width=340,height=280');
     if (!win) return;
     win.document.write(`<!DOCTYPE html>
-<html><head><title>Étiquette — ${safeName}</title>
+<html><head><title>Étiquette - ${safeName}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: Arial, sans-serif; padding: 12px; text-align: center; }

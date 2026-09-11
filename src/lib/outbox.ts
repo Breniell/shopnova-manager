@@ -1,9 +1,9 @@
 /**
- * Outbox — file de persistance pour les écritures Firestore rejetées.
+ * Outbox - file de persistance pour les écritures Firestore rejetées.
  *
  * Contexte : le SDK Firestore gère déjà les coupures réseau (les opérations
  * restent en attente dans IndexedDB et partent à la reconnexion). L'outbox
- * ne gère PAS les pannes réseau — elle gère les REJETS réels : règles de
+ * ne gère PAS les pannes réseau - elle gère les REJETS réels : règles de
  * sécurité, données invalides, quota dépassé. Ces rejets déclenchent le
  * .catch() même avec une connexion active.
  *
@@ -11,7 +11,7 @@
  *   1. Le store appelle outbox.enqueue() dans son .catch() au lieu de logger.
  *   2. retryAll() est appelé au démarrage (après bootstrap) et sur 'online'.
  *   3. Après MAX_ATTEMPTS tentatives, l'entrée passe à 'failed' et reste dans
- *      la file — les données ne sont JAMAIS supprimées.
+ *      la file - les données ne sont JAMAIS supprimées.
  */
 
 import { getBoutiqueId } from '@/services/boutiqueService';
@@ -301,7 +301,7 @@ async function defaultDispatch(bid: string, entry: OutboxEntry): Promise<void> {
 /**
  * Retry all pending entries (up to MAX_ATTEMPTS per session).
  *
- * The optional `dispatch` override is for unit tests — production code
+ * The optional `dispatch` override is for unit tests - production code
  * always uses the default Firestore dispatcher.
  */
 async function drainPendingEntries(dispatch: OutboxDispatch): Promise<OutboxPersistenceState> {

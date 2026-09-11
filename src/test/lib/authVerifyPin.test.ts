@@ -20,7 +20,7 @@ import type { User } from '@/stores/useAuthStore';
 
 // ─── verifyPin unit tests ─────────────────────────────────────────────────────
 
-describe('verifyPin — PBKDF2 path', () => {
+describe('verifyPin - PBKDF2 path', () => {
   it('returns true for correct PIN when hashAlgo is pbkdf2', async () => {
     const pin  = '4321';
     const salt = generateSalt();
@@ -43,14 +43,14 @@ describe('verifyPin — PBKDF2 path', () => {
   });
 });
 
-describe('verifyPin — legacy SHA-256 path (backward compat)', () => {
+describe('verifyPin - legacy SHA-256 path (backward compat)', () => {
   it('returns true for legacy user (no hashAlgo, no salt) with correct PIN', async () => {
     const pin  = '5678';
     const hash = await hashPinLegacy(pin); // uses global LEGACY_SALT
     const legacyUser: User = {
       id: 'u2', prenom: 'X', nom: 'Y', role: 'caissier',
       pin: hash, color: '#000',
-      // hashAlgo intentionally absent — simulates pre-v1.4.2 Firestore document
+      // hashAlgo intentionally absent - simulates pre-v1.4.2 Firestore document
     };
     expect(await verifyPin(pin, legacyUser)).toBe(true);
   });
@@ -62,11 +62,11 @@ describe('verifyPin — legacy SHA-256 path (backward compat)', () => {
   });
 });
 
-describe('verifyPin — BUG DOCUMENTATION: PBKDF2 hash without hashAlgo always fails', () => {
+describe('verifyPin - BUG DOCUMENTATION: PBKDF2 hash without hashAlgo always fails', () => {
   /**
    * This test documents the exact failure mode that was silently introduced.
    * A user whose `pin` is a PBKDF2 hash but whose `hashAlgo` is absent will
-   * NEVER be able to authenticate — verifyPin uses SHA-256 on a PBKDF2 hash.
+   * NEVER be able to authenticate - verifyPin uses SHA-256 on a PBKDF2 hash.
    */
   it('PBKDF2 hash + no hashAlgo → verifyPin returns false even for correct PIN', async () => {
     const pin  = '1234';
@@ -110,12 +110,12 @@ describe('REGRESSION: buildDefaultUsers + verifyPin (pending-admin path)', () =>
 
     const users = await buildDefaultUsers();
 
-    // Structural assertions — catches the bug even before verifyPin
+    // Structural assertions - catches the bug even before verifyPin
     expect(users).toHaveLength(1);
     expect(users[0].hashAlgo).toBe('pbkdf2');   // FAILS before fix (was undefined)
     expect(users[0].salt).toBe(salt);
 
-    // Functional assertion — the full login path must succeed
+    // Functional assertion - the full login path must succeed
     expect(await verifyPin(pin, users[0])).toBe(true);   // FAILS before fix
     expect(await verifyPin('0000', users[0])).toBe(false);
   });

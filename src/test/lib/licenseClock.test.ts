@@ -18,7 +18,7 @@ const LAST_SEEN = new Date('2025-06-10T08:00:00Z').getTime();
 const online  = (t: number) => () => Promise.resolve(t);
 const offline = ()          => Promise.resolve<number | null>(null);
 
-describe('getTrustedNow — online mode', () => {
+describe('getTrustedNow - online mode', () => {
   it('returns network time and clockWarning=false when online', async () => {
     const netTime = new Date('2025-06-14T10:00:00Z').getTime();
     const result  = await getTrustedNow(null, online(netTime), REASONABLE_DATE);
@@ -28,7 +28,7 @@ describe('getTrustedNow — online mode', () => {
 
   it('ignores system clock entirely when network time is available', async () => {
     const netTime = new Date('2026-01-01T00:00:00Z').getTime();
-    // System clock is far in the past — should not matter
+    // System clock is far in the past - should not matter
     const result  = await getTrustedNow(null, online(netTime), 0);
     expect(result.now).toBe(netTime);
     expect(result.clockWarning).toBe(false);
@@ -42,7 +42,7 @@ describe('getTrustedNow — online mode', () => {
   });
 });
 
-describe('getTrustedNow — offline, BIOS reset (clock before 2020)', () => {
+describe('getTrustedNow - offline, BIOS reset (clock before 2020)', () => {
   // This is the Cameroon power-outage scenario: the system clock resets to
   // a date in the past (often 2000-01-01) because the CMOS battery is drained.
 
@@ -70,9 +70,9 @@ describe('getTrustedNow — offline, BIOS reset (clock before 2020)', () => {
   });
 });
 
-describe('getTrustedNow — offline, clock went backward', () => {
+describe('getTrustedNow - offline, clock went backward', () => {
   it('returns last-seen and clockWarning=true when system clock < last-seen', async () => {
-    // System clock is 6 months BEHIND what we last recorded — suspicious.
+    // System clock is 6 months BEHIND what we last recorded - suspicious.
     const backwardNow = new Date('2024-12-01T00:00:00Z').getTime(); // < LAST_SEEN
     const result      = await getTrustedNow(LAST_SEEN, offline, backwardNow);
     expect(result.now).toBe(LAST_SEEN);
@@ -87,7 +87,7 @@ describe('getTrustedNow — offline, clock went backward', () => {
   });
 });
 
-describe('getTrustedNow — offline, clock is reasonable', () => {
+describe('getTrustedNow - offline, clock is reasonable', () => {
   it('returns system time with no warning when clock is after last-seen', async () => {
     const laterNow = LAST_SEEN + 4 * 24 * 3600_000; // 4 days later
     const result   = await getTrustedNow(LAST_SEEN, offline, laterNow);
@@ -109,7 +109,7 @@ describe('getTrustedNow — offline, clock is reasonable', () => {
   });
 });
 
-describe('getTrustedNow — network error treated as offline', () => {
+describe('getTrustedNow - network error treated as offline', () => {
   it('does not hang when the network probe stays pending offline', async () => {
     const never = () => new Promise<number | null>(() => {});
     const started = Date.now();

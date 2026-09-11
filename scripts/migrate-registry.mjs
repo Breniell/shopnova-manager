@@ -3,7 +3,7 @@
  *
  * One-time migration: remove the `stats` field from all existing Firestore
  * registry documents. After Ticket 8, the heartbeat no longer writes `stats`
- * — only `health` is written. Running this script cleans up legacy data so
+ * - only `health` is written. Running this script cleans up legacy data so
  * that the SA console no longer reads stale financial figures.
  *
  * Prerequisites:
@@ -54,7 +54,7 @@ async function migrate() {
   const snapshot = await db.collection(COLLECTION).get();
 
   if (snapshot.empty) {
-    console.log('[migrate-registry] Collection is empty — nothing to do.');
+    console.log('[migrate-registry] Collection is empty - nothing to do.');
     return;
   }
 
@@ -83,7 +83,7 @@ async function migrate() {
   }
 
   if (affected === 0) {
-    console.log('[migrate-registry] No documents with a "stats" field — already clean.');
+    console.log('[migrate-registry] No documents with a "stats" field - already clean.');
     return;
   }
 

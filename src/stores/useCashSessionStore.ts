@@ -1,5 +1,5 @@
 /**
- * useCashSessionStore — sessions de caisse et sorties exceptionnelles.
+ * useCashSessionStore - sessions de caisse et sorties exceptionnelles.
  *
  * Une SESSION = un cycle ouverture → ventes/règlements/sorties → clôture,
  * attaché à un caissier précis avec son fond initial déclaré. Le but est
@@ -162,7 +162,7 @@ export const useCashSessionStore = create<CashSessionState>()((set, get) => ({
     }));
     fsSaveCashSession(getBoutiqueId(), session).catch((err) => {
       enqueue('cashSession', session);
-      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      toast.error("Échec d'enregistrement - nouvelle tentative automatique");
       console.warn('[outbox] cashSession enqueued:', err);
     });
     return session;
@@ -189,7 +189,7 @@ export const useCashSessionStore = create<CashSessionState>()((set, get) => ({
     }));
     fsSaveCashSession(getBoutiqueId(), closed).catch((err) => {
       enqueue('cashSession', closed);
-      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      toast.error("Échec d'enregistrement - nouvelle tentative automatique");
       console.warn('[outbox] cashSession (close) enqueued:', err);
     });
   },
@@ -203,7 +203,7 @@ export const useCashSessionStore = create<CashSessionState>()((set, get) => ({
     set(state => ({ cashOuts: [cashOut, ...state.cashOuts] }));
     fsSaveCashOut(getBoutiqueId(), cashOut).catch((err) => {
       enqueue('cashOut', cashOut);
-      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      toast.error("Échec d'enregistrement - nouvelle tentative automatique");
       console.warn('[outbox] cashOut enqueued:', err);
     });
     return cashOut;

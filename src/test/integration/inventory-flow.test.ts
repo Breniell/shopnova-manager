@@ -44,7 +44,7 @@ describe('Integration: inventory flow end-to-end', () => {
     expect(session.lines).toHaveLength(2);
     expect(useStockStore.getState().movements).toHaveLength(0);
 
-    // 2. Compter — p1 a perdu 3 unités (casse), p2 = OK
+    // 2. Compter - p1 a perdu 3 unités (casse), p2 = OK
     useInventoryStore.getState().updateLine(session.id, 'p1', {
       stockCompte: 47, reason: 'casse',
     });
@@ -52,7 +52,7 @@ describe('Integration: inventory flow end-to-end', () => {
       stockCompte: 20,
     });
 
-    // 3. Valider — le store applique une seule opération locale/cloud atomique
+    // 3. Valider - le store applique une seule opération locale/cloud atomique
     const result = useInventoryStore.getState().validateSession(
       session.id, 'mgr1', 'Gérant',
       {

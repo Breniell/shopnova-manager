@@ -22,7 +22,7 @@ function toDate(v: unknown): Date {
 }
 
 function fmtDate(d: Date): string {
-  if (d.getTime() === 0) return '—';
+  if (d.getTime() === 0) return '-';
   return d.toLocaleString(getCurrentBcp47(), { dateStyle: 'long', timeStyle: 'short' });
 }
 
@@ -90,7 +90,7 @@ export const SABoutiqueDetail: React.FC<Props> = ({ boutique, onClose }) => {
               </svg>
             </div>
             <div>
-              <p className="font-semibold text-foreground text-sm leading-tight">{boutique.nom || '—'}</p>
+              <p className="font-semibold text-foreground text-sm leading-tight">{boutique.nom || '-'}</p>
               <span
                 className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium mt-0.5"
                 style={{ color, backgroundColor: color + '20' }}
@@ -158,13 +158,13 @@ export const SABoutiqueDetail: React.FC<Props> = ({ boutique, onClose }) => {
                 {
                   icon: Users,
                   label: t('superadmin.detailHealthUsers'),
-                  value: health?.usersCount != null ? String(health.usersCount) : '—',
+                  value: health?.usersCount != null ? String(health.usersCount) : '-',
                   color: 'text-[#8B5CF6]',
                 },
                 {
                   icon: Activity,
                   label: t('superadmin.detailHealthActive'),
-                  value: health == null ? '—' : health.isActive ? t('superadmin.detailHealthActiveYes') : t('superadmin.detailHealthActiveNo'),
+                  value: health == null ? '-' : health.isActive ? t('superadmin.detailHealthActiveYes') : t('superadmin.detailHealthActiveNo'),
                   color: health?.isActive ? 'text-secondary' : 'text-muted-foreground',
                 },
                 {
@@ -178,7 +178,7 @@ export const SABoutiqueDetail: React.FC<Props> = ({ boutique, onClose }) => {
                 {
                   icon: Package,
                   label: t('superadmin.detailVersionLabel'),
-                  value: health?.appVersion ? `v${health.appVersion}` : boutique.version ? `v${boutique.version}` : '—',
+                  value: health?.appVersion ? `v${health.appVersion}` : boutique.version ? `v${boutique.version}` : '-',
                   color: 'text-primary',
                 },
               ].map((s, i) => (
@@ -273,7 +273,7 @@ export const SABoutiqueDetail: React.FC<Props> = ({ boutique, onClose }) => {
                 {
                   icon: Package,
                   label: 'Version app',
-                  value: boutique.version ? `v${boutique.version}` : '—',
+                  value: boutique.version ? `v${boutique.version}` : '-',
                   mono: true,
                 },
                 {

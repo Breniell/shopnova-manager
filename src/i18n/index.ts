@@ -1,7 +1,7 @@
 /**
- * Legwan i18n — 9 locales: fr, en, es, pt, de, tr, ar, ja, zh.
+ * Legwan i18n - 9 locales: fr, en, es, pt, de, tr, ar, ja, zh.
  * Language is stored in useSettingsStore.shop.langue (persisted to Firestore).
- * Arabic uses RTL — the document dir is set in App.tsx via useRtl().
+ * Arabic uses RTL - the document dir is set in App.tsx via useRtl().
  */
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import fr from './fr';
@@ -32,7 +32,7 @@ function resolve(obj: unknown, path: string): string {
   return typeof cur === 'string' ? cur : path;
 }
 
-/** React hook — returns a translation function for the current locale (reactive) */
+/** React hook - returns a translation function for the current locale (reactive) */
 export function useTranslation() {
   const locale: string =
     useSettingsStore(state => state.shop.langue) ?? 'fr';
@@ -45,7 +45,7 @@ export function useTranslation() {
   return { t, locale };
 }
 
-/** Static translation (outside React — for non-hook contexts) */
+/** Static translation (outside React - for non-hook contexts) */
 export function translate(key: string, locale?: string): string {
   const l = locale ?? useSettingsStore.getState().shop.langue ?? 'fr';
   return resolve(translations[l] ?? translations.fr, key);

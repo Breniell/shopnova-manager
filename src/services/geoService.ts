@@ -2,13 +2,13 @@
  * Legwan Geolocation Service
  *
  * Precision chain:
- *   1. Device GPS/WiFi via navigator.geolocation  — ~5–50 m (best)
- *   2. IP geolocation                             — city-level fallback (~1–5 km)
+ *   1. Device GPS/WiFi via navigator.geolocation  - ~5–50 m (best)
+ *   2. IP geolocation                             - city-level fallback (~1–5 km)
  *
- * getBestLocation()           — awaits the best single result (GPS wins if fast enough)
- * detectAddressProgressively()— calls onUpdate twice: first with IP (instant),
+ * getBestLocation()           - awaits the best single result (GPS wins if fast enough)
+ * detectAddressProgressively()- calls onUpdate twice: first with IP (instant),
  *                               then upgrades to GPS if it arrives within the timeout.
- * reverseGeocode()            — (lat, lng) → street address via OpenStreetMap Nominatim
+ * reverseGeocode()            - (lat, lng) → street address via OpenStreetMap Nominatim
  */
 
 export type LocationSource    = 'gps' | 'ip' | 'manual';
@@ -193,7 +193,7 @@ export async function getBestLocation(): Promise<GeoLocation | null> {
 
   const first = await Promise.race([gpsPromise, ipDelayed]);
 
-  // GPS was fast — return it directly.
+  // GPS was fast - return it directly.
   if (first?.source === 'gps') return first;
 
   // IP result arrived first.  Keep waiting up to 7.5 s more for GPS.
@@ -208,8 +208,8 @@ export async function getBestLocation(): Promise<GeoLocation | null> {
 // ─── Progressive address detection ───────────────────────────────────────────
 //
 // Calls onUpdate up to twice:
-//   1. ~1 s  : IP result (city-level)  — gives the user immediate feedback
-//   2. ~3–10 s: GPS result (street-level) — upgrades if the device has location access
+//   1. ~1 s  : IP result (city-level)  - gives the user immediate feedback
+//   2. ~3–10 s: GPS result (street-level) - upgrades if the device has location access
 //
 // Usage:
 //   detectAddressProgressively(

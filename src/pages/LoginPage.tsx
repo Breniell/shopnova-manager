@@ -159,7 +159,7 @@ const LoginPage: React.FC = () => {
     setError(false);
   };
 
-  // Keyboard support for PIN entry — placed after handlePinDigit/handleBackspace to avoid TDZ
+  // Keyboard support for PIN entry - placed after handlePinDigit/handleBackspace to avoid TDZ
   useEffect(() => {
     if (!selectedUser) return;
     const handleKeyDown = (e: KeyboardEvent) => {

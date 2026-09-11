@@ -5,7 +5,7 @@ import { enqueue } from '@/lib/outbox';
 import { toast } from 'sonner';
 
 /**
- * Customer (Client) — fiche client de la boutique.
+ * Customer (Client) - fiche client de la boutique.
  *
  * Notes de design :
  *   • `telephone` est la clé fonctionnelle unique (deux clients ne peuvent pas

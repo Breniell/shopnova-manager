@@ -1,5 +1,5 @@
 /**
- * Regression tests — registry heartbeat scheduling in bootstrapFirebase().
+ * Regression tests - registry heartbeat scheduling in bootstrapFirebase().
  *
  * ROOT CAUSE (fixed in this commit):
  *   bootstrapFirebase() had an early `return` in the first-launch path (after
@@ -88,14 +88,14 @@ async function flushAsync(): Promise<void> {
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-describe('bootstrapFirebase — registry heartbeat scheduling', () => {
+describe('bootstrapFirebase - registry heartbeat scheduling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
   });
 
   /**
-   * REGRESSION TEST — fails before the fix, passes after.
+   * REGRESSION TEST - fails before the fix, passes after.
    *
    * Before fix: early `return` after _setUsers/_setSettings skipped scheduleHeartbeat.
    * After fix:  scheduleHeartbeat() is called before the return.
@@ -120,7 +120,7 @@ describe('bootstrapFirebase — registry heartbeat scheduling', () => {
   });
 
   it('never sends the heartbeat twice in a single bootstrap (no double-send)', async () => {
-    // Both paths are mutually exclusive — first launch should call heartbeat exactly once.
+    // Both paths are mutually exclusive - first launch should call heartbeat exactly once.
     vi.mocked(fsIsBoutiqueInitialized).mockResolvedValue(false);
 
     await bootstrapFirebase();

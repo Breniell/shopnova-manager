@@ -107,7 +107,7 @@ export const SAOverview: React.FC<Props> = ({ boutiques }) => {
     },
     {
       icon: BarChart2, label: t('superadmin.kpiActivityRate'),
-      value: total > 0 ? `${Math.round((active / total) * 100)}%` : '—',
+      value: total > 0 ? `${Math.round((active / total) * 100)}%` : '-',
       sub: t('superadmin.kpiActiveIn24h'),
       color: 'text-muted-foreground', bg: 'bg-muted/50',
     },
@@ -115,7 +115,7 @@ export const SAOverview: React.FC<Props> = ({ boutiques }) => {
 
   return (
     <div className="space-y-5">
-      {/* KPI grid — 6 cards */}
+      {/* KPI grid - 6 cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
         {kpis.map((k, i) => (
           <div key={i} className="nova-card p-4 flex flex-col gap-2">
@@ -240,7 +240,7 @@ export const SAOverview: React.FC<Props> = ({ boutiques }) => {
                     </svg>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-foreground truncate">{b.nom || '—'}</p>
+                    <p className="text-xs font-medium text-foreground truncate">{b.nom || '-'}</p>
                     <p className="text-[10px] text-muted-foreground">{timeAgo(lastSeen)}</p>
                   </div>
                   <span className="text-[9px] font-mono bg-muted px-1 py-0.5 rounded shrink-0 text-muted-foreground">

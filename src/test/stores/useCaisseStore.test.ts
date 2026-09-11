@@ -21,7 +21,7 @@ const makeCloture = (overrides = {}) => ({
   ...overrides,
 });
 
-describe('useCaisseStore — initial state', () => {
+describe('useCaisseStore - initial state', () => {
   it('starts with an empty clotures list', () => {
     expect(useCaisseStore.getState().clotures).toHaveLength(0);
   });
@@ -31,7 +31,7 @@ describe('useCaisseStore — initial state', () => {
   });
 });
 
-describe('useCaisseStore — addCloture', () => {
+describe('useCaisseStore - addCloture', () => {
   it('adds a clôture to the list', () => {
     useCaisseStore.getState().addCloture(makeCloture());
     expect(useCaisseStore.getState().clotures).toHaveLength(1);
@@ -81,7 +81,7 @@ describe('useCaisseStore — addCloture', () => {
   });
 });
 
-describe('useCaisseStore — setFondDeCaisse', () => {
+describe('useCaisseStore - setFondDeCaisse', () => {
   it('updates the fond de caisse', () => {
     useCaisseStore.getState().setFondDeCaisse(25000);
     expect(useCaisseStore.getState().fondDeCaisse).toBe(25000);

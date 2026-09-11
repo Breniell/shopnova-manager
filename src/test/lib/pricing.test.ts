@@ -79,10 +79,10 @@ describe('isNegociable', () => {
 });
 
 // ────────────────────────────────────────────────────────────────────────────
-// checkPrice — la fonction critique
+// checkPrice - la fonction critique
 // ────────────────────────────────────────────────────────────────────────────
 
-describe('checkPrice — produit NON négociable', () => {
+describe('checkPrice - produit NON négociable', () => {
   const p = makeProduct({ negociable: false, prixVente: 2000 });
 
   it('accepts only the exact prixVente', () => {
@@ -95,7 +95,7 @@ describe('checkPrice — produit NON négociable', () => {
   });
 });
 
-describe('checkPrice — produit négociable', () => {
+describe('checkPrice - produit négociable', () => {
   const p = makeProduct({
     negociable: true,
     prixAchat: 1000,
@@ -133,7 +133,7 @@ describe('checkPrice — produit négociable', () => {
   });
 });
 
-describe('checkPrice — sans prixCible (fallback)', () => {
+describe('checkPrice - sans prixCible (fallback)', () => {
   it('uses prixVente as target when prixCible absent', () => {
     const p = makeProduct({
       negociable: true,
@@ -149,7 +149,7 @@ describe('checkPrice — sans prixCible (fallback)', () => {
   });
 });
 
-describe('checkPrice — sans prixPlancher (fallback)', () => {
+describe('checkPrice - sans prixPlancher (fallback)', () => {
   it('uses prixAchat as floor when prixPlancher absent', () => {
     const p = makeProduct({
       negociable: true,

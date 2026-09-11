@@ -1,5 +1,5 @@
 /**
- * Client-side image compression — resizes and re-encodes an image File into a
+ * Client-side image compression - resizes and re-encodes an image File into a
  * size-capped JPEG data: URI, suitable for storing directly on a Firestore
  * document (shop logo, product photo). No server/IPC dependency: pure
  * browser APIs (FileReader/Image/Canvas), works identically in the Vite dev

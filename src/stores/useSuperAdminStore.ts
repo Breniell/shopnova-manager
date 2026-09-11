@@ -1,5 +1,5 @@
 /**
- * Super-admin store — manages authentication and boutique registry data.
+ * Super-admin store - manages authentication and boutique registry data.
  * Uses the secondary Firebase app (legwan-superadmin) so the boutique's
  * anonymous auth session is never disturbed.
  */
@@ -13,7 +13,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { getSuperAdminFirebase } from '@/lib/firebase';
 import type { RegistryEntry } from '@/services/registryService';
 
-// Injected at build time — never hardcoded in source
+// Injected at build time - never hardcoded in source
 const SUPERADMIN_EMAIL = import.meta.env.VITE_SUPERADMIN_EMAIL as string;
 
 interface SuperAdminState {
@@ -115,7 +115,7 @@ export const useSuperAdminStore = create<SuperAdminState>((set, get) => ({
       set({ boutiques: entries });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Erreur de chargement.';
-      set({ error: msg.includes('permission') ? 'Accès refusé — vérifiez les règles Firestore.' : msg });
+      set({ error: msg.includes('permission') ? 'Accès refusé - vérifiez les règles Firestore.' : msg });
     } finally {
       set({ loading: false });
     }

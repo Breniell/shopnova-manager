@@ -199,7 +199,7 @@ const ParametresPage: React.FC = () => {
 
     if (!result.ok) {
       if (result.error === 'wrong_password' && result.meta) {
-        // Encrypted — ask for password
+        // Encrypted - ask for password
         setPendingFile(file);
         setPendingMeta(result.meta ?? null);
         setImportPassword('');
@@ -302,7 +302,7 @@ const ParametresPage: React.FC = () => {
     updateShop(localShop);
     try { localStorage.setItem('legwan-locale', localShop.langue); } catch { /* ignore */ }
     // Keep the super-admin registry in sync with shop-identity changes
-    // (name, address, etc.) — previously only a map-location confirmation
+    // (name, address, etc.) - previously only a map-location confirmation
     // triggered a heartbeat, so renames never reached the registry until
     // the app's next cold start.
     sendRegistryHeartbeat(recoveryStatus?.isRecoveryEnabled ?? false);
@@ -419,7 +419,7 @@ const ParametresPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Address — auto-detected, manual as fallback */}
+            {/* Address - auto-detected, manual as fallback */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs text-muted-foreground">{t('settings.boutique.address')}</label>
@@ -847,7 +847,7 @@ const ParametresPage: React.FC = () => {
               </div>
             )}
 
-            {/* Picker (conditionally mounted — each mount = fresh Leaflet instance) */}
+            {/* Picker (conditionally mounted - each mount = fresh Leaflet instance) */}
             {showLocationPicker && (
               <LocationPicker
                 initialLocation={manualLocation}
@@ -1087,7 +1087,7 @@ const ParametresPage: React.FC = () => {
                   <option value="gérant">{t('common.gerant')}</option>
                 </select>
                 {editUser.role === 'gérant' && users.filter(u => u.role === 'gérant').length === 1 && (
-                  <p className="text-[10px] text-muted-foreground mt-1">{t('common.gerant')} — {t('settings.users.role')}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">{t('common.gerant')} - {t('settings.users.role')}</p>
                 )}
               </div>
             </div>
@@ -1318,7 +1318,7 @@ const ParametresPage: React.FC = () => {
       {showPinModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowPinModal(null)}>
           <div className="nova-card w-full max-w-[380px] p-5 lg:p-6 animate-scale-in" onClick={e => e.stopPropagation()}>
-            <h2 className="nova-heading text-lg text-foreground mb-6">{t('settings.users.changeUserPin')} — {showPinModal.prenom}</h2>
+            <h2 className="nova-heading text-lg text-foreground mb-6">{t('settings.users.changeUserPin')} - {showPinModal.prenom}</h2>
             <div className="space-y-4">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">{t('settings.users.newPin')}</label>

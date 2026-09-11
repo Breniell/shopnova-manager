@@ -16,7 +16,7 @@ beforeEach(() => {
   useCustomerStore.setState({ customers: [] });
 });
 
-describe('useCustomerStore — initial state', () => {
+describe('useCustomerStore - initial state', () => {
   it('starts with an empty list', () => {
     expect(useCustomerStore.getState().customers).toHaveLength(0);
   });
@@ -28,7 +28,7 @@ describe('useCustomerStore — initial state', () => {
   });
 });
 
-describe('useCustomerStore — addCustomer', () => {
+describe('useCustomerStore - addCustomer', () => {
   it('creates a new customer with id, dateCreation, color and archived=false', () => {
     const created = useCustomerStore.getState().addCustomer({
       prenom: 'Marie',
@@ -101,7 +101,7 @@ describe('useCustomerStore — addCustomer', () => {
   });
 });
 
-describe('useCustomerStore — updateCustomer', () => {
+describe('useCustomerStore - updateCustomer', () => {
   it('updates customer fields without changing id', () => {
     const created = useCustomerStore.getState().addCustomer({
       prenom: 'Marie', nom: 'Nguema', telephone: '+237 699 333 444',
@@ -113,7 +113,7 @@ describe('useCustomerStore — updateCustomer', () => {
   });
 });
 
-describe('useCustomerStore — archive / unarchive', () => {
+describe('useCustomerStore - archive / unarchive', () => {
   it('archiveCustomer sets archived=true', () => {
     const c = useCustomerStore.getState().addCustomer({ prenom: 'A', nom: 'A', telephone: '111111111' });
     useCustomerStore.getState().archiveCustomer(c.id);
@@ -128,7 +128,7 @@ describe('useCustomerStore — archive / unarchive', () => {
   });
 });
 
-describe('useCustomerStore — deleteCustomer', () => {
+describe('useCustomerStore - deleteCustomer', () => {
   it('removes the customer from the list', () => {
     const c = useCustomerStore.getState().addCustomer({ prenom: 'A', nom: 'A', telephone: '111111111' });
     useCustomerStore.getState().deleteCustomer(c.id);
@@ -136,7 +136,7 @@ describe('useCustomerStore — deleteCustomer', () => {
   });
 });
 
-describe('useCustomerStore — getCustomerByPhone', () => {
+describe('useCustomerStore - getCustomerByPhone', () => {
   it('finds an active customer by exact phone', () => {
     useCustomerStore.getState().addCustomer({
       prenom: 'Marie', nom: 'Nguema', telephone: '+237 699 333 444',
@@ -162,7 +162,7 @@ describe('useCustomerStore — getCustomerByPhone', () => {
   });
 });
 
-describe('useCustomerStore — searchCustomers', () => {
+describe('useCustomerStore - searchCustomers', () => {
   const seedThree = () => {
     useCustomerStore.getState().addCustomer({ prenom: 'Marie', nom: 'Nguema', telephone: '+237 699 111 111' });
     useCustomerStore.getState().addCustomer({ prenom: 'Paul', nom: 'Mbarga', telephone: '+237 699 222 222' });

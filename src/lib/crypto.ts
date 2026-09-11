@@ -1,5 +1,5 @@
 /**
- * PIN hashing — security-grade key derivation.
+ * PIN hashing - security-grade key derivation.
  *
  * NEW (v1.4.2+): PBKDF2-SHA-256 with 200,000 iterations per user.
  *   - Makes brute-forcing 10,000 4-digit PINs take ~300 seconds instead of 1ms.
@@ -50,7 +50,7 @@ export async function hashPinLegacy(pin: string, salt?: string): Promise<string>
 }
 
 /**
- * Hash a PIN (for new users — always uses PBKDF2).
+ * Hash a PIN (for new users - always uses PBKDF2).
  * Legacy alias kept for addUser / updateUserPin callers.
  */
 export async function hashPin(pin: string, salt?: string): Promise<string> {

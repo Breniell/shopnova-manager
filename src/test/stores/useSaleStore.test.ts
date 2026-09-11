@@ -15,7 +15,7 @@ beforeEach(() => {
 });
 
 // ─── Cart operations ──────────────────────────────────────────────────────────
-describe('useSaleStore — addToCart', () => {
+describe('useSaleStore - addToCart', () => {
   it('adds a new item to an empty cart', () => {
     useSaleStore.getState().addToCart({ productId: 'p1', nom: 'Bière Castel', prixVente: 600 });
     const cart = useSaleStore.getState().cart;
@@ -40,7 +40,7 @@ describe('useSaleStore — addToCart', () => {
   });
 });
 
-describe('useSaleStore — removeFromCart', () => {
+describe('useSaleStore - removeFromCart', () => {
   it('removes an item from the cart', () => {
     const { addToCart, removeFromCart } = useSaleStore.getState();
     addToCart({ productId: 'p1', nom: 'Bière Castel', prixVente: 600 });
@@ -58,7 +58,7 @@ describe('useSaleStore — removeFromCart', () => {
   });
 });
 
-describe('useSaleStore — updateCartQuantity', () => {
+describe('useSaleStore - updateCartQuantity', () => {
   it('updates the quantity of an item', () => {
     const { addToCart, updateCartQuantity } = useSaleStore.getState();
     addToCart({ productId: 'p1', nom: 'Bière', prixVente: 600 });
@@ -81,7 +81,7 @@ describe('useSaleStore — updateCartQuantity', () => {
   });
 });
 
-describe('useSaleStore — clearCart', () => {
+describe('useSaleStore - clearCart', () => {
   it('empties the cart and resets discount', () => {
     const { addToCart, setDiscount, clearCart } = useSaleStore.getState();
     addToCart({ productId: 'p1', nom: 'Bière', prixVente: 600 });
@@ -92,7 +92,7 @@ describe('useSaleStore — clearCart', () => {
   });
 });
 
-describe('useSaleStore — setDiscount', () => {
+describe('useSaleStore - setDiscount', () => {
   it('sets the discount percentage', () => {
     useSaleStore.getState().setDiscount(15);
     expect(useSaleStore.getState().discount).toBe(15);
@@ -100,7 +100,7 @@ describe('useSaleStore — setDiscount', () => {
 });
 
 // ─── Computed totals ──────────────────────────────────────────────────────────
-describe('useSaleStore — getCartSubtotal', () => {
+describe('useSaleStore - getCartSubtotal', () => {
   it('returns 0 for an empty cart', () => {
     expect(useSaleStore.getState().getCartSubtotal()).toBe(0);
   });
@@ -115,7 +115,7 @@ describe('useSaleStore — getCartSubtotal', () => {
   });
 });
 
-describe('useSaleStore — getCartTotal', () => {
+describe('useSaleStore - getCartTotal', () => {
   it('returns subtotal when discount is 0', () => {
     useSaleStore.getState().addToCart({ productId: 'p1', nom: 'Bière', prixVente: 600 });
     expect(useSaleStore.getState().getCartTotal()).toBe(600);
@@ -137,7 +137,7 @@ describe('useSaleStore — getCartTotal', () => {
 });
 
 // ─── completeSale ─────────────────────────────────────────────────────────────
-describe('useSaleStore — completeSale', () => {
+describe('useSaleStore - completeSale', () => {
   beforeEach(() => {
     useProductStore.setState({
       products: [{
@@ -241,7 +241,7 @@ const SEED_SALES = [
   },
 ];
 
-describe('useSaleStore — refundSale', () => {
+describe('useSaleStore - refundSale', () => {
   beforeEach(() => {
     useSaleStore.getState()._setSales([...SEED_SALES]);
     useProductStore.setState({
@@ -300,8 +300,8 @@ describe('useSaleStore — refundSale', () => {
   });
 });
 
-// ─── completeSale — décrément de stock atomique (v1.4.3) ──────────────────────
-describe('useSaleStore — completeSale (stock atomique)', () => {
+// ─── completeSale - décrément de stock atomique (v1.4.3) ──────────────────────
+describe('useSaleStore - completeSale (stock atomique)', () => {
   beforeEach(() => {
     localStorage.clear();
     useStockStore.setState({ movements: [] });
@@ -372,7 +372,7 @@ describe('useSaleStore — completeSale (stock atomique)', () => {
 });
 
 // ─── fsCommitSale reçoit des deltas négatifs (pas des produits complets) ───────
-describe('useSaleStore — sale stock delta projection', () => {
+describe('useSaleStore - sale stock delta projection', () => {
   it('records a negative movement delta and never an absolute stock value', () => {
     localStorage.clear();
     useStockStore.setState({ movements: [] });

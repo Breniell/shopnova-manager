@@ -1,11 +1,11 @@
 /**
- * ManagerOverrideModal — autorisation gérant pour vendre sous le prix plancher.
+ * ManagerOverrideModal - autorisation gérant pour vendre sous le prix plancher.
  *
  * Sécurité :
  *   • Le PIN saisi est hashé via hashPin() avant comparaison
  *   • Le PIN n'est jamais loggué ni stocké en clair
  *   • Le rate-limiting des tentatives est géré par useAuthStore (5 max)
- *     mais n'est PAS branché ici pour Phase 1 — à industrialiser plus tard
+ *     mais n'est PAS branché ici pour Phase 1 - à industrialiser plus tard
  *     (priorité faible : le caissier peut juste refaire le clic, donc l'override
  *     ne devient pas une porte de brute-force pratique en boutique).
  */

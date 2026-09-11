@@ -1,5 +1,5 @@
 /**
- * InventairePage — gestion des sessions d'inventaire et réconciliation.
+ * InventairePage - gestion des sessions d'inventaire et réconciliation.
  *
  * UX en 3 onglets :
  *   • "Nouvelle session" : choix du périmètre + création
@@ -533,11 +533,11 @@ const InventairePage: React.FC = () => {
                                 value={line.stockCompte ?? ''}
                                 onChange={e => handleCountChange(line.productId, e.target.value)}
                                 className="nova-input w-24 py-1 text-right tabular-nums"
-                                placeholder="—"
+                                placeholder="-"
                               />
                             </td>
                             <td className={cn('p-3 text-sm text-right font-semibold tabular-nums', ecartColor)}>
-                              {line.stockCompte === null ? '—' : (line.ecart > 0 ? `+${line.ecart}` : line.ecart)}
+                              {line.stockCompte === null ? '-' : (line.ecart > 0 ? `+${line.ecart}` : line.ecart)}
                             </td>
                             <td className="p-3">
                               {hasEcart ? (
@@ -555,7 +555,7 @@ const InventairePage: React.FC = () => {
                                   ))}
                                 </select>
                               ) : (
-                                <span className="text-[10px] text-muted-foreground italic">—</span>
+                                <span className="text-[10px] text-muted-foreground italic">-</span>
                               )}
                             </td>
                           </tr>
@@ -632,10 +632,10 @@ const InventairePage: React.FC = () => {
                             : t('inventaire.scopeManualBadge')}
                         </td>
                         <td className="p-3 text-xs text-muted-foreground whitespace-nowrap">
-                          {s.validatedAt ? formatDateShort(new Date(s.validatedAt)) : '—'}
+                          {s.validatedAt ? formatDateShort(new Date(s.validatedAt)) : '-'}
                         </td>
                         <td className="p-3 text-xs text-muted-foreground truncate max-w-[140px]">
-                          {s.validatedByName ?? '—'}
+                          {s.validatedByName ?? '-'}
                         </td>
                         <td className={cn(
                           'p-3 text-sm text-right font-semibold tabular-nums',
@@ -687,12 +687,12 @@ const InventairePage: React.FC = () => {
               </p>
               <p className="text-muted-foreground">
                 <span className="font-medium">{t('inventaire.drawerCreatedBy')}</span> {viewedSession.createdByName}{' '}
-                — {formatDateShort(new Date(viewedSession.createdAt))}
+                - {formatDateShort(new Date(viewedSession.createdAt))}
               </p>
               {viewedSession.validatedAt && (
                 <p className="text-muted-foreground">
                   <span className="font-medium">{t('inventaire.drawerValidatedBy')}</span> {viewedSession.validatedByName}{' '}
-                  — {formatDateShort(new Date(viewedSession.validatedAt))}
+                  - {formatDateShort(new Date(viewedSession.validatedAt))}
                 </p>
               )}
               {viewedSession.notes && (

@@ -1,5 +1,5 @@
 /**
- * License verification — BROWSER SIDE ONLY.
+ * License verification - BROWSER SIDE ONLY.
  *
  * Security model
  * ──────────────
@@ -127,7 +127,7 @@ export async function verifyLicenseRaw(
 // ─── verifyLicense ────────────────────────────────────────────────────────────
 
 /**
- * Production entry point — reads the public key from VITE_LICENSE_PUBKEY.
+ * Production entry point - reads the public key from VITE_LICENSE_PUBKEY.
  * opts.now is supplied by the caller so Ticket-B can inject a network clock.
  */
 const EMBEDDED_PUBKEY: string = import.meta.env.VITE_LICENSE_PUBKEY ?? '';

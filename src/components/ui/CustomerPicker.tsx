@@ -1,5 +1,5 @@
 /**
- * CustomerPicker — sélecteur de client pour la page Caisse.
+ * CustomerPicker - sélecteur de client pour la page Caisse.
  *
  * UX :
  *   • Bouton compact affiché en haut du panier

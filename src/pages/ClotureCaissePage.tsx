@@ -229,7 +229,7 @@ const ClotureCaissePage: React.FC = () => {
 
       {activeTab === 'cloture' && (
         <>
-          {/* KPIs — row 1 */}
+          {/* KPIs - row 1 */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <StatCard icon={<DollarSign className="w-4 h-4 text-primary" />} iconBg="bg-primary/20" value={formatFCFA(totalEspeces)} label={t('cloture.cashSales')} />
             <StatCard icon={<Smartphone className="w-4 h-4 text-secondary" />} iconBg="bg-secondary/20" value={formatFCFA(totalMobile)} label={t('cloture.mobileSales')} />
@@ -239,7 +239,7 @@ const ClotureCaissePage: React.FC = () => {
               value={formatFCFA(caEncaisse)}
               label={t('cloture.collectedRevenue')}
             />
-            {/* Fond de caisse — éditable par le gérant */}
+            {/* Fond de caisse - éditable par le gérant */}
             <div className="nova-card p-4 flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -277,7 +277,7 @@ const ClotureCaissePage: React.FC = () => {
             </div>
           </div>
 
-          {/* KPI — Solde journalier (full width highlight) */}
+          {/* KPI - Solde journalier (full width highlight) */}
           <div className="mb-3 p-4 rounded-xl border border-primary/30 bg-primary/5 flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">{t('cloture.dailyBalance')}</p>

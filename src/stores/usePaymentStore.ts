@@ -1,5 +1,5 @@
 /**
- * usePaymentStore — règlements reçus sur les ventes à crédit.
+ * usePaymentStore - règlements reçus sur les ventes à crédit.
  *
  * Un Payment représente un encaissement partiel ou total sur une Sale dont le
  * paymentMode est 'credit'. Plusieurs Payment peuvent référencer la même Sale

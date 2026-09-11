@@ -61,7 +61,7 @@ describe('generateInternalBarcode', () => {
 // ─── isValidEAN13 ─────────────────────────────────────────────────────────────
 describe('isValidEAN13', () => {
   it('accepts a real EAN-13 (well-known test vector)', () => {
-    // 4006381333931 — Stabilo Boss highlighter, checksum verified
+    // 4006381333931 - Stabilo Boss highlighter, checksum verified
     expect(isValidEAN13('4006381333931')).toBe(true);
   });
 

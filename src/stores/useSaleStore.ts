@@ -29,10 +29,10 @@ export type CreditStatus = 'pending' | 'partial' | 'paid';
 export interface CartItem {
   productId: string;
   nom: string;
-  prixVente: number;          // prix affiché (référence) — préservé pour l'historique
+  prixVente: number;          // prix affiché (référence) - préservé pour l'historique
   /** Coût unitaire figé au moment de la vente pour une marge historique fiable. */
   prixAchat?: number;
-  prixUnitaire?: number;      // prix réellement appliqué — peut différer si négocié
+  prixUnitaire?: number;      // prix réellement appliqué - peut différer si négocié
                               // (optionnel pour rétro-compatibilité des Sale existantes)
   quantity: number;
   /**
@@ -344,7 +344,7 @@ export const useSaleStore = create<SaleState>()((set, get) => ({
 
     // Construit le Payment (source de vérité) et la mise à jour dénormalisée
     // de la Sale, puis applique les deux en mémoire et les persiste dans un
-    // unique batch atomique — impossible d'avoir l'un sans l'autre.
+    // unique batch atomique - impossible d'avoir l'un sans l'autre.
     const activeSessionId = useCashSessionStore.getState().currentSessionId ?? undefined;
     const paymentId = `pay-${globalThis.crypto?.randomUUID?.()
       ?? `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`}`;
@@ -423,7 +423,7 @@ export const useSaleStore = create<SaleState>()((set, get) => ({
     // ── Conséquences sur le stock, calculées ici pour un commit ATOMIQUE ──────
     // La vente, les deltas de stock et les mouvements forment un tout : appliqués
     // ensemble en mémoire puis écrits dans un unique batch Firestore via increment().
-    // Chaque caisse envoie un delta — jamais une valeur absolue — pour éviter le
+    // Chaque caisse envoie un delta - jamais une valeur absolue - pour éviter le
     // last-write-wins qui corrompait le stock à la resynchronisation multi-caisses.
     const stockDeltas: Array<{ productId: string; delta: number }> = [];
     const updatedProductsInMemory: Array<{ id: string; stock: number }> = [];
@@ -466,7 +466,7 @@ export const useSaleStore = create<SaleState>()((set, get) => ({
       }
     }
 
-    // ── Mise à jour en mémoire (optimiste — l'UI réagit immédiatement) ────────
+    // ── Mise à jour en mémoire (optimiste - l'UI réagit immédiatement) ────────
     runLocalStateTransaction(() => {
       set(s => ({ sales: [sale, ...s.sales], cart: [], discount: 0, saleCounter: newCounter }));
       if (updatedProductsInMemory.length) {

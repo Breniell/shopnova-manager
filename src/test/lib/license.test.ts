@@ -1,7 +1,7 @@
 /**
  * License verification tests.
  *
- * Each test run generates its OWN throwaway Ed25519 key pair — the real private
+ * Each test run generates its OWN throwaway Ed25519 key pair - the real private
  * key is never used here and never lives in src/.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
@@ -136,14 +136,14 @@ describe('verifyLicenseRaw', () => {
     expect(res.payload?.plan).toBe('trial');
   });
 
-  it('signature check happens BEFORE expiry — expired + bad sig → bad_signature', async () => {
+  it('signature check happens BEFORE expiry - expired + bad sig → bad_signature', async () => {
     const expired  = await signPayload({ ...basePayload(), expiresAt: Date.now() - 1 });
     const tampered = tamperSig(expired);
     const res = await verify(tampered, { now: Date.now() });
     expect(res.reason).toBe('bad_signature'); // NOT 'expired'
   });
 
-  it('signature check happens BEFORE boutique check — wrong boutique + bad sig → bad_signature', async () => {
+  it('signature check happens BEFORE boutique check - wrong boutique + bad sig → bad_signature', async () => {
     const lic      = await signPayload(basePayload());
     const tampered = tamperSig(lic);
     const res = await verify(tampered, { boutiqueId: 'other-boutique' });
@@ -196,7 +196,7 @@ describe('parseLicense', () => {
     const dot     = lic.lastIndexOf('.');
     const tampered = lic.slice(0, dot + 1) + 'invalidsignature';
     const parsed  = parseLicense(tampered);
-    // Should still return the payload — parseLicense does not check the signature
+    // Should still return the payload - parseLicense does not check the signature
     expect(parsed?.licenseId).toBe(basePayload().licenseId);
   });
 

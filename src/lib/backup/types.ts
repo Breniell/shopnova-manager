@@ -50,7 +50,7 @@ export interface BackupMeta {
   exportedAt: string;        // ISO date
   boutiqueId: string;
   appVersion: string;
-  checksum: string;          // SHA-256 hex of JSON.stringify(data) — verified after decryption
+  checksum: string;          // SHA-256 hex of JSON.stringify(data) - verified after decryption
   encrypted: boolean;
   /** Required for v2; absent only on historical v1 files. */
   manifest?: BackupManifest;

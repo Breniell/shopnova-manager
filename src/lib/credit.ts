@@ -1,5 +1,5 @@
 /**
- * src/lib/credit.ts — Fonctions pures pour le calcul des encours et statuts crédit.
+ * src/lib/credit.ts - Fonctions pures pour le calcul des encours et statuts crédit.
  *
  * Toutes les fonctions sont stateless : elles prennent les ventes et paiements
  * en argument et retournent des valeurs. Aucune mutation, aucun side-effect.

@@ -113,7 +113,7 @@ export function getBoutiqueId(): string {
 
 /**
  * Initializes Firebase Anonymous Auth and returns the permanent boutique ID.
- * Safe to call multiple times — subsequent calls are no-ops.
+ * Safe to call multiple times - subsequent calls are no-ops.
  */
 /**
  * Returns a short human-readable code derived from the boutiqueId.
@@ -256,10 +256,10 @@ export async function signInBoutiqueRecoveryAccount(email: string, password: str
 
   if (!boutiqueExists) {
     console.error('[Restore] Aucune donnee boutique dans Firestore pour UID:', uid,
-      '— compte non lie a une boutique, ou mauvaise adresse email.');
+      '- compte non lie a une boutique, ou mauvaise adresse email.');
     await auth.signOut().catch(() => {});
     throw new Error(
-      "Aucune boutique associee a ce compte. Verifiez votre adresse email — ce compte n'a peut-etre pas encore ete lie a une boutique via les Parametres."
+      "Aucune boutique associee a ce compte. Verifiez votre adresse email - ce compte n'a peut-etre pas encore ete lie a une boutique via les Parametres."
     );
   }
 

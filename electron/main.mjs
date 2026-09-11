@@ -28,7 +28,7 @@ console.log = (...values) => { diagnostics.info(...values); originalConsole.log(
 console.warn = (...values) => { diagnostics.warn(...values); originalConsole.warn(...values); };
 console.error = (...values) => { diagnostics.error(...values); originalConsole.error(...values); };
 
-// NSIS installer (electron-builder) does not send Squirrel events — no handling needed.
+// NSIS installer (electron-builder) does not send Squirrel events - no handling needed.
 
 // Start the crash reporter to collect renderer minidumps locally for diagnosis
 try {
@@ -106,7 +106,7 @@ function createWindow() {
         updaterTimer = null;
         if (!win.isDestroyed()) setupAutoUpdater();
       }, 5000);
-      // The app is a POS terminal typically left open all day — a single
+      // The app is a POS terminal typically left open all day - a single
       // check at launch means anyone already running when a release goes
       // out never hears about it until their next restart. Re-check
       // periodically so a same-day release is still discovered.
@@ -184,7 +184,7 @@ function createWindow() {
 
     const errorHtml = `<!DOCTYPE html>
 <html lang="fr">
-<head><meta charset="UTF-8"><title>Legwan — Erreur</title>
+<head><meta charset="UTF-8"><title>Legwan - Erreur</title>
 <style>
   body{margin:0;background:#f8f8f6;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}
   .box{text-align:center;max-width:400px;padding:32px}

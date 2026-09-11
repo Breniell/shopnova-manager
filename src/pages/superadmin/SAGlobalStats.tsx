@@ -26,7 +26,7 @@ export const SAGlobalStats: React.FC<Props> = ({ boutiques }) => {
   const activeThisMonth = boutiques.filter(b => b.health?.isActive === true).length;
   const totalUsersCount = boutiques.reduce((s, b) => s + (b.health?.usersCount ?? 0), 0);
 
-  const versions      = [...new Set(boutiques.map(b => b.version))].join(', ') || '—';
+  const versions      = [...new Set(boutiques.map(b => b.version))].join(', ') || '-';
   const withLocation  = boutiques.filter(b => b.location).length;
 
   const cards = [

@@ -38,7 +38,7 @@ fs.writeFileSync(
   'utf8',
 );
 
-const instructions = `LEGWAN ${version} — KIT INTERNE NON SIGNÉ
+const instructions = `LEGWAN ${version} - KIT INTERNE NON SIGNÉ
 ================================================
 
 Ce paquet est destiné uniquement aux PC pilotes contrôlés par votre entreprise.

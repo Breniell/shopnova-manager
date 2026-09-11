@@ -1,5 +1,5 @@
 /**
- * useInventoryStore — sessions d'inventaire & réconciliation de stock.
+ * useInventoryStore - sessions d'inventaire & réconciliation de stock.
  *
  * Concept :
  *   Un inventaire = comparer le stock théorique (calculé par l'app) avec le
@@ -183,7 +183,7 @@ export const useInventoryStore = create<InventoryState>()((set, get) => ({
     set(state => ({ sessions: [session, ...state.sessions] }));
     fsSaveInventorySession(getBoutiqueId(), session).catch((err) => {
       enqueue('inventorySession', session);
-      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      toast.error("Échec d'enregistrement - nouvelle tentative automatique");
       console.warn('[outbox] inventorySession enqueued:', err);
     });
     return session;
@@ -213,7 +213,7 @@ export const useInventoryStore = create<InventoryState>()((set, get) => ({
     set(state => ({ sessions: state.sessions.map(s => s.id === sessionId ? updated : s) }));
     fsSaveInventorySession(getBoutiqueId(), updated).catch((err) => {
       enqueue('inventorySession', updated);
-      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      toast.error("Échec d'enregistrement - nouvelle tentative automatique");
       console.warn('[outbox] inventorySession enqueued:', err);
     });
   },
@@ -226,7 +226,7 @@ export const useInventoryStore = create<InventoryState>()((set, get) => ({
     set(state => ({ sessions: state.sessions.map(s => s.id === sessionId ? updated : s) }));
     fsSaveInventorySession(getBoutiqueId(), updated).catch((err) => {
       enqueue('inventorySession', updated);
-      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      toast.error("Échec d'enregistrement - nouvelle tentative automatique");
       console.warn('[outbox] inventorySession enqueued:', err);
     });
   },
@@ -246,7 +246,7 @@ export const useInventoryStore = create<InventoryState>()((set, get) => ({
     set(state => ({ sessions: state.sessions.map(s => s.id === sessionId ? updated : s) }));
     fsSaveInventorySession(getBoutiqueId(), updated).catch((err) => {
       enqueue('inventorySession', updated);
-      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      toast.error("Échec d'enregistrement - nouvelle tentative automatique");
       console.warn('[outbox] inventorySession enqueued:', err);
     });
   },

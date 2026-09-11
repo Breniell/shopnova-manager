@@ -229,7 +229,7 @@ export async function fsUpdateSale(bid: string, saleId: string, data: Partial<Sa
 /**
  * Commit atomique d'une vente et de ses conséquences sur le stock.
  *
- * Utilise increment() pour les mises à jour de stock — chaque caisse envoie
+ * Utilise increment() pour les mises à jour de stock - chaque caisse envoie
  * un DELTA (−quantité), jamais une valeur absolue. Cela élimine le
  * last-write-wins qui corrompait le stock lors d'une resynchronisation
  * multi-caisses hors-ligne.
@@ -415,7 +415,7 @@ export async function fsCommitLegacyStockAdjustment(
 
 /**
  * Met à jour les champs non-stock d'un produit (prix, nom, seuil…).
- * N'écrit jamais le champ stock — les ajustements passent par
+ * N'écrit jamais le champ stock - les ajustements passent par
  * fsCommitStockOperation avec un mouvement et un marqueur idempotent.
  */
 export async function fsUpdateProductFields(
@@ -442,7 +442,7 @@ export interface RefundCommitPayload {
   refund?: RefundOperation;
   saleId: string;
   saleUpdate: Partial<Sale>;
-  /** Deltas positifs — le remboursement rend le stock. */
+  /** Deltas positifs - le remboursement rend le stock. */
   stockDeltas: Array<{ productId: string; delta: number }>;
   movements: StockMovement[];
 }
@@ -469,7 +469,7 @@ async function existsOnServerWhenOnline(path: string): Promise<boolean> {
 
 /**
  * Commit atomique d'un remboursement : MAJ vente + incréments stock + mouvements.
- * Un seul batch — impossible d'avoir la vente remboursée sans les stocks restitués.
+ * Un seul batch - impossible d'avoir la vente remboursée sans les stocks restitués.
  */
 export async function fsCommitRefund(bid: string, payload: RefundCommitPayload): Promise<void> {
   if (!isFirebaseConfigured) return;

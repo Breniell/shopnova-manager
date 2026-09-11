@@ -16,7 +16,7 @@ export const AppLayout = forwardRef<HTMLDivElement>((_props, ref) => {
   const isMobile = useIsMobile();
   const { t } = useTranslation();
 
-  // Auto-logout after 15 min of inactivity — protects an unattended register.
+  // Auto-logout after 15 min of inactivity - protects an unattended register.
   useSessionTimeout(15);
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export const AppLayout = forwardRef<HTMLDivElement>((_props, ref) => {
     <div ref={ref} className="min-h-screen bg-background">
       <Sidebar />
       <UpdateBanner />
-      {/* Mobile header — pt-safe accounts for iOS notch */}
+      {/* Mobile header - pt-safe accounts for iOS notch */}
       {isMobile && (
         <div className="fixed top-0 left-0 right-0 z-10 bg-card border-b border-border px-4 flex items-center gap-3"
           style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))', paddingBottom: '0.75rem' }}>

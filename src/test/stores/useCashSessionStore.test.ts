@@ -12,7 +12,7 @@ const openParams = (overrides: Partial<{ userId: string; userName: string; fondI
   ...overrides,
 });
 
-describe('useCashSessionStore — initial state', () => {
+describe('useCashSessionStore - initial state', () => {
   it('starts with empty lists and no current session', () => {
     expect(useCashSessionStore.getState().sessions).toHaveLength(0);
     expect(useCashSessionStore.getState().cashOuts).toHaveLength(0);
@@ -20,7 +20,7 @@ describe('useCashSessionStore — initial state', () => {
   });
 });
 
-describe('useCashSessionStore — openSession', () => {
+describe('useCashSessionStore - openSession', () => {
   it('creates an open session and sets currentSessionId', () => {
     const s = useCashSessionStore.getState().openSession(openParams());
     expect(s.status).toBe('open');
@@ -51,7 +51,7 @@ describe('useCashSessionStore — openSession', () => {
   });
 });
 
-describe('useCashSessionStore — closeSession', () => {
+describe('useCashSessionStore - closeSession', () => {
   it('closes a session and clears currentSessionId', () => {
     const s = useCashSessionStore.getState().openSession(openParams());
     useCashSessionStore.getState().closeSession(s.id, {
@@ -87,7 +87,7 @@ describe('useCashSessionStore — closeSession', () => {
   });
 });
 
-describe('useCashSessionStore — addCashOut', () => {
+describe('useCashSessionStore - addCashOut', () => {
   it('creates a cashOut for the session', () => {
     const s = useCashSessionStore.getState().openSession(openParams());
     const co = useCashSessionStore.getState().addCashOut({
@@ -140,7 +140,7 @@ describe('useCashSessionStore — addCashOut', () => {
   });
 });
 
-describe('useCashSessionStore — deleteCashOut', () => {
+describe('useCashSessionStore - deleteCashOut', () => {
   it('removes the cashOut', () => {
     const s = useCashSessionStore.getState().openSession(openParams());
     const co = useCashSessionStore.getState().addCashOut({
@@ -153,7 +153,7 @@ describe('useCashSessionStore — deleteCashOut', () => {
   });
 });
 
-describe('useCashSessionStore — selectors', () => {
+describe('useCashSessionStore - selectors', () => {
   it('getCurrentSession returns null when no current session', () => {
     expect(useCashSessionStore.getState().getCurrentSession()).toBeNull();
   });

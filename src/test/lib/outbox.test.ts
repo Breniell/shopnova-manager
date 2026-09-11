@@ -2,10 +2,10 @@
  * Tests unitaires de l'outbox (src/lib/outbox.ts).
  *
  * Couvre :
- *   1. enqueue — ajoute une entrée dans localStorage
- *   2. retryAll — appelle le dispatcher et supprime l'entrée en cas de succès
- *   3. retryAll — incrémente attempts en cas d'échec
- *   4. Plafond de tentatives — après MAX_ATTEMPTS (3) l'entrée passe à 'failed'
+ *   1. enqueue - ajoute une entrée dans localStorage
+ *   2. retryAll - appelle le dispatcher et supprime l'entrée en cas de succès
+ *   3. retryAll - incrémente attempts en cas d'échec
+ *   4. Plafond de tentatives - après MAX_ATTEMPTS (3) l'entrée passe à 'failed'
  *      et n'est plus retraitée
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -34,7 +34,7 @@ beforeEach(() => {
 
 afterEach(() => vi.restoreAllMocks());
 
-describe('outbox — enqueue', () => {
+describe('outbox - enqueue', () => {
   it('adds an entry to localStorage', () => {
     enqueue('sale', { sale: { id: 's1' } });
     const entries = getAll();
@@ -89,7 +89,7 @@ describe('outbox — enqueue', () => {
   });
 });
 
-describe('outbox — retryAll success', () => {
+describe('outbox - retryAll success', () => {
   it('removes the entry after a successful dispatch', async () => {
     enqueue('sale', { sale: { id: 's1' } });
     const dispatch = vi.fn().mockResolvedValue(undefined);
@@ -165,7 +165,7 @@ describe('outbox — retryAll success', () => {
   });
 });
 
-describe('outbox — retryAll failure and attempt tracking', () => {
+describe('outbox - retryAll failure and attempt tracking', () => {
   it('increments attempts on failure and keeps entry as pending', async () => {
     enqueue('expense', { id: 'e1' });
     const dispatch = vi.fn().mockRejectedValue(new Error('rules/permission-denied'));
@@ -202,7 +202,7 @@ describe('outbox — retryAll failure and attempt tracking', () => {
     await retryAll(dispatch); // 3 → failed
     const callsAfterCap = dispatch.mock.calls.length;
 
-    await retryAll(dispatch); // 4 — should NOT be dispatched
+    await retryAll(dispatch); // 4 - should NOT be dispatched
     expect(dispatch.mock.calls.length).toBe(callsAfterCap);
     expect(getAll()[0].attempts).toBe(3); // unchanged
   });
@@ -222,7 +222,7 @@ describe('outbox — retryAll failure and attempt tracking', () => {
     expect(getAll()).toHaveLength(0);
   });
 
-  it('never deletes a failed entry — data is preserved', async () => {
+  it('never deletes a failed entry - data is preserved', async () => {
     enqueue('sale', { sale: { id: 's-precious' } });
     const dispatch = vi.fn().mockRejectedValue(new Error('x'));
 

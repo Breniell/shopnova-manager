@@ -190,7 +190,7 @@ export async function parseBackupFile(
   let data: unknown;
   if (bf.encrypted) {
     if (!password) {
-      // Caller must prompt for password — signal this via wrong_password
+      // Caller must prompt for password - signal this via wrong_password
       return { ok: false, error: 'wrong_password', meta };
     }
     try {

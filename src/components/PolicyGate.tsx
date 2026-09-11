@@ -4,7 +4,7 @@
  * Phase 1: Scroll policy, sign with full name, check acceptance.
  * Phase 2: Create admin profile with PIN (new installs only).
  *
- * Supports French (fr) and English (en) — language auto-detected from browser.
+ * Supports French (fr) and English (en) - language auto-detected from browser.
  */
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { cn } from '@/lib/utils';
@@ -375,7 +375,7 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
           ))}
 
           <p className="text-xs text-muted-foreground text-center pb-4">
-            Legwan Privacy Policy — {T.version} {POLICY_VERSION} — {T.inForce}
+            Legwan Privacy Policy - {T.version} {POLICY_VERSION} - {T.inForce}
           </p>
         </div>
       </div>

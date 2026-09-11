@@ -6,7 +6,7 @@ beforeEach(() => {
   useSettingsStore.setState({ shop: { ...defaultShopSettings } });
 });
 
-describe('useSettingsStore — initial state', () => {
+describe('useSettingsStore - initial state', () => {
   it('has a default shop name', () => {
     expect(useSettingsStore.getState().shop.nom).toBe('Ma Boutique');
   });
@@ -22,7 +22,7 @@ describe('useSettingsStore — initial state', () => {
   });
 });
 
-describe('useSettingsStore — updateShop', () => {
+describe('useSettingsStore - updateShop', () => {
   it('updates a single field', () => {
     useSettingsStore.getState().updateShop({ nom: 'Ma Boutique' });
     expect(useSettingsStore.getState().shop.nom).toBe('Ma Boutique');

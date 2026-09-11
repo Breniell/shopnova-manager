@@ -1,5 +1,5 @@
 /**
- * LicenseGate — wraps the app and enforces licence validity.
+ * LicenseGate - wraps the app and enforces licence validity.
  *
  * Mount order: FirebaseProvider → HashRouter → LicenseGate → Routes
  * Superadmin path (/superadmin) is always accessible (publisher's console).
@@ -180,7 +180,7 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
   const [showModal, setShowModal] = useState(false);
   const checkingRef               = useRef(false);
 
-  // Superadmin path is never gated — it's the publisher's console.
+  // Superadmin path is never gated - it's the publisher's console.
   const isSuperAdmin = import.meta.env.VITE_ENABLE_SUPERADMIN === 'true' && location.pathname.startsWith('/superadmin');
 
   // Dev mode without a key → skip all checks.
@@ -209,7 +209,7 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ children }) => {
       // Create/repair the trial anchor only after the clock has been vetted.
       const installDate = await getOrCreateInstallDate(bid, now);
 
-      // Persist the new trusted time (do not await — non-blocking).
+      // Persist the new trusted time (do not await - non-blocking).
       setLastSeenTime(now, bid).catch(() => {});
 
       // ── 3. Verify licence ──────────────────────────────────────────────────

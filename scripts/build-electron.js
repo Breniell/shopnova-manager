@@ -30,7 +30,7 @@ const VITE_SCRIPT     = isAdmin ? 'electron:build:admin' : 'electron:build:clien
 const EB_CONFIG       = isAdmin
   ? 'electron-builder.admin.yml'
   : isRelease ? 'electron-builder.release.yml' : 'electron-builder.yml';
-// Must match each config's `productName` exactly — electron-builder's
+// Must match each config's `productName` exactly - electron-builder's
 // artifactName template is "${productName}-Setup-${version}.${ext}".
 const ARTIFACT_PREFIX = isAdmin ? 'Legwan Admin' : 'Legwan';
 

@@ -1,5 +1,5 @@
 /**
- * Preload script — runs in the renderer context with access to Node APIs.
+ * Preload script - runs in the renderer context with access to Node APIs.
  * Uses contextBridge to safely expose only what the renderer needs.
  * Never expose full Node.js capabilities to the renderer.
  */

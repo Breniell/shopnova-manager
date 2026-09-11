@@ -32,7 +32,7 @@ const OuvertureSessionPage = lazy(() => import("./pages/OuvertureSessionPage"));
 const InventairePage       = lazy(() => import("./pages/InventairePage"));
 const CreditPage           = lazy(() => import("./pages/CreditPage"));
 
-// Super-admin console — only bundled when VITE_ENABLE_SUPERADMIN=true.
+// Super-admin console - only bundled when VITE_ENABLE_SUPERADMIN=true.
 // Vite eliminates the import() branch at build time when the flag is absent.
 const SUPERADMIN_ENABLED = import.meta.env.VITE_ENABLE_SUPERADMIN === 'true';
 const SuperAdminPage = SUPERADMIN_ENABLED
@@ -80,7 +80,7 @@ const App = () => (
             <Route path="/rapports" element={<ProtectedRoute allowedRoles={['gérant']}><RapportsPage /></ProtectedRoute>} />
             <Route path="/parametres" element={<ProtectedRoute allowedRoles={['gérant']}><ParametresPage /></ProtectedRoute>} />
           </Route>
-          {/* Super-admin console — only mounted when VITE_ENABLE_SUPERADMIN=true */}
+          {/* Super-admin console - only mounted when VITE_ENABLE_SUPERADMIN=true */}
           {SuperAdminPage && <Route path="/superadmin" element={<SuperAdminPage />} />}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

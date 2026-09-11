@@ -1,5 +1,5 @@
 /**
- * OuvertureSessionPage — démarrage d'une nouvelle session de caisse.
+ * OuvertureSessionPage - démarrage d'une nouvelle session de caisse.
  *
  * Flux UX :
  *   • Si l'utilisateur a déjà une session ouverte (recovery, refresh page),
@@ -105,7 +105,7 @@ const OuvertureSessionPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Dernière session — suggestion */}
+          {/* Dernière session - suggestion */}
           {lastSession && (
             <div className="mb-4 p-3 rounded-lg bg-muted/40 text-xs space-y-1">
               <div className="flex items-center gap-1.5 text-muted-foreground">

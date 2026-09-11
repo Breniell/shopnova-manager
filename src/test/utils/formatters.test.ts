@@ -10,7 +10,7 @@ function setLang(lang: 'fr' | 'en' | 'ar' | 'ja' | 'zh') {
 
 afterEach(() => setLang('fr'));
 
-describe('formatters — locale-aware dates', () => {
+describe('formatters - locale-aware dates', () => {
   it('fr: formatDate formats as DD/MM/YYYY', () => {
     setLang('fr');
     expect(formatDate(REF_DATE)).toBe('15/01/2024');
@@ -35,7 +35,7 @@ describe('formatters — locale-aware dates', () => {
   });
 });
 
-describe('formatters — locale-aware numbers', () => {
+describe('formatters - locale-aware numbers', () => {
   it('always appends FCFA regardless of locale', () => {
     for (const lang of ['fr', 'en', 'ar', 'ja'] as const) {
       setLang(lang);

@@ -25,7 +25,7 @@ beforeEach(() => {
   useStockStore.setState({ movements: [] });
 });
 
-describe('useStockStore — atomic manual stock changes', () => {
+describe('useStockStore - atomic manual stock changes', () => {
   it('updates product and immutable movement from the same operation', () => {
     const movement = useStockStore.getState().commitStockChange(entry);
 

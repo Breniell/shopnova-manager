@@ -1,15 +1,15 @@
 /**
- * Pure state machine for the licence gate — no React, no I/O, fully testable.
+ * Pure state machine for the licence gate - no React, no I/O, fully testable.
  *
  * States visible in the UI:
- *   'checking'  — async check in progress (brief spinner)
- *   'valid'     — active licence, within validity window
- *   'trial'     — no licence, within the 30-day free trial
- *   'grace'     — licence expired < GRACE_DAYS ago (app still usable)
- *   'expired'   — licence expired >= GRACE_DAYS ago → blocked
- *   'missing'   — no licence AND trial has expired → blocked
- *   'invalid'   — bad signature / wrong boutique → blocked
- *   'revoked'   — explicitly revoked in Firestore → blocked
+ *   'checking'  - async check in progress (brief spinner)
+ *   'valid'     - active licence, within validity window
+ *   'trial'     - no licence, within the 30-day free trial
+ *   'grace'     - licence expired < GRACE_DAYS ago (app still usable)
+ *   'expired'   - licence expired >= GRACE_DAYS ago → blocked
+ *   'missing'   - no licence AND trial has expired → blocked
+ *   'invalid'   - bad signature / wrong boutique → blocked
+ *   'revoked'   - explicitly revoked in Firestore → blocked
  */
 import type { LicenseVerifyResult } from './types';
 
@@ -43,14 +43,14 @@ export function computeGateStatus(opts: GateInput): GateStatus {
   if (revoked) return 'revoked';
 
   if (!licenseResult) {
-    // No licence string at all — check trial window.
+    // No licence string at all - check trial window.
     const trialEnd = installDate + TRIAL_DAYS * DAY_MS;
     return now < trialEnd ? 'trial' : 'missing';
   }
 
   if (licenseResult.valid) return 'valid';
 
-  // Licence present but invalid — classify the reason.
+  // Licence present but invalid - classify the reason.
   switch (licenseResult.reason) {
     case 'expired': {
       const expiresAt  = licenseResult.payload?.expiresAt ?? 0;

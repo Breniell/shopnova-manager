@@ -1,5 +1,5 @@
 /**
- * CreditPage — Gestion des créances et règlements crédit.
+ * CreditPage - Gestion des créances et règlements crédit.
  *
  * 3 onglets :
  *   1. Vue par client  : encours regroupés par client, expand pour voir les ventes
@@ -438,7 +438,7 @@ const CreditPage: React.FC = () => {
                         <td className="p-3 text-sm text-foreground">
                           {customer ? `${customer.prenom} ${customer.nom}` : t('credit.deletedClient')}
                         </td>
-                        <td className="p-3 text-sm text-muted-foreground">{sale?.saleNumber ?? '—'}</td>
+                        <td className="p-3 text-sm text-muted-foreground">{sale?.saleNumber ?? '-'}</td>
                         <td className="p-3 text-sm text-right text-secondary font-medium tabular-nums">{formatFCFA(getPaymentSignedAmount(p))}</td>
                         <td className="p-3 text-sm text-muted-foreground">
                           {p.channel === 'especes' ? t('credit.cashChannel') : `📱 ${p.mobileOperator?.toUpperCase() ?? 'Mobile'}`}

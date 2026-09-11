@@ -1,5 +1,5 @@
 /**
- * src/lib/pricing.ts — Fonctions pures pour le prix négociable.
+ * src/lib/pricing.ts - Fonctions pures pour le prix négociable.
  *
  * Architecture :
  *   • Toutes les fonctions sont stateless et testables en isolation

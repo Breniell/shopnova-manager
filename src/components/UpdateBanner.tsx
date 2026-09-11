@@ -1,5 +1,5 @@
 /**
- * UpdateBanner — Bandeau de mise à jour automatique
+ * UpdateBanner - Bandeau de mise à jour automatique
  *
  * Cycle de vie :
  *   1. idle         → rien d'affiché
@@ -26,7 +26,7 @@ export const UpdateBanner: React.FC = () => {
 
   useEffect(() => {
     const api = window.legwan;
-    if (!api?.isElectron) return; // Web / dev browser — no-op
+    if (!api?.isElectron) return; // Web / dev browser - no-op
 
     const unsubscribers = [api.onUpdateAvailable?.((info) => {
       setState({ phase: 'available', version: info.version });

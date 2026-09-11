@@ -5,7 +5,7 @@ beforeEach(() => {
   usePaymentStore.setState({ payments: [] });
 });
 
-describe('usePaymentStore — initial state', () => {
+describe('usePaymentStore - initial state', () => {
   it('starts with an empty list', () => {
     expect(usePaymentStore.getState().payments).toHaveLength(0);
   });
@@ -23,7 +23,7 @@ describe('usePaymentStore — initial state', () => {
   });
 });
 
-describe('usePaymentStore — addPayment', () => {
+describe('usePaymentStore - addPayment', () => {
   it('creates a Payment with an id', () => {
     const created = usePaymentStore.getState().addPayment({
       saleId: 's1', customerId: 'c1',
@@ -91,7 +91,7 @@ describe('usePaymentStore — addPayment', () => {
   });
 });
 
-describe('usePaymentStore — immutable reversal', () => {
+describe('usePaymentStore - immutable reversal', () => {
   it('keeps the original and appends a reversal operation', () => {
     const p = usePaymentStore.getState().addPayment({
       saleId: 's1', customerId: 'c1', date: new Date(),
@@ -127,7 +127,7 @@ describe('usePaymentStore — immutable reversal', () => {
   });
 });
 
-describe('usePaymentStore — getPaymentsForSale', () => {
+describe('usePaymentStore - getPaymentsForSale', () => {
   const seed = () => {
     usePaymentStore.getState().addPayment({
       saleId: 's1', customerId: 'c1', date: new Date(),
@@ -162,7 +162,7 @@ describe('usePaymentStore — getPaymentsForSale', () => {
   });
 });
 
-describe('usePaymentStore — getPaymentsForCustomer', () => {
+describe('usePaymentStore - getPaymentsForCustomer', () => {
   const seed = () => {
     usePaymentStore.getState().addPayment({
       saleId: 's1', customerId: 'c1', date: new Date(),
@@ -189,7 +189,7 @@ describe('usePaymentStore — getPaymentsForCustomer', () => {
   });
 });
 
-describe('usePaymentStore — getPaymentsInRange', () => {
+describe('usePaymentStore - getPaymentsInRange', () => {
   it('returns only payments within the date range (inclusive)', () => {
     const inside = new Date('2026-05-10T10:00:00Z');
     const before = new Date('2026-05-05T10:00:00Z');

@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Camera } from 'lucide-react';
 import { useTranslation } from '@/i18n';
 
-// Native BarcodeDetector (Chrome 83+, Electron 13+) — TypeScript declaration
+// Native BarcodeDetector (Chrome 83+, Electron 13+) - TypeScript declaration
 interface NativeBarcodeDetector {
   detect(source: ImageBitmapSource): Promise<Array<{ rawValue: string }>>;
 }

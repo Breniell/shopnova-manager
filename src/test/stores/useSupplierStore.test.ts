@@ -11,7 +11,7 @@ beforeEach(() => {
   useSupplierStore.setState({ suppliers: [] });
 });
 
-describe('useSupplierStore — initial state', () => {
+describe('useSupplierStore - initial state', () => {
   it('starts with an empty suppliers list', () => {
     expect(useSupplierStore.getState().suppliers).toHaveLength(0);
   });
@@ -28,7 +28,7 @@ describe('useSupplierStore — initial state', () => {
   });
 });
 
-describe('useSupplierStore — addSupplier', () => {
+describe('useSupplierStore - addSupplier', () => {
   it('adds a new supplier', () => {
     const before = useSupplierStore.getState().suppliers.length;
     useSupplierStore.getState().addSupplier({
@@ -61,7 +61,7 @@ describe('useSupplierStore — addSupplier', () => {
   });
 });
 
-describe('useSupplierStore — updateSupplier', () => {
+describe('useSupplierStore - updateSupplier', () => {
   beforeEach(() => {
     useSupplierStore.getState()._setSuppliers([...SEED_SUPPLIERS]);
   });
@@ -90,7 +90,7 @@ describe('useSupplierStore — updateSupplier', () => {
   });
 });
 
-describe('useSupplierStore — deleteSupplier', () => {
+describe('useSupplierStore - deleteSupplier', () => {
   beforeEach(() => {
     useSupplierStore.getState()._setSuppliers([...SEED_SUPPLIERS]);
   });

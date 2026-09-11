@@ -1,5 +1,5 @@
 /**
- * PriceEditor — Modal pour négocier le prix unitaire d'une ligne du panier.
+ * PriceEditor - Modal pour négocier le prix unitaire d'une ligne du panier.
  *
  * Fonctionnement :
  *   1. L'utilisateur saisit un nouveau prix

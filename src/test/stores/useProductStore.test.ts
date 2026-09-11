@@ -18,7 +18,7 @@ beforeEach(() => {
   });
 });
 
-describe('useProductStore — initial state', () => {
+describe('useProductStore - initial state', () => {
   it('starts with seed products', () => {
     expect(useProductStore.getState().products).toHaveLength(3);
   });
@@ -35,7 +35,7 @@ describe('useProductStore — initial state', () => {
   });
 });
 
-describe('useProductStore — addProduct', () => {
+describe('useProductStore - addProduct', () => {
   it('adds a new product', () => {
     const before = useProductStore.getState().products.length;
     useProductStore.getState().addProduct({
@@ -67,7 +67,7 @@ describe('useProductStore — addProduct', () => {
   });
 });
 
-describe('useProductStore — updateProduct', () => {
+describe('useProductStore - updateProduct', () => {
   it('updates specific fields of a product', () => {
     const { updateProduct, products } = useProductStore.getState();
     const target = products[0];
@@ -87,7 +87,7 @@ describe('useProductStore — updateProduct', () => {
   });
 });
 
-describe('useProductStore — deleteProduct', () => {
+describe('useProductStore - deleteProduct', () => {
   it('removes the product from the list', () => {
     const { deleteProduct, products } = useProductStore.getState();
     const target = products[0];
@@ -108,7 +108,7 @@ describe('useProductStore — deleteProduct', () => {
   });
 });
 
-describe('useProductStore — getProductByBarcode', () => {
+describe('useProductStore - getProductByBarcode', () => {
   it('returns the product with the matching barcode', () => {
     const { getProductByBarcode, products } = useProductStore.getState();
     const target = products[0];
@@ -123,7 +123,7 @@ describe('useProductStore — getProductByBarcode', () => {
 });
 
 // ─── updateProduct ne persiste jamais le champ stock ──────────────────────────
-describe('useProductStore — updateProduct never persists stock', () => {
+describe('useProductStore - updateProduct never persists stock', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('calls fsUpdateProductFields without a stock field', () => {

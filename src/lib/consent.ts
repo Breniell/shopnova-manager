@@ -1,5 +1,5 @@
 /**
- * src/lib/consent.ts — Gestion des consentements explicites de l'utilisateur.
+ * src/lib/consent.ts - Gestion des consentements explicites de l'utilisateur.
  *
  * Séparé de l'acceptation globale de la politique : certains traitements
  * (comme l'envoi de la position GPS de la boutique à la plateforme de l'éditeur)

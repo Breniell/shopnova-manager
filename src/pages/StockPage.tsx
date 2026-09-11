@@ -271,7 +271,7 @@ const StockPage: React.FC = () => {
                       <td className="p-3 money text-right text-muted-foreground hidden md:table-cell">{m.stockBefore}</td>
                       <td className="p-3 text-sm text-right text-foreground tabular-nums hidden md:table-cell">{m.stockAfter}</td>
                       <td className="p-3 text-sm text-muted-foreground hidden sm:table-cell">{m.userName}</td>
-                      <td className="p-3 text-sm text-muted-foreground hidden lg:table-cell">{m.supplier || m.notes || '—'}</td>
+                      <td className="p-3 text-sm text-muted-foreground hidden lg:table-cell">{m.supplier || m.notes || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -436,7 +436,7 @@ const StockPage: React.FC = () => {
                 >
                   <option value="">{t('stock.selectSupplier')}</option>
                   {suppliersWithEmail.map(s => (
-                    <option key={s.id} value={s.id}>{s.nom} — {s.email}</option>
+                    <option key={s.id} value={s.id}>{s.nom} - {s.email}</option>
                   ))}
                 </select>
               )}

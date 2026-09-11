@@ -1,5 +1,5 @@
 /**
- * Interactive map picker — lets the merchant drag a marker to their exact
+ * Interactive map picker - lets the merchant drag a marker to their exact
  * shop location, with optional neighbourhood / landmark text fields.
  *
  * Uses react-leaflet (already bundled for the super-admin map).
@@ -19,7 +19,7 @@ interface Props {
   onCancel: () => void;
 }
 
-// Yaoundé — default centre when no position is known
+// Yaoundé - default centre when no position is known
 const DEFAULT_CENTER: [number, number] = [3.87, 11.52];
 const ZOOM_COUNTRY   = 6;
 const ZOOM_STREET    = 15;
@@ -46,7 +46,7 @@ function createPickerIcon(): L.DivIcon {
   });
 }
 
-// Centers the map on mount — must be a child of MapContainer
+// Centers the map on mount - must be a child of MapContainer
 function SetView({ lat, lng, zoom }: { lat: number; lng: number; zoom: number }) {
   const map = useMap();
   React.useEffect(() => { map.setView([lat, lng], zoom); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -66,7 +66,7 @@ const LocationPicker: React.FC<Props> = ({ initialLocation, onConfirm, onCancel 
 
   const initialZoom = hasInitial ? ZOOM_STREET : ZOOM_COUNTRY;
 
-  // Stable icon instance — recreating it on every render causes Leaflet warnings
+  // Stable icon instance - recreating it on every render causes Leaflet warnings
   const [pickerIcon] = useState(() => createPickerIcon());
 
   return (

@@ -1,5 +1,5 @@
 /**
- * CashOutModal — Saisie d'une sortie de caisse pendant la session.
+ * CashOutModal - Saisie d'une sortie de caisse pendant la session.
  *
  * Sorties typiques :
  *   • Avance de salaire au caissier

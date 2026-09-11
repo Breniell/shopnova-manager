@@ -42,7 +42,7 @@ export const useCaisseStore = create<CaisseState>()((set) => ({
     set(state => ({ clotures: [newCloture, ...state.clotures] }));
     fsSaveCloture(getBoutiqueId(), newCloture).catch((err) => {
       enqueue('cloture', newCloture);
-      toast.error("Échec d'enregistrement — nouvelle tentative automatique");
+      toast.error("Échec d'enregistrement - nouvelle tentative automatique");
       console.warn('[outbox] cloture enqueued:', err);
     });
   },

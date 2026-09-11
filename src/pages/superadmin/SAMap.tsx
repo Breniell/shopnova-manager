@@ -3,8 +3,8 @@
  *
  * Chaque boutique apparaît dès qu'elle a une localisation (IP ou adresse).
  * Marqueurs différenciés :
- *   — Rond plein  : localisation précise (GPS)
- *   — Rond cerclé : localisation approximative (IP, niveau ville)
+ *   - Rond plein  : localisation précise (GPS)
+ *   - Rond cerclé : localisation approximative (IP, niveau ville)
  * Cluster, zones d'activité (taille = statut), légende complète.
  * Aucune donnée financière n'est affichée.
  */
@@ -16,11 +16,11 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 // Defensive namespace import: under Vite's dev pre-bundling, this package's
-// default export comes back double-wrapped — `ReactLeafletCluster.default`
+// default export comes back double-wrapped - `ReactLeafletCluster.default`
 // is itself `{ default: <the real forwardRef component> }`, not the
 // component. Passing either the raw namespace or the once-unwrapped object
 // to React crashes with "Element type is invalid... got: object". Unwrap
-// until we reach something that isn't a plain `{ default: ... }` wrapper —
+// until we reach something that isn't a plain `{ default: ... }` wrapper -
 // verified against the actual dev-server module shape (confirms the real
 // component carries `$$typeof: Symbol(react.forward_ref)`).
 function unwrapDefault(mod: unknown): unknown {
@@ -46,7 +46,7 @@ function toDate(v: unknown): Date {
 }
 
 function fmtDate(d: Date) {
-  return d.getTime() === 0 ? '—' : d.toLocaleString(getCurrentBcp47(), { dateStyle: 'medium', timeStyle: 'short' });
+  return d.getTime() === 0 ? '-' : d.toLocaleString(getCurrentBcp47(), { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 // ─── Marker factories ─────────────────────────────────────────────────────────
@@ -276,7 +276,7 @@ export const SAMap: React.FC<Props> = ({ boutiques }) => {
                           </div>
                           <div>
                             <p className="font-bold text-sm text-gray-900">{b.nom}</p>
-                            <p className="text-xs text-gray-500">{b.adresse || b.location?.city || '—'}</p>
+                            <p className="text-xs text-gray-500">{b.adresse || b.location?.city || '-'}</p>
                           </div>
                         </div>
 
@@ -289,7 +289,7 @@ export const SAMap: React.FC<Props> = ({ boutiques }) => {
                         ) : isApprox ? (
                           <div className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full mb-2 bg-amber-50 text-amber-700">
                             <Wifi className="w-2.5 h-2.5" />
-                            {`${t('superadmin.mapApproxBadge')}${b.location?.city ? ` — ${b.location.city}` : ''}`}
+                            {`${t('superadmin.mapApproxBadge')}${b.location?.city ? ` - ${b.location.city}` : ''}`}
                           </div>
                         ) : (
                           <div className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full mb-2 bg-blue-50 text-blue-700">
@@ -315,15 +315,15 @@ export const SAMap: React.FC<Props> = ({ boutiques }) => {
                         <div className="space-y-1 text-xs text-gray-700 border-t border-gray-100 pt-2">
                           <div className="flex justify-between">
                             <span className="text-gray-500">{t('superadmin.mapHealthActive')}</span>
-                            <span className="font-semibold">{b.health?.isActive ? '✓' : '—'}</span>
+                            <span className="font-semibold">{b.health?.isActive ? '✓' : '-'}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-500">{t('superadmin.mapHealthUsers')}</span>
-                            <span>{b.health?.usersCount ?? '—'}</span>
+                            <span>{b.health?.usersCount ?? '-'}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-500">{t('superadmin.mapHealthLastActivity')}</span>
-                            <span>{b.health?.lastActivityAt ? fmtDate(new Date(b.health.lastActivityAt)) : '—'}</span>
+                            <span>{b.health?.lastActivityAt ? fmtDate(new Date(b.health.lastActivityAt)) : '-'}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-500">{t('superadmin.detailLastSeen')}</span>
