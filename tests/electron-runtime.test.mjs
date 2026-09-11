@@ -161,6 +161,32 @@ test('automatic backup accepts the version the app actually emits', () => {
   }
 });
 
+test('every packaging config unpacks node_modules beside the ESM runtime', () => {
+  // Regression: 1.7.0 through 1.7.3 unpacked only electron/**/*. launcher.cjs
+  // loads main.mjs from app.asar.unpacked/electron/, so Node resolved its bare
+  // imports by walking the real directories above that file and never looked
+  // inside the app.asar archive, where electron-updater actually sat. Every
+  // launch logged ERR_MODULE_NOT_FOUND and auto-update was dead in all four
+  // releases. scripts/verify-release.mjs proves reachability on a real build;
+  // this catches the config regression without waiting for one.
+  const root = path.join(import.meta.dirname, '..');
+  for (const config of ['electron-builder.yml', 'electron-builder.admin.yml']) {
+    const source = fs.readFileSync(path.join(root, config), 'utf8');
+    const block = source.match(/^asarUnpack:[ \t]*\r?\n((?:[ \t]+.*\r?\n|\r?\n)*)/m)?.[1];
+    assert.ok(block, `${config} declares no asarUnpack block`);
+    const patterns = [...block.matchAll(/^\s*-\s*(\S+)\s*$/gm)].map(match => match[1]);
+    assert.ok(
+      patterns.includes('electron/**/*'),
+      `${config} must unpack the ESM runtime, got ${patterns.join(', ')}`,
+    );
+    assert.ok(
+      patterns.includes('node_modules/**/*'),
+      `${config} unpacks the ESM runtime but not node_modules, so its bare `
+        + `imports cannot resolve at runtime; got ${patterns.join(', ')}`,
+    );
+  }
+});
+
 test('automatic backup rejects an unrelated JSON document', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'legwan-backup-invalid-'));
   assert.throws(() => saveAutomaticBackup({

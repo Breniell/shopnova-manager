@@ -21,6 +21,20 @@ afterPack: scripts/after-pack-rcedit.cjs
 asar: true
 asarUnpack:
   - electron/**/*
+  # node_modules MUST be unpacked alongside electron/. launcher.cjs loads
+  # main.mjs from resources/app.asar.unpacked/electron/, so Node resolves that
+  # file's bare imports by walking up from there: app.asar.unpacked/electron/
+  # node_modules, app.asar.unpacked/node_modules, resources/node_modules...
+  # It never looks inside the app.asar archive, which is a file, not a
+  # directory. With electron-updater packed only inside app.asar, the import in
+  # main.mjs threw at every launch in 1.7.0-1.7.3:
+  #   ERR_MODULE_NOT_FOUND: Cannot find package 'electron-updater' imported
+  #   from ...\app.asar.unpacked\electron\main.mjs
+  # Listing it in app.asar was necessary but not sufficient - it also has to be
+  # reachable from the directory main.mjs actually runs in. package.json
+  # declares exactly one runtime dependency, so this unpacks only
+  # electron-updater's production closure.
+  - node_modules/**/*
 
 # ── Files to include in the app package ────────────────────────────────────────
 directories:

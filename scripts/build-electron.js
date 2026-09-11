@@ -247,7 +247,12 @@ await prepareWindowsPackagingWorkaround();
 const packageJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const expectedArtifact = path.join(ROOT, 'release', `${ARTIFACT_PREFIX}-Setup-${packageJson.version}.exe`);
 const buildStartedAt = new Date().toISOString();
-for (const generatedPath of [expectedArtifact, `${expectedArtifact}.blockmap`, path.join(ROOT, 'release', 'latest.yml')]) {
+// Never sweep latest.yml on an admin build: that variant has `publish: null` and
+// regenerates nothing, so deleting it destroys the CLIENT update manifest built
+// moments earlier and the next client release ships without a channel file.
+const staleOutputs = [expectedArtifact, `${expectedArtifact}.blockmap`];
+if (!isAdmin) staleOutputs.push(path.join(ROOT, 'release', 'latest.yml'));
+for (const generatedPath of staleOutputs) {
   fs.rmSync(generatedPath, { force: true });
 }
 
@@ -265,6 +270,6 @@ run(`npx electron-builder --win nsis --x64 --config ${EB_CONFIG} --publish never
   ELECTRON_BUILDER_EXTRA_ARGS: '--ignoreMissingFiles',
 });
 
-run(`node scripts/verify-release.mjs --artifact="${expectedArtifact}" --built-after="${buildStartedAt}"${isRelease ? ' --require-signature' : ''}`);
+run(`node scripts/verify-release.mjs --artifact="${expectedArtifact}" --built-after="${buildStartedAt}"${isRelease ? ' --require-signature' : ''}${isAdmin ? ' --no-update-channel' : ''}`);
 
 console.log(`\nDone. Installeur ${ARTIFACT_PREFIX}-Setup-*.exe disponible dans release/.`);

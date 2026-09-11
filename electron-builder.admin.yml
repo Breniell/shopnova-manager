@@ -14,6 +14,10 @@ afterPack: scripts/after-pack-rcedit.cjs
 asar: true
 asarUnpack:
   - electron/**/*
+  # Voir electron-builder.yml : indispensable. main.mjs s'execute depuis
+  # app.asar.unpacked/electron/, donc Node cherche ses imports dans les
+  # node_modules voisins et jamais a l'interieur de l'archive app.asar.
+  - node_modules/**/*
 
 directories:
   output: release
