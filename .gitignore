@@ -53,6 +53,10 @@ demo-results/
 # Build / local backups
 build/
 release/
+# Alternate electron-builder output dirs (release-client-172, release-admin-172...).
+# Needed when the rename into release/win-unpacked hits EPERM, and easy to sweep
+# into a commit by accident with `git add -A` - a 94 MB installer nearly went in.
+release-*/
 screenshots/
 __bb_backup__/
 demo-report/

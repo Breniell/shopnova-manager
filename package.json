@@ -34,7 +34,7 @@
     "release:preflight": "node scripts/release-preflight.mjs --release",
     "release:verify": "node scripts/verify-release.mjs --require-signature",
     "release:client": "node scripts/build-electron.js --release",
-    "test:electron-runtime": "node --test tests/electron-runtime.test.mjs",
+    "test:electron-runtime": "node --test tests/electron-runtime.test.mjs tests/routing-invariants.test.mjs",
     "smoke:offline": "node scripts/smoke-electron.mjs",
     "smoke:offline:packaged": "node scripts/smoke-electron.mjs --packaged",
     "staff:claims": "node scripts/set-staff-claims.mjs",

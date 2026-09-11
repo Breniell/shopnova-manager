@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useProductStore, Product } from '@/stores/useProductStore';
 import { useSaleStore, PaymentMode, MobileOperator } from '@/stores/useSaleStore';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -29,6 +30,7 @@ import { toast } from 'sonner';
 import type { Sale } from '@/stores/useSaleStore';
 
 const CaissePage: React.FC = () => {
+  const navigate = useNavigate();
   const { products } = useProductStore();
   const { cart, discount, addToCart, removeFromCart, updateCartQuantity, clearCart, setDiscount, getCartSubtotal, getCartTotal, completeSale, applyPriceOverride } = useSaleStore();
   const { currentUser } = useAuthStore();
@@ -655,7 +657,7 @@ const CaissePage: React.FC = () => {
             {t('caisse.noSessionDesc')}
           </p>
           <button
-            onClick={() => window.location.href = '/ouverture-session'}
+            onClick={() => navigate('/ouverture-session')}
             className="nova-btn-primary px-5 py-2.5 inline-flex items-center gap-2"
           >
             {t('caisse.openSession')}
