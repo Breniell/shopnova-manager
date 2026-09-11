@@ -55,6 +55,32 @@ export function requireEmulatorMode(page: Page): () => void {
   };
 }
 
+/**
+ * Simulate "no internet" by blocking Firebase, and Firebase only.
+ *
+ * context.setOffline(true) is too blunt here. In dev the app's routes are
+ * React.lazy chunks fetched from the Vite server on navigation, so cutting all
+ * traffic also cuts the module server and the app dies with "Failed to fetch
+ * dynamically imported module" - an artefact of the harness that does not exist
+ * in the packaged app, where every chunk is already on disk.
+ *
+ * Blocking the emulator endpoints reproduces the condition that actually
+ * matters: Firestore and Auth unreachable, which is precisely what the licence
+ * clock probe and the licence save hit when a shop has no connection.
+ */
+export async function cutFirebaseNetwork(page: Page): Promise<void> {
+  await page.route('**/*', route => {
+    const url = route.request().url();
+    const blocked = url.includes('127.0.0.1:8181')
+      || url.includes('127.0.0.1:9099')
+      || url.includes('localhost:8181')
+      || url.includes('localhost:9099')
+      || url.includes('googleapis.com')
+      || url.includes('firebaseio.com');
+    return blocked ? route.abort('internetdisconnected') : route.continue();
+  });
+}
+
 interface FirestoreDocument {
   name: string;
   fields?: Record<string, Record<string, unknown>>;

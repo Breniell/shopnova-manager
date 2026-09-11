@@ -146,28 +146,43 @@ export interface LicenseFirestoreDoc {
   revoked?:   boolean;
 }
 
-/** Upsert the licence in Firestore. Idempotent by licenseId. */
+/**
+ * Mirror the licence into Firestore. Idempotent by licenseId, and best effort.
+ *
+ * The write is deliberately NOT awaited. Firestore resolves a write promise only
+ * once the server acknowledges it; offline, with persistence enabled, the write
+ * is queued locally and the promise stays pending indefinitely - it never
+ * rejects, so the try/catch that used to wrap it could not help a caller that
+ * awaited this function.
+ *
+ * That is what froze licence activation: useLicenseActivation stored the licence
+ * locally, then awaited this call, so setSuccess(true) never ran and a shopkeeper
+ * activating without internet sat on "Vérification…" forever - despite having a
+ * perfectly valid licence already saved on their machine. Covered by
+ * tests/e2e-flows/license-offline.spec.ts.
+ *
+ * The local copy is the source of truth for the licence gate; this mirror only
+ * helps a reinstall recover.
+ */
 export async function fsSaveLicense(
   bid: string,
   licenseStr: string,
   payload: LicensePayload,
 ): Promise<void> {
   if (!isFirebaseConfigured) return;
-  try {
-    await setDoc(
-      doc(db, licPath(bid)),
-      {
-        licenseStr,
-        licenseId: payload.licenseId,
-        plan:      payload.plan,
-        issuedAt:  payload.issuedAt,
-        expiresAt: payload.expiresAt,
-        revoked:   false,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
-  } catch { /* offline - local is enough */ }
+  void setDoc(
+    doc(db, licPath(bid)),
+    {
+      licenseStr,
+      licenseId: payload.licenseId,
+      plan:      payload.plan,
+      issuedAt:  payload.issuedAt,
+      expiresAt: payload.expiresAt,
+      revoked:   false,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  ).catch(() => { /* offline, or rules refused it - the local copy is enough */ });
 }
 
 /** Load the licence from Firestore. Returns null if not found or offline. */
