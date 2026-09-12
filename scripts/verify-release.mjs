@@ -180,7 +180,16 @@ if (errors.length) {
 }
 
 const checksum = crypto.createHash('sha256').update(fs.readFileSync(artifact)).digest('hex');
-const checksumPath = path.join(releaseDir, 'SHA256SUMS.txt');
+// Per-variant filename: both variants write into the same release/ directory, so
+// a single SHA256SUMS.txt meant an admin build silently replaced the client's
+// checksums with its own - and the client's is the one published for users to
+// verify against, which matters more than usual while the installers are
+// unsigned and antivirus software asks people to trust them by hand. Same class
+// of collision as the latest.yml one this script already guards.
+const checksumPath = path.join(
+  releaseDir,
+  hasUpdateChannel ? 'SHA256SUMS.txt' : 'SHA256SUMS-admin.txt',
+);
 fs.writeFileSync(checksumPath, `${checksum}  ${path.basename(artifact)}\n`, 'utf8');
 console.log(`Release verified: ${path.basename(artifact)}`);
 console.log(`SHA-256: ${checksum}`);
