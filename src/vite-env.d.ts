@@ -22,6 +22,8 @@ interface Window {
     getUpdateState?: () => Promise<
       { channel: 'update-available' | 'update-downloaded'; payload: { version: string } } | null
     >;
+    /** Ask the main process to check again now; throttled there. */
+    requestUpdateCheck?: () => Promise<boolean>;
     onUpdateAvailable?: (cb: (info: { version: string }) => void) => () => void;
     onUpdateNotAvailable?: (cb: () => void) => () => void;
     onUpdateDownloadProgress?: (cb: (p: { percent: number }) => void) => () => void;

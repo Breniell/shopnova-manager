@@ -13,7 +13,13 @@ export default defineConfig({
   reporter: [['list']],
   outputDir: 'demo-results/print',
   use: {
-    baseURL: 'http://localhost:8099',
+    // Its own port, not the 8099 the flows suite uses. Sharing one meant that
+    // running the suites back to back raced: Playwright tears down the server it
+    // started for flows, print sees the port still answering, reuses it through
+    // reuseExistingServer, and the server then dies mid-test. Passing alone and
+    // failing in sequence is exactly the kind of flake that erodes trust in a
+    // suite, so the two are simply kept apart.
+    baseURL: 'http://localhost:8098',
     headless: true,
     locale: 'fr-FR',
     timezoneId: 'Africa/Douala',
@@ -28,8 +34,11 @@ export default defineConfig({
   // Firebase refuses to resolve against production. So this suite cannot touch
   // the live shop database even by accident.
   webServer: {
-    command: 'npm run dev:emulator',
-    url: 'http://localhost:8099',
+    // Emulator mode still, so the project id is demo-legwan and this suite can
+    // never reach the live database - the emulators themselves need not be up,
+    // since no Firebase call happens on the receipt path.
+    command: 'npx vite --mode emulator --port 8098 --strictPort',
+    url: 'http://localhost:8098',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

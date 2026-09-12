@@ -57,6 +57,16 @@ contextBridge.exposeInMainWorld('legwan', {
    */
   getUpdateState: () => ipcRenderer.invoke('update-get-state'),
 
+  /**
+   * Ask for a fresh check, throttled in the main process.
+   *
+   * Used when the banner mounts and there is nothing pending: the register logs
+   * out after 15 minutes idle while the automatic re-check is every 30, so an
+   * unattended machine is almost never logged in when one lands. Every login
+   * becomes a chance to find out instead.
+   */
+  requestUpdateCheck: () => ipcRenderer.invoke('update-recheck'),
+
   /** Called when a new version is available on the server */
   onUpdateAvailable: (cb) => subscribe('update-available', cb),
 

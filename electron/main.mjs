@@ -322,6 +322,30 @@ ipcMain.handle('update-get-state', (event) => {
   return lastUpdaterState;
 });
 
+let lastUpdateCheckAt = 0;
+const RECHECK_MIN_INTERVAL_MS = 2 * 60 * 1000;
+
+/**
+ * Run a check on demand, throttled.
+ *
+ * Retaining the last result is not enough on its own. The startup check happens
+ * five seconds in, and a shop that is not online yet at that moment produces no
+ * state to replay - then nothing else happens for thirty minutes. Meanwhile the
+ * register logs itself out after fifteen minutes of inactivity, so the banner is
+ * usually unmounted when that re-check finally lands. Those two intervals
+ * combined mean an idle machine could go all day without ever being told.
+ *
+ * Letting the banner ask for a fresh check as it mounts turns every login into
+ * an opportunity. The throttle keeps repeated logins from hammering GitHub.
+ */
+ipcMain.handle('update-recheck', (event) => {
+  if (!isTrustedIpcSender(event) || !autoUpdater) return false;
+  if (Date.now() - lastUpdateCheckAt < RECHECK_MIN_INTERVAL_MS) return false;
+  lastUpdateCheckAt = Date.now();
+  setupAutoUpdater();
+  return true;
+});
+
 function setupAutoUpdater() {
   if (!autoUpdater) return;
   if (!updaterConfigured) {

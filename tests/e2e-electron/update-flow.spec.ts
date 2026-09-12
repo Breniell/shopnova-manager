@@ -114,6 +114,44 @@ test('a banner that mounts after the check still learns about the update', async
   }
 });
 
+test('the renderer can ask for a fresh check, and is throttled if it insists', async () => {
+  // Retaining the last result is not enough by itself: if the startup check runs
+  // before the shop is online there is nothing to replay, and the automatic
+  // re-check is 30 minutes away while the register logs itself out after 15
+  // minutes idle. So the banner asks for a check as it mounts, making every
+  // login an opportunity - throttled so repeated logins do not hammer GitHub.
+  const server = await startUpdateServer({ version: FAKE_VERSION, installerPath: findInstaller() });
+  const session = await launchPackagedApp({ updateConfig: server.appUpdateYml });
+
+  try {
+    await expect.poll(() => server.requested.filter(p => p === '/latest.yml').length, {
+      timeout: 40_000,
+    }).toBeGreaterThan(0);
+    const afterStartup = server.requested.filter(p => p === '/latest.yml').length;
+
+    const accepted = await session.window.evaluate(async () => {
+      const api = (window as unknown as { legwan?: { requestUpdateCheck?: () => Promise<boolean> } }).legwan;
+      return api?.requestUpdateCheck ? await api.requestUpdateCheck() : 'API_MISSING';
+    });
+    expect(accepted, 'the renderer cannot ask for a check').not.toBe('API_MISSING');
+    expect(accepted, 'the requested check was refused').toBe(true);
+
+    await expect.poll(() => server.requested.filter(p => p === '/latest.yml').length, {
+      timeout: 30_000,
+    }).toBeGreaterThan(afterStartup);
+
+    // Asking again straight away must be refused rather than fetched again.
+    const secondAttempt = await session.window.evaluate(async () => {
+      const api = (window as unknown as { legwan?: { requestUpdateCheck?: () => Promise<boolean> } }).legwan;
+      return api!.requestUpdateCheck!();
+    });
+    expect(secondAttempt, 'the throttle let a second immediate check through').toBe(false);
+  } finally {
+    await session.close();
+    await server.close();
+  }
+});
+
 test('the renderer can start the download and the update verifies', async () => {
   test.setTimeout(240_000);
   const server = await startUpdateServer({ version: FAKE_VERSION, installerPath: findInstaller() });

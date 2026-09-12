@@ -32,7 +32,14 @@ export const UpdateBanner: React.FC = () => {
     // the user has logged in, so the event that matters has almost always been
     // and gone. Ask the main process what it already knows before listening.
     void api.getUpdateState?.().then((state) => {
-      if (!state) return;
+      if (!state) {
+        // Nothing pending: either the startup check found no update, or it ran
+        // before this machine was online. Ask again now. The register logs out
+        // after 15 minutes idle while the automatic re-check is every 30, so
+        // without this a shop could stay unaware for a very long time.
+        void api.requestUpdateCheck?.().catch(() => undefined);
+        return;
+      }
       setState(current => {
         // Never regress a state a live event has already advanced past.
         if (current.phase !== 'idle') return current;

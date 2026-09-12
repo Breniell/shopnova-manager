@@ -26,6 +26,7 @@ interface FakeBridge {
   fireDownloaded: Handler<{ version: string }>;
   startUpdateDownload: ReturnType<typeof vi.fn>;
   quitAndInstall: ReturnType<typeof vi.fn>;
+  requestUpdateCheck: ReturnType<typeof vi.fn>;
 }
 
 /** Stands in for the preload bridge that electron/preload.js exposes. */
@@ -39,6 +40,7 @@ function installFakeBridge({ isElectron = true, pendingState = null as UpdateSta
   const bridge = {
     isElectron,
     getUpdateState: () => Promise.resolve(pendingState),
+    requestUpdateCheck: vi.fn(() => Promise.resolve(true)),
     onUpdateAvailable: subscribe('available'),
     onUpdateDownloadProgress: subscribe('progress'),
     onUpdateDownloaded: subscribe('downloaded'),
@@ -54,6 +56,7 @@ function installFakeBridge({ isElectron = true, pendingState = null as UpdateSta
     fireDownloaded: payload => act(() => { (handlers.downloaded as Handler<typeof payload>)?.(payload); }),
     startUpdateDownload: bridge.startUpdateDownload,
     quitAndInstall: bridge.quitAndInstall,
+    requestUpdateCheck: bridge.requestUpdateCheck,
   };
 }
 
@@ -144,6 +147,26 @@ describe('UpdateBanner', () => {
     // A download finishing must not be undone by the older replayed state.
     bridge.fireDownloaded({ version: '99.0.0' });
     expect(screen.getByText('Mise à jour prête - v99.0.0')).toBeInTheDocument();
+  });
+
+  it('asks for a fresh check when nothing is pending', async () => {
+    // The register logs out after 15 minutes idle and the automatic re-check is
+    // every 30, so an unattended machine is almost never logged in when one
+    // lands. Each login has to be its own opportunity to find out.
+    const bridge = installFakeBridge({ pendingState: null });
+    render(<UpdateBanner />);
+
+    await vi.waitFor(() => expect(bridge.requestUpdateCheck).toHaveBeenCalledTimes(1));
+  });
+
+  it('does not re-check when an update is already waiting', async () => {
+    const bridge = installFakeBridge({
+      pendingState: { channel: 'update-available', payload: { version: '99.0.0' } },
+    });
+    render(<UpdateBanner />);
+    await screen.findByText('Mise à jour disponible - v99.0.0');
+
+    expect(bridge.requestUpdateCheck).not.toHaveBeenCalled();
   });
 
   it('stays silent outside Electron so the web build is unaffected', () => {
