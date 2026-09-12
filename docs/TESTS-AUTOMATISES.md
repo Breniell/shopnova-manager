@@ -86,6 +86,21 @@ deux affirmations différentes ; le harnais lit donc Firestore directement.
 Les règles de `firestore.rules` sont chargées par l'émulateur : ces parcours
 les exercent réellement, ce qui n'était possible nulle part ailleurs jusqu'ici.
 
+### Plusieurs postes de caisse
+
+`tests/e2e-flows/multi-poste.spec.ts` simule deux ordinateurs par deux
+contextes de navigateur isolés (chacun son stockage local, donc son code caisse
+et son cache hors-ligne) sur la même boutique. Il vérifie : l'ajout d'un poste
+par la récupération cloud, le partage des comptes, des codes caisse distincts,
+l'addition des ventes simultanées, **la réconciliation d'une vente faite
+hors-ligne pendant qu'un autre poste vend en ligne** (stock final 3 et non 4,
+donc aucune écriture écrasée), la rupture vue en temps réel sur l'autre poste,
+et l'unicité des numéros de vente.
+
+Il consigne aussi deux observations sans échouer : le compte gérant provisoire
+qu'une installation neuve oblige à créer disparaît bien après restauration,
+mais la boutique qu'il a créée reste orpheline dans le projet Firebase.
+
 ### Pourquoi la base réelle ne risque rien
 
 Trois protections indépendantes :

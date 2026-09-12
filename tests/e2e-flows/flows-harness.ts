@@ -195,3 +195,46 @@ export async function loginAs(page: Page, fullName: string, pin: string): Promis
 export async function goTo(page: Page, label: string): Promise<void> {
   await page.locator('nav a, aside a').filter({ hasText: label }).first().click();
 }
+
+/** Create a product through the Produits page, as a gérant would. */
+export async function createProduct(page: Page, product: {
+  nom: string; achat: string; vente: string; stock: string;
+}): Promise<void> {
+  await goTo(page, 'Produits');
+  await page.locator('button').filter({ hasText: /Ajouter un produit/i }).first().click();
+  const modal = page.locator('[class*="nova-card"]').filter({ has: page.locator('input') }).last();
+  await modal.locator('input[type="text"]').first().fill(product.nom);
+  const numbers = modal.locator('input[type="number"]');
+  await numbers.nth(0).fill(product.achat);
+  await numbers.nth(1).fill(product.vente);
+  await numbers.nth(2).fill(product.stock);
+  await modal.locator('button').filter({ hasText: /^(Ajouter|Enregistrer)/ }).last().click();
+  await expect(page.getByText(product.nom).first()).toBeVisible({ timeout: 30_000 });
+}
+
+/**
+ * Sell `quantity` units of one product for cash through the till, then close
+ * the receipt so the next sale starts from an empty cart.
+ */
+export async function sellForCash(page: Page, productName: string, quantity: number): Promise<void> {
+  await page.getByText(productName).first().click();
+  for (let i = 1; i < quantity; i++) {
+    await page.getByRole('button', { name: new RegExp(`Augmenter quantité de ${productName}`) }).first().click();
+  }
+  await page.getByPlaceholder(/Montant reçu/i).fill('1000000');
+  const validate = page.locator('button').filter({ hasText: /Valider la vente/i }).first();
+  await expect(validate).toBeEnabled();
+  await validate.click();
+  await expect(page.getByText(/Reçu\s*:|Reçu n/i).first()).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: /^Fermer$/ }).first().click();
+  await expect(page.getByText(/Panier vide/i).first()).toBeVisible({ timeout: 15_000 });
+}
+
+/** Stock of a product as stored in Firestore, or null if absent. */
+export async function readStoredStock(boutiqueId: string, productName: string): Promise<number | null> {
+  const products = await readCollection(`boutiques/${boutiqueId}/products`);
+  const match = products.find(p => p.fields?.nom?.stringValue === productName);
+  if (!match) return null;
+  const raw = match.fields?.stock?.integerValue ?? match.fields?.stock?.doubleValue;
+  return raw === undefined ? null : Number(raw);
+}
