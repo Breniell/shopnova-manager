@@ -172,14 +172,26 @@ export interface UpdateServer {
  * Serve a fake "newer release" over localhost so the full update flow - detect,
  * download, verify checksum - can run end to end without publishing anything to
  * the real GitHub repo, and therefore without pushing a bogus update at real
- * shopkeepers. `installerPath` is a genuine NSIS installer so the sha512 and
- * size electron-updater verifies are real.
+ * shopkeepers.
+ *
+ * The payload is synthetic on purpose. Serving the real installer's bytes over
+ * localhost taught Avast that this exact content arrives from an unknown HTTP
+ * source; it then autosandboxed and TERMINATED the genuine
+ * release\Legwan-Setup-1.7.7.exe when it was launched, logging
+ * "[Source: http://127.0.0.1:51973/Legwan-Setup-99.0.0.exe]". The test made the
+ * shipped artifact unrunnable on the build machine. electron-updater only
+ * verifies size and sha512 before emitting update-downloaded - both computed
+ * here from whatever is served - so random bytes prove the same chain without
+ * staking the real installer's reputation on it. They are also ~100MB lighter.
  */
 export async function startUpdateServer(options: {
   version: string;
-  installerPath: string;
+  /** Unused for the payload; kept so callers stay explicit about what they emulate. */
+  installerPath?: string;
+  /** Size of the synthetic payload. Small by default: nothing here needs bulk. */
+  payloadBytes?: number;
 }): Promise<UpdateServer> {
-  const installer = fs.readFileSync(options.installerPath);
+  const installer = crypto.randomBytes(options.payloadBytes ?? 512 * 1024);
   const sha512 = crypto.createHash('sha512').update(installer).digest('base64');
   const artifactName = `Legwan-Setup-${options.version}.exe`;
   const latestYml = [
