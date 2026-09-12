@@ -78,6 +78,42 @@ test('the app detects a newer release and tells the renderer about it', async ()
   }
 });
 
+test('a banner that mounts after the check still learns about the update', async () => {
+  // The bug this guards against: setupAutoUpdater fires 5s after the window is
+  // shown, but UpdateBanner lives inside AppLayout and therefore only mounts
+  // once the user has picked a profile and typed their PIN - always later than
+  // 5s. The event was sent once, with nobody listening, and dropped. A shopkeeper
+  // on 1.7.5 closed and reopened the app repeatedly and never saw a banner,
+  // because every launch lost the event the same way. The only second chance was
+  // the 30-minute re-check, and only if they happened to be logged in for it.
+  //
+  // So the main process must hold the last updater state and hand it to whoever
+  // asks, rather than shouting once into an empty room.
+  const server = await startUpdateServer({ version: FAKE_VERSION, installerPath: findInstaller() });
+  const session = await launchPackagedApp({ updateConfig: server.appUpdateYml });
+
+  try {
+    // Subscribe to nothing and simply wait out the check, standing in for a user
+    // still on the login screen.
+    await session.window.waitForTimeout(20_000);
+    expect(server.requested, 'the update check never ran').toContain('/latest.yml');
+
+    const state = await session.window.evaluate(async () => {
+      const api = (window as unknown as {
+        legwan?: { getUpdateState?: () => Promise<{ channel: string; payload: { version?: string } } | null> };
+      }).legwan;
+      return api?.getUpdateState ? await api.getUpdateState() : 'API_MISSING';
+    });
+
+    expect(state, 'the renderer has no way to ask for the current update state').not.toBe('API_MISSING');
+    expect(state, 'the update the main process already found was not retained').not.toBeNull();
+    expect((state as { payload: { version?: string } }).payload.version).toBe(FAKE_VERSION);
+  } finally {
+    await session.close();
+    await server.close();
+  }
+});
+
 test('the renderer can start the download and the update verifies', async () => {
   test.setTimeout(240_000);
   const server = await startUpdateServer({ version: FAKE_VERSION, installerPath: findInstaller() });

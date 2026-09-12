@@ -16,6 +16,10 @@ import { UpdateBanner } from '@/components/UpdateBanner';
 
 type Handler<T> = (payload: T) => void;
 
+type UpdateState =
+  | { channel: 'update-available' | 'update-downloaded'; payload: { version: string } }
+  | null;
+
 interface FakeBridge {
   fireAvailable: Handler<{ version: string }>;
   fireProgress: Handler<{ percent: number }>;
@@ -25,7 +29,7 @@ interface FakeBridge {
 }
 
 /** Stands in for the preload bridge that electron/preload.js exposes. */
-function installFakeBridge({ isElectron = true } = {}): FakeBridge {
+function installFakeBridge({ isElectron = true, pendingState = null as UpdateState } = {}): FakeBridge {
   const handlers: Record<string, Handler<never>> = {};
   const subscribe = (name: string) => (callback: Handler<never>) => {
     handlers[name] = callback;
@@ -34,6 +38,7 @@ function installFakeBridge({ isElectron = true } = {}): FakeBridge {
 
   const bridge = {
     isElectron,
+    getUpdateState: () => Promise.resolve(pendingState),
     onUpdateAvailable: subscribe('available'),
     onUpdateDownloadProgress: subscribe('progress'),
     onUpdateDownloaded: subscribe('downloaded'),
@@ -106,6 +111,39 @@ describe('UpdateBanner', () => {
     act(() => { screen.getByRole('button', { name: 'Plus tard' }).click(); });
 
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it('shows an update the check already found before this banner mounted', async () => {
+    // The banner sits behind the login screen, so by the time it mounts the
+    // five-second update check has long finished and its event is gone. Asking
+    // the main process on mount is the only way it can ever know.
+    installFakeBridge({
+      pendingState: { channel: 'update-available', payload: { version: '99.0.0' } },
+    });
+    render(<UpdateBanner />);
+
+    expect(await screen.findByText('Mise à jour disponible - v99.0.0')).toBeInTheDocument();
+  });
+
+  it('offers the restart when the update was already downloaded before mount', async () => {
+    installFakeBridge({
+      pendingState: { channel: 'update-downloaded', payload: { version: '99.0.0' } },
+    });
+    render(<UpdateBanner />);
+
+    expect(await screen.findByText('Mise à jour prête - v99.0.0')).toBeInTheDocument();
+  });
+
+  it('lets a live event win over the state it replayed', async () => {
+    const bridge = installFakeBridge({
+      pendingState: { channel: 'update-available', payload: { version: '99.0.0' } },
+    });
+    render(<UpdateBanner />);
+    await screen.findByText('Mise à jour disponible - v99.0.0');
+
+    // A download finishing must not be undone by the older replayed state.
+    bridge.fireDownloaded({ version: '99.0.0' });
+    expect(screen.getByText('Mise à jour prête - v99.0.0')).toBeInTheDocument();
   });
 
   it('stays silent outside Electron so the web build is unaffected', () => {

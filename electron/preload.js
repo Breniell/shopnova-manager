@@ -47,6 +47,16 @@ contextBridge.exposeInMainWorld('legwan', {
 
   // ── Auto-update API ────────────────────────────────────────────────────────
 
+  /**
+   * Ask what the updater has already found.
+   *
+   * The events below are fire-and-forget, and the check completes about five
+   * seconds after launch - long before the banner mounts, since it sits behind
+   * the login screen. Without this, every notification was simply missed.
+   * Returns { channel, payload } or null.
+   */
+  getUpdateState: () => ipcRenderer.invoke('update-get-state'),
+
   /** Called when a new version is available on the server */
   onUpdateAvailable: (cb) => subscribe('update-available', cb),
 

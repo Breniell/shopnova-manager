@@ -58,21 +58,42 @@ test('a paid licence activates with the network cut', async ({ page }) => {
   const keyInput = page.getByPlaceholder(/Collez votre clé/i);
   await expect(keyInput).toBeVisible({ timeout: 15_000 });
   await keyInput.fill(licenseKey);
+
+  // Watch for the confirmation before clicking, rather than polling for it
+  // afterwards. It only stays on screen ~900ms before the panel closes itself,
+  // so a polled expect() misses it whenever the machine is busy - this test
+  // passed alone and failed inside the full suite for exactly that reason. An
+  // observer cannot miss it, however slow the run.
+  await page.evaluate(() => {
+    const flag = window as unknown as { __sawLicenceConfirmation?: boolean };
+    flag.__sawLicenceConfirmation = false;
+    const check = () => {
+      if (document.body.innerText.includes('Licence activée')) {
+        flag.__sawLicenceConfirmation = true;
+      }
+    };
+    new MutationObserver(check).observe(document.body, {
+      childList: true, subtree: true, characterData: true,
+    });
+    check();
+  });
+
   await page.getByRole('button', { name: /^Activer$/ }).first().click();
 
-  // The confirmation a shopkeeper actually sees. It is short-lived - the panel
-  // closes ~900ms later - so assert it right after the click. The wait allows
-  // for the clock probe, which must time out (2.5s) before the offline fallback
-  // takes over.
-  await expect(page.getByText(/Licence activée/i).first()).toBeVisible({ timeout: 30_000 });
-
-  // Then the durable outcome: the trial is over, this is a paid licence, and the
-  // key is on the machine. This is what must survive a restart.
-  await expect(page.getByText(/Essai gratuit/i)).toHaveCount(0, { timeout: 15_000 });
+  // The durable outcome: the trial is over, this is a paid licence, and the key
+  // is on the machine. This is what must survive a restart.
+  await expect(page.getByText(/Essai gratuit/i)).toHaveCount(0, { timeout: 30_000 });
   await expect(page.getByRole('button', { name: /Activer une licence/i })).toHaveCount(0);
 
   const storedLicence = await page.evaluate(() => localStorage.getItem('legwan-license'));
   expect(storedLicence, 'the licence was not persisted locally').toBe(licenseKey);
+
+  // And the shopkeeper was actually told it worked - without that, a licence
+  // that activates silently is indistinguishable from one that hung.
+  const sawConfirmation = await page.evaluate(
+    () => (window as unknown as { __sawLicenceConfirmation?: boolean }).__sawLicenceConfirmation === true,
+  );
+  expect(sawConfirmation, 'the activation never showed a confirmation on screen').toBe(true);
 
 });
 

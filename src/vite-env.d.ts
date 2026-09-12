@@ -18,6 +18,10 @@ interface Window {
     isElectron?: boolean;
     version?: string;
     platform?: string;
+    /** Whatever the updater already found, for a banner that mounts after the check. */
+    getUpdateState?: () => Promise<
+      { channel: 'update-available' | 'update-downloaded'; payload: { version: string } } | null
+    >;
     onUpdateAvailable?: (cb: (info: { version: string }) => void) => () => void;
     onUpdateNotAvailable?: (cb: () => void) => () => void;
     onUpdateDownloadProgress?: (cb: (p: { percent: number }) => void) => () => void;

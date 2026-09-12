@@ -28,6 +28,21 @@ export const UpdateBanner: React.FC = () => {
     const api = window.legwan;
     if (!api?.isElectron) return; // Web / dev browser - no-op
 
+    // The check finishes ~5s after launch, but this component only mounts after
+    // the user has logged in, so the event that matters has almost always been
+    // and gone. Ask the main process what it already knows before listening.
+    void api.getUpdateState?.().then((state) => {
+      if (!state) return;
+      setState(current => {
+        // Never regress a state a live event has already advanced past.
+        if (current.phase !== 'idle') return current;
+        if (state.channel === 'update-downloaded') {
+          return { phase: 'ready', version: state.payload.version };
+        }
+        return { phase: 'available', version: state.payload.version };
+      });
+    }).catch(() => undefined);
+
     const unsubscribers = [api.onUpdateAvailable?.((info) => {
       setState({ phase: 'available', version: info.version });
       setDismissed(false);

@@ -286,11 +286,41 @@ function createWindow() {
   return win;
 }
 
+/**
+ * Last updater event worth replaying, or null when there is nothing to show.
+ *
+ * The check runs 5s after the window appears, but UpdateBanner lives inside
+ * AppLayout and so only mounts once the user has picked a profile and entered
+ * their PIN - always later than 5s. The event was therefore sent to a renderer
+ * with no listener and lost, and the only second chance was the 30-minute
+ * re-check, which also required the user to be logged in at that instant.
+ *
+ * Real consequence: a shopkeeper on 1.7.5 closed and reopened the app several
+ * times and never saw an update banner, while the main process had already found
+ * the new version each time.
+ */
+let lastUpdaterState = null;
+
 function sendUpdaterEvent(channel, payload) {
+  // Progress is transient; the states worth replaying are the ones that ask the
+  // user to do something, plus the explicit "nothing to offer" which clears it.
+  if (channel === 'update-available' || channel === 'update-downloaded') {
+    lastUpdaterState = { channel, payload };
+  } else if (channel === 'update-not-available') {
+    lastUpdaterState = null;
+  }
+
   const win = BrowserWindow.getAllWindows().find(candidate => !candidate.isDestroyed());
   if (!win || win.webContents.isDestroyed()) return;
   win.webContents.send(channel, payload);
 }
+
+// Lets a banner mounting late ask what it missed, instead of depending on having
+// been listening at the exact moment the check finished.
+ipcMain.handle('update-get-state', (event) => {
+  if (!isTrustedIpcSender(event)) return null;
+  return lastUpdaterState;
+});
 
 function setupAutoUpdater() {
   if (!autoUpdater) return;
