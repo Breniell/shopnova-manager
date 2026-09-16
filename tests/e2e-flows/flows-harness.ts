@@ -118,14 +118,12 @@ export async function firstBoutiqueId(): Promise<string | null> {
 }
 
 /**
- * Walk a brand-new install through PolicyGate: read the policy, sign it, then
- * create the gérant account and its PIN.
+ * Read and sign the privacy policy, landing on the admin-setup screen.
+ *
+ * Shared by the two ways a fresh install can go from here: creating the first
+ * gérant, or joining a shop that already exists.
  */
-export async function completeOnboarding(page: Page, options: {
-  prenom: string;
-  nom: string;
-  pin: string;
-}): Promise<void> {
+export async function acceptPolicy(page: Page, signatureName: string): Promise<void> {
   await page.goto('/');
 
   // The acceptance controls only mount once the policy has been scrolled to the
@@ -148,7 +146,7 @@ export async function completeOnboarding(page: Page, options: {
     await expect(signature).toBeVisible({ timeout: 1000 });
   }).toPass({ timeout: 30_000 });
 
-  await signature.fill(`${options.prenom} ${options.nom}`);
+  await signature.fill(signatureName);
 
   // Two checkboxes render here: policy acceptance, then optional geolocation
   // consent. Only the first gates the button; leave geo off so tests never
@@ -157,6 +155,18 @@ export async function completeOnboarding(page: Page, options: {
   await page.getByRole('button', { name: /J'accepte et je continue/i }).click();
 
   await expect(page.getByText('Créez votre compte administrateur')).toBeVisible({ timeout: 30_000 });
+}
+
+/**
+ * Walk a brand-new install through PolicyGate: read the policy, sign it, then
+ * create the gérant account and its PIN.
+ */
+export async function completeOnboarding(page: Page, options: {
+  prenom: string;
+  nom: string;
+  pin: string;
+}): Promise<void> {
+  await acceptPolicy(page, `${options.prenom} ${options.nom}`);
 
   // getByLabel cannot be used here: the labels carry no htmlFor and the inputs
   // no id, so nothing associates them. Positional it is - this screen renders
@@ -173,6 +183,28 @@ export async function completeOnboarding(page: Page, options: {
   await typePin(page, options.pin);
 
   // FirebaseProvider now creates the boutique and the admin, then routes to login.
+  await expect(page.getByText(/Sélectionnez votre profil/i)).toBeVisible({ timeout: 60_000 });
+}
+
+/**
+ * Join a shop that already exists, from a brand-new install.
+ *
+ * The restore option now sits on the admin-setup screen. Before that it existed
+ * only on the login screen, which a fresh install could not reach without first
+ * inventing a gérant - and that throwaway account created a shop of its own that
+ * stayed orphaned in the project.
+ */
+export async function joinExistingShop(page: Page, credentials: {
+  email: string; password: string; signatureName?: string;
+}): Promise<void> {
+  await acceptPolicy(page, credentials.signatureName ?? 'Nouveau Poste');
+
+  await page.getByRole('button', { name: /Restaurer une boutique existante/i }).click();
+  await page.locator('input[type="email"]').fill(credentials.email);
+  await page.locator('input[type="password"]').fill(credentials.password);
+  await page.getByRole('button', { name: /Restaurer cette boutique/i }).click();
+
+  // The page reloads into the restored shop's own login screen.
   await expect(page.getByText(/Sélectionnez votre profil/i)).toBeVisible({ timeout: 60_000 });
 }
 

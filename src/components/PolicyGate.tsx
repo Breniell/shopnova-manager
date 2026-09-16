@@ -8,7 +8,7 @@
  */
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, ScrollText, Shield, ChevronDown, UserPlus, KeyRound } from 'lucide-react';
+import { CheckCircle2, ScrollText, Shield, ChevronDown, UserPlus, KeyRound, Cloud } from 'lucide-react';
 import { hashPin, generateSalt } from '@/lib/crypto';
 import { setGeoConsent } from '@/lib/consent';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -97,6 +97,42 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
 
   const T = dicts[locale].policy;
   const C = dicts[locale].common;
+  const L = dicts[locale].login;
+
+  // Rejoindre une boutique existante depuis l'écran de création du gérant.
+  const [showRestore, setShowRestore] = useState(false);
+  const [restoreEmail, setRestoreEmail] = useState('');
+  const [restorePassword, setRestorePassword] = useState('');
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  /**
+   * Restaure une boutique sans créer de compte gérant.
+   *
+   * L'acceptation de la politique est enregistrée pour que cet écran ne
+   * revienne pas, mais aucun admin en attente n'est écrit : au rechargement,
+   * getBoutiqueId() repart du compte Firebase désormais connecté au lieu d'en
+   * créer un anonyme, donc aucune boutique orpheline n'est laissée derrière.
+   */
+  const handleRestoreExisting = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setRestoreError(null);
+    setIsRestoring(true);
+    try {
+      const { signInBoutiqueRecoveryAccount, getBoutiqueRecoveryErrorMessage } =
+        await import('@/services/boutiqueService');
+      try {
+        await signInBoutiqueRecoveryAccount(restoreEmail, restorePassword);
+      } catch (error) {
+        setRestoreError(getBoutiqueRecoveryErrorMessage(error));
+        return;
+      }
+      savePolicyAcceptance(sigName);
+      window.setTimeout(() => window.location.reload(), 350);
+    } finally {
+      setIsRestoring(false);
+    }
+  };
 
   // Phase 1
   const [scrolledToBottom, setScrolledToBottom] = useState(false);
@@ -233,8 +269,13 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
 
   if (phase === 'admin-setup') {
     const A = T.admin;
+    // Le conteneur défile : centré quand la carte tient dans l'écran, scrollable
+    // sinon. Sans cela, une carte plus haute que la fenêtre dépassait simplement
+    // du bas sur un écran d'ordinateur portable, et son dernier bouton devenait
+    // inatteignable.
     return (
-      <div className="fixed inset-0 z-[9999] bg-background flex flex-col items-center justify-center p-4">
+      <div className="fixed inset-0 z-[9999] bg-background overflow-y-auto">
+        <div className="min-h-full flex items-center justify-center p-4">
         <div className="w-full max-w-md nova-card p-8 animate-fade-in">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
@@ -300,6 +341,58 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
               <p className="text-[10px] text-muted-foreground text-center mt-4">{A.pinHint}</p>
             </div>
           )}
+
+          {/* Rejoindre une boutique existante, sans passer par un compte jetable.
+              Sans cette porte, ajouter un poste ou changer de machine imposait de
+              créer un gérant bidon pour atteindre l'écran de connexion, seul
+              endroit où vivait la restauration - et ce détour créait au passage
+              une boutique anonyme qui restait orpheline dans le cloud. */}
+          <div className="mt-6 pt-4 border-t border-border">
+            {!showRestore ? (
+              <>
+                <button
+                  onClick={() => setShowRestore(true)}
+                  className="w-full py-2.5 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors flex items-center justify-center gap-2"
+                >
+                  <Cloud className="w-4 h-4" /> {L.restore}
+                </button>
+                <p className="text-[10px] text-muted-foreground text-center mt-2">{L.restoreHint}</p>
+              </>
+            ) : (
+              <form onSubmit={handleRestoreExisting} className="space-y-3">
+                <p className="text-sm font-semibold text-foreground">{L.restoreTitle}</p>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">{L.email}</label>
+                  <input
+                    type="email" value={restoreEmail} autoComplete="email"
+                    onChange={e => setRestoreEmail(e.target.value)}
+                    className="nova-input w-full" required
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">{L.password}</label>
+                  <input
+                    type="password" value={restorePassword} autoComplete="current-password"
+                    onChange={e => setRestorePassword(e.target.value)}
+                    className="nova-input w-full" required
+                  />
+                </div>
+                {restoreError && <p className="text-xs text-destructive">{restoreError}</p>}
+                <div className="flex gap-3">
+                  <button
+                    type="button" onClick={() => { setShowRestore(false); setRestoreError(null); }}
+                    className="flex-1 py-2.5 rounded-lg bg-muted text-foreground text-sm hover:bg-muted/80 transition-colors"
+                  >
+                    {L.back}
+                  </button>
+                  <button type="submit" disabled={isRestoring} className="flex-1 nova-btn-primary py-2.5 text-sm disabled:opacity-60">
+                    {isRestoring ? A.creating : L.restoreBtn}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
         </div>
       </div>
     );

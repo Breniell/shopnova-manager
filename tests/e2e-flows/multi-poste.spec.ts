@@ -15,6 +15,7 @@ import { test, expect, type Page, type BrowserContext } from '@playwright/test';
 import {
   resetEmulators,
   completeOnboarding,
+  joinExistingShop,
   loginAs,
   goTo,
   createProduct,
@@ -26,11 +27,6 @@ import {
 
 const GERANT = { prenom: 'Amina', nom: 'Fotso', pin: '1234' };
 const FULL_NAME = `${GERANT.prenom} ${GERANT.nom}`;
-// The app forces a brand-new install to create a gérant before it ever shows the
-// login screen, and the "restore an existing shop" button only lives there. So a
-// second register has to invent a throwaway account first. Named so it is
-// obvious if it lingers.
-const THROWAWAY = { prenom: 'Jetable', nom: 'Poste', pin: '9999' };
 const RECOVERY = { email: 'amina.fotso@example.com', password: 'motdepasse-legwan' };
 const PRODUCT = { nom: 'Riz parfumé 5kg', achat: '3000', vente: '4000', stock: '10' };
 
@@ -74,23 +70,17 @@ test('a second register joins the shop and both keep the stock exact, offline in
     await expect(recoveryCard.getByText('Récupération active')).toBeVisible({ timeout: 30_000 });
 
     // ── Register B: a fresh install joins it ─────────────────────────────────
-    await completeOnboarding(b, THROWAWAY);
-    await b.getByRole('button', { name: /Restaurer une boutique existante/i }).click();
-    await b.locator('input[type="email"]').fill(RECOVERY.email);
-    await b.locator('input[type="password"]').fill(RECOVERY.password);
-    await b.getByRole('button', { name: /Restaurer cette boutique/i }).click();
+    // Straight from the onboarding screen, with no throwaway gérant invented on
+    // the way - which is also what keeps the project free of orphan shops.
+    await joinExistingShop(b, RECOVERY);
 
-    // The restore reloads the page; the gérant created on A must now be offered on B.
+    // The gérant created on A must now be offered on B.
     await expect(b.locator('button').filter({ hasText: FULL_NAME }).first())
       .toBeVisible({ timeout: 60_000 });
     expect(await localValue(b, 'legwan-boutique-id'), 'register B did not join the same shop').toBe(shopId);
 
-    // Observation, not an assertion: does the throwaway account survive the restore?
-    const throwawayStillListed = await b.locator('button')
-      .filter({ hasText: `${THROWAWAY.prenom} ${THROWAWAY.nom}` }).count();
-    const boutiquesInProject = (await readCollection('boutiques')).length;
-    console.log(`[observation] throwaway gérant still on B's login screen: ${throwawayStillListed > 0}`);
-    console.log(`[observation] shops in the project after B joined: ${boutiquesInProject}`);
+    const shops = await readCollection('boutiques');
+    expect(shops, 'joining left an orphan shop behind in the project').toHaveLength(1);
 
     await loginAs(b, FULL_NAME, GERANT.pin);
     emulatorB();

@@ -505,9 +505,12 @@ ipcMain.handle('printer:print', async (_event, job = {}) => {
 
 ipcMain.handle('printer:openDrawer', async (event) => {
   if (!isTrustedIpcSender(event)) return { ok: false, error: 'Untrusted IPC sender' };
-  // Electron's generic printing API cannot reliably emit a raw ESC/POS pulse.
-  // Keep the existing capability response until a serial/TCP driver is added.
-  return { ok: true };
+  // Electron's generic printing API cannot emit the raw ESC/POS pulse that opens
+  // a cash drawer. This used to answer { ok: true }, so the app believed the
+  // drawer had opened and a shopkeeper who ticked the option saw nothing happen
+  // and no explanation. Report the truth until a serial/TCP driver exists; the
+  // control itself is no longer offered in Paramètres.
+  return { ok: false, error: 'drawer_not_supported' };
 });
 
 function buildTestPrintHtml(paperWidth) {

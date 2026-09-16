@@ -152,6 +152,26 @@ test('the renderer can ask for a fresh check, and is throttled if it insists', a
   }
 });
 
+test('the cash drawer API reports that it cannot open a drawer', async () => {
+  // It used to answer { ok: true } without doing anything, so the app believed
+  // the drawer had opened. Electron's print API cannot emit the raw ESC/POS
+  // pulse a drawer needs, and a control that silently does nothing is worse
+  // than an absent one - the setting is no longer offered either.
+  const session = await launchPackagedApp();
+  try {
+    const result = await session.window.evaluate(async () => {
+      const printer = (window as unknown as {
+        legwan?: { printer?: { openDrawer?: () => Promise<{ ok: boolean; error?: string }> } };
+      }).legwan?.printer;
+      return printer?.openDrawer ? await printer.openDrawer() : 'API_MISSING';
+    });
+    expect(result, 'the drawer API is gone entirely').not.toBe('API_MISSING');
+    expect((result as { ok: boolean }).ok, 'the app is still told the drawer opened').toBe(false);
+  } finally {
+    await session.close();
+  }
+});
+
 test('the renderer can start the download and the update verifies', async () => {
   test.setTimeout(240_000);
   const server = await startUpdateServer({ version: FAKE_VERSION, installerPath: findInstaller() });

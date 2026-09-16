@@ -619,10 +619,14 @@ const ParametresPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Toggles */}
+                {/* Toggles.
+                    openDrawerOnSale n'est volontairement pas proposé : l'API
+                    d'impression d'Electron ne peut pas émettre l'impulsion
+                    ESC/POS qui ouvre un tiroir-caisse, donc l'option ne faisait
+                    rien tout en annonçant un succès. Le réglage reste dans
+                    ShopSettings pour le jour où un pilote série/TCP existera. */}
                 {[
                   { key: 'autoPrintOnSale' as const, label: 'settings.printer.autoPrint' },
-                  { key: 'openDrawerOnSale' as const, label: 'settings.printer.openDrawer' },
                 ].map(({ key, label }) => (
                   <div key={key} className="flex items-center justify-between">
                     <span className="text-sm text-foreground">{t(label)}</span>
