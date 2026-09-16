@@ -19,7 +19,7 @@ import { ManagerOverrideModal } from '@/components/ui/ManagerOverrideModal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { OneTimeHint } from '@/components/ui/OneTimeHint';
-import { isNegociable, getEffectiveFloor, getAppliedPrice } from '@/lib/pricing';
+import { isNegociable, getEffectiveFloor, getAppliedPrice, checkCartDiscount } from '@/lib/pricing';
 import { canValidateMomo, isValidMomoRef } from '@/lib/momoValidation';
 import { isThermalAvailable, buildReceiptHtml } from '@/lib/thermalPrint';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -57,6 +57,9 @@ const CaissePage: React.FC = () => {
   const [overrideContext, setOverrideContext] = useState<{
     productId: string; productName: string; requestedPrice: number; floor: number;
   } | null>(null);
+  // Autorisation d'une remise qui descend sous les limites fixées par le gérant.
+  const [discountAuthOpen, setDiscountAuthOpen] = useState(false);
+  const [discountAuthorizedBy, setDiscountAuthorizedBy] = useState<{ userId: string; userName: string } | null>(null);
   const [mobileView, setMobileView] = useState<'products' | 'cart'>('products');
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -205,7 +208,26 @@ const CaissePage: React.FC = () => {
     setMobileRefError(null);
   };
 
-  const canValidate = cart.length > 0 && !isProcessing && (
+  /**
+   * Une remise en pourcentage revient à négocier chaque ligne d'un coup. Elle
+   * doit donc respecter les mêmes limites : sans ce contrôle, baisser une ligne
+   * sous son plancher demandait le PIN d'un gérant, mais 100 % de remise sur
+   * tout le panier passait sans rien demander.
+   */
+  const discountCheck = useMemo(
+    () => checkCartDiscount(cart, id => products.find(p => p.id === id), discount),
+    [cart, products, discount],
+  );
+  const isCaissier = currentUser?.role === 'caissier';
+  const discountBlocked = discountCheck.status === 'blocked';
+  const discountNeedsAuth = isCaissier && discountBlocked && !discountAuthorizedBy;
+  const worstDiscountLine = discountCheck.status === 'blocked' ? discountCheck.lines[0] : null;
+
+  // Une autorisation vaut pour un panier et un taux précis : toute modification
+  // de l'un ou de l'autre la reprend à zéro.
+  useEffect(() => { setDiscountAuthorizedBy(null); }, [discount, cart]);
+
+  const canValidate = cart.length > 0 && !isProcessing && !discountNeedsAuth && (
     paymentMode === 'especes' ? (amountReceived && (parseInt(amountReceived, 10) || 0) >= total) :
     paymentMode === 'mobile_money' ? canValidateMomo({ mobileOperator, momoMerchantCode, confirmationReceived, mobileRef }) :
     paymentMode === 'credit' ? (!!selectedCustomer && creditLimitCheck.ok) :
@@ -228,6 +250,8 @@ const CaissePage: React.FC = () => {
       changeGiven: paymentMode === 'especes' ? Math.max(0, change) : undefined,
       userId: currentUser.id,
       userName: `${currentUser.prenom} ${currentUser.nom}`,
+      discountAuthorizedBy: discountAuthorizedBy?.userId,
+      discountAuthorizedByName: discountAuthorizedBy?.userName,
       customerId: selectedCustomer?.id,
       customerName: selectedCustomer ? `${selectedCustomer.prenom} ${selectedCustomer.nom}` : undefined,
       dueDate: paymentMode === 'credit' && dueDate ? dueDate : undefined,
@@ -447,6 +471,27 @@ const CaissePage: React.FC = () => {
                   placeholder="0"
                 />
               </div>
+
+              {/* Une remise sous les limites du gérant demande son PIN, comme un prix négocié. */}
+              {isCaissier && discountBlocked && worstDiscountLine && !discountAuthorizedBy && (
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-2.5 space-y-2">
+                  <p className="text-xs text-destructive font-medium">
+                    {worstDiscountLine.nom} · {t('priceEditor.statusBelowFloor').replace('{floor}', formatFCFA(worstDiscountLine.floor))}
+                  </p>
+                  <button
+                    onClick={() => setDiscountAuthOpen(true)}
+                    className="w-full py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors"
+                  >
+                    {t('priceEditor.requestAuth')}
+                  </button>
+                </div>
+              )}
+              {isCaissier && discountBlocked && discountAuthorizedBy && (
+                <p className="text-xs text-secondary font-medium">
+                  {t('caisse.overrideApproved').replace('{name}', discountAuthorizedBy.userName)}
+                </p>
+              )}
+
               <div className="pt-2 border-t border-border">
                 <p className="text-[13px] text-muted-foreground font-medium mb-0.5">{t('caisse.total')}</p>
                 <p className="money text-3xl lg:text-4xl text-primary text-right">{formatPrice(total)}</p>
@@ -856,6 +901,22 @@ const CaissePage: React.FC = () => {
           );
           toast.success(t('caisse.overrideApproved').replace('{name}', manager.userName));
           setOverrideContext(null);
+        }}
+      />
+
+      {/* Autorisation gérant pour une remise qui passe sous les limites */}
+      <ManagerOverrideModal
+        open={discountAuthOpen}
+        context={worstDiscountLine ? {
+          productName: worstDiscountLine.nom,
+          requestedPrice: Math.round(worstDiscountLine.priceAfterDiscount),
+          floor: worstDiscountLine.floor,
+        } : null}
+        onClose={() => setDiscountAuthOpen(false)}
+        onAuthorized={(manager) => {
+          setDiscountAuthorizedBy({ userId: manager.userId, userName: manager.userName });
+          setDiscountAuthOpen(false);
+          toast.success(t('caisse.overrideApproved').replace('{name}', manager.userName));
         }}
       />
     </div>

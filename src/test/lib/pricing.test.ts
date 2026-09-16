@@ -7,6 +7,8 @@ import {
   getMarginPercent,
   getLossFromNegotiation,
   getAppliedPrice,
+  getLineFloor,
+  checkCartDiscount,
 } from '@/lib/pricing';
 import type { Product } from '@/stores/useProductStore';
 import type { CartItem } from '@/stores/useSaleStore';
@@ -217,5 +219,104 @@ describe('getAppliedPrice', () => {
 
   it('falls back to prixVente when prixUnitaire absent (legacy Sale)', () => {
     expect(getAppliedPrice({ prixVente: 2000, prixUnitaire: undefined })).toBe(2000);
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// Remise globale
+// ────────────────────────────────────────────────────────────────────────────
+
+describe('getLineFloor', () => {
+  it('uses the product floor for a negotiable product', () => {
+    const product = makeProduct({ negociable: true, prixPlancher: 1500 });
+    expect(getLineFloor(makeItem(), product)).toBe(1500);
+  });
+
+  it('falls back to the purchase price when a negotiable product has no floor', () => {
+    const product = makeProduct({ negociable: true, prixAchat: 1200, prixPlancher: undefined });
+    expect(getLineFloor(makeItem(), product)).toBe(1200);
+  });
+
+  it('treats a fixed-price product as its own floor', () => {
+    // The gérant marked it non-negotiable: that price is not open to discussion,
+    // by a cart discount any more than by editing the line.
+    const product = makeProduct({ negociable: false });
+    expect(getLineFloor(makeItem({ prixUnitaire: 2000 }), product)).toBe(2000);
+  });
+
+  it('keeps an already authorized below-floor price as the new limit', () => {
+    // A gérant allowed 1200 once; a discount must not quietly push it lower.
+    const product = makeProduct({ negociable: true, prixPlancher: 1500 });
+    const item = makeItem({
+      prixUnitaire: 1200,
+      negotiated: { discount: 800, belowFloor: true, overrideBy: 'u1', overrideByName: 'Amina' },
+    });
+    expect(getLineFloor(item, product)).toBe(1200);
+  });
+
+  it('protects a product missing from the catalogue', () => {
+    expect(getLineFloor(makeItem({ prixUnitaire: 2000 }), undefined)).toBe(2000);
+  });
+});
+
+describe('checkCartDiscount', () => {
+  const negotiable = makeProduct({ id: 'p1', negociable: true, prixPlancher: 1500, prixVente: 2000 });
+  const fixed = makeProduct({ id: 'p2', negociable: false, prixVente: 2000 });
+  const find = (products: Product[]) => (id: string) => products.find(p => p.id === id);
+
+  it('accepts no discount at all', () => {
+    expect(checkCartDiscount([makeItem()], find([negotiable]), 0)).toEqual({ status: 'ok' });
+  });
+
+  it('accepts a discount that stays above the floor', () => {
+    // 2000 → 1800, floor 1500.
+    expect(checkCartDiscount([makeItem()], find([negotiable]), 10)).toEqual({ status: 'ok' });
+  });
+
+  it('accepts a discount landing exactly on the floor', () => {
+    // 2000 → 1500 exactly.
+    expect(checkCartDiscount([makeItem()], find([negotiable]), 25)).toEqual({ status: 'ok' });
+  });
+
+  it('blocks a discount that dips below the floor', () => {
+    const result = checkCartDiscount([makeItem()], find([negotiable]), 30);
+    expect(result.status).toBe('blocked');
+    if (result.status !== 'blocked') throw new Error('expected blocked');
+    expect(result.lines).toHaveLength(1);
+    expect(result.lines[0].floor).toBe(1500);
+    expect(result.lines[0].priceAfterDiscount).toBe(1400);
+  });
+
+  it('blocks any discount on a fixed-price product', () => {
+    const result = checkCartDiscount([makeItem({ productId: 'p2' })], find([fixed]), 5);
+    expect(result.status).toBe('blocked');
+  });
+
+  it('blocks the 100% discount that used to go through unchecked', () => {
+    // The whole point: a cashier could hand the cart over for free.
+    const result = checkCartDiscount([makeItem()], find([negotiable]), 100);
+    expect(result.status).toBe('blocked');
+  });
+
+  it('names every offending line, not just the first', () => {
+    const items = [makeItem({ productId: 'p1', nom: 'Négociable' }), makeItem({ productId: 'p2', nom: 'Prix fixe' })];
+    const result = checkCartDiscount(items, find([negotiable, fixed]), 40);
+    if (result.status !== 'blocked') throw new Error('expected blocked');
+    expect(result.lines.map(l => l.nom)).toEqual(['Négociable', 'Prix fixe']);
+  });
+
+  it('ignores lines that stay within their own limit', () => {
+    const cheapFloor = makeProduct({ id: 'p3', negociable: true, prixPlancher: 100, prixVente: 2000 });
+    const items = [makeItem({ productId: 'p3', nom: 'Marge large' }), makeItem({ productId: 'p2', nom: 'Prix fixe' })];
+    const result = checkCartDiscount(items, find([cheapFloor, fixed]), 20);
+    if (result.status !== 'blocked') throw new Error('expected blocked');
+    expect(result.lines.map(l => l.nom)).toEqual(['Prix fixe']);
+  });
+
+  it('does not demand authorisation for a rounding-sized shortfall', () => {
+    // 3000 at 33.333…% lands a hair under 2000; that is arithmetic, not a discount.
+    const product = makeProduct({ id: 'p4', negociable: true, prixPlancher: 2000, prixVente: 3000 });
+    const item = makeItem({ productId: 'p4', prixVente: 3000, prixUnitaire: 3000 });
+    expect(checkCartDiscount([item], find([product]), 100 / 3)).toEqual({ status: 'ok' });
   });
 });

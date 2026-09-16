@@ -112,3 +112,71 @@ export function getLossFromNegotiation(item: Pick<CartItem, 'prixVente' | 'prixU
 export function getAppliedPrice(item: Pick<CartItem, 'prixVente' | 'prixUnitaire'>): number {
   return item.prixUnitaire ?? item.prixVente;
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Remise globale sur le panier
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Prix unitaire minimum d'une ligne, en dessous duquel une remise globale
+ * nécessite l'accord d'un gérant.
+ *
+ * Même logique que checkPrice, transposée à la remise :
+ *   • ligne déjà autorisée sous le plancher → le prix autorisé fait foi,
+ *     une remise ne peut pas descendre encore plus bas sans un nouvel accord
+ *   • produit négociable → son plancher
+ *   • produit à prix fixe → son prix appliqué : le gérant a précisément indiqué
+ *     que ce prix ne se discute pas
+ *   • produit introuvable (supprimé du catalogue) → prix appliqué, au plus sûr
+ */
+export function getLineFloor(item: CartItem, product: Product | undefined): number {
+  const applied = getAppliedPrice(item);
+  if (item.negotiated?.belowFloor) return applied;
+  if (product && isNegociable(product)) return getEffectiveFloor(product);
+  return applied;
+}
+
+/** Ligne qu'une remise ferait passer sous son minimum. */
+export interface DiscountedLineBelowFloor {
+  productId: string;
+  nom: string;
+  floor: number;
+  priceAfterDiscount: number;
+}
+
+export type DiscountCheckResult =
+  | { status: 'ok' }
+  | { status: 'blocked'; lines: DiscountedLineBelowFloor[] };
+
+/**
+ * Vérifie qu'une remise en pourcentage respecte les limites fixées par le gérant.
+ *
+ * Sans ce contrôle, la remise contournait entièrement la protection des prix :
+ * baisser une ligne sous son plancher exigeait le PIN d'un gérant, mais une
+ * remise de 100 % sur tout le panier passait sans rien demander.
+ *
+ * La remise s'applique au total ; elle revient donc à multiplier chaque prix
+ * unitaire par (1 - taux). On vérifie ligne par ligne.
+ */
+export function checkCartDiscount(
+  items: CartItem[],
+  findProduct: (productId: string) => Product | undefined,
+  discountPercent: number,
+): DiscountCheckResult {
+  if (!(discountPercent > 0)) return { status: 'ok' };
+
+  const factor = 1 - discountPercent / 100;
+  const lines: DiscountedLineBelowFloor[] = [];
+
+  for (const item of items) {
+    const floor = getLineFloor(item, findProduct(item.productId));
+    const priceAfterDiscount = getAppliedPrice(item) * factor;
+    // Tolérance : les pourcentages produisent des arrondis flottants, et un
+    // écart d'un millième de franc ne doit pas réclamer un gérant.
+    if (priceAfterDiscount + 0.001 < floor) {
+      lines.push({ productId: item.productId, nom: item.nom, floor, priceAfterDiscount });
+    }
+  }
+
+  return lines.length > 0 ? { status: 'blocked', lines } : { status: 'ok' };
+}

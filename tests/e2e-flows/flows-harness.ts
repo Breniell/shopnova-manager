@@ -196,18 +196,34 @@ export async function goTo(page: Page, label: string): Promise<void> {
   await page.locator('nav a, aside a').filter({ hasText: label }).first().click();
 }
 
-/** Create a product through the Produits page, as a gérant would. */
+/**
+ * Create a product through the Produits page, as a gérant would.
+ *
+ * Ticking "négociable" inserts the floor and target fields between the prices
+ * and the stock, so the number inputs shift: that is why the indices differ
+ * between the two branches rather than being written once.
+ */
 export async function createProduct(page: Page, product: {
   nom: string; achat: string; vente: string; stock: string;
+  negociable?: boolean; plancher?: string;
 }): Promise<void> {
   await goTo(page, 'Produits');
-  await page.locator('button').filter({ hasText: /Ajouter un produit/i }).first().click();
+  await page.getByRole('button', { name: /Ajouter un produit/i }).first().click();
   const modal = page.locator('[class*="nova-card"]').filter({ has: page.locator('input') }).last();
   await modal.locator('input[type="text"]').first().fill(product.nom);
-  const numbers = modal.locator('input[type="number"]');
-  await numbers.nth(0).fill(product.achat);
-  await numbers.nth(1).fill(product.vente);
-  await numbers.nth(2).fill(product.stock);
+  const numbers = () => modal.locator('input[type="number"]');
+  await numbers().nth(0).fill(product.achat);
+  await numbers().nth(1).fill(product.vente);
+
+  if (product.negociable) {
+    await modal.getByText(/Prix négociable à la caisse/i).click();
+    await expect(numbers().nth(4)).toBeVisible();
+    if (product.plancher) await numbers().nth(2).fill(product.plancher);
+    await numbers().nth(4).fill(product.stock);
+  } else {
+    await numbers().nth(2).fill(product.stock);
+  }
+
   await modal.locator('button').filter({ hasText: /^(Ajouter|Enregistrer)/ }).last().click();
   await expect(page.getByText(product.nom).first()).toBeVisible({ timeout: 30_000 });
 }
@@ -228,6 +244,49 @@ export async function sellForCash(page: Page, productName: string, quantity: num
   await expect(page.getByText(/Reçu\s*:|Reçu n/i).first()).toBeVisible({ timeout: 30_000 });
   await page.getByRole('button', { name: /^Fermer$/ }).first().click();
   await expect(page.getByText(/Panier vide/i).first()).toBeVisible({ timeout: 15_000 });
+}
+
+/** Create a user from Paramètres › Utilisateurs, as a gérant would. */
+export async function createUser(page: Page, user: {
+  prenom: string; nom: string; role: 'gérant' | 'caissier'; pin: string;
+}): Promise<void> {
+  await goTo(page, 'Paramètres');
+  // getByRole normalises whitespace: these tab buttons carry an icon before the
+  // label, so their textContent is " Utilisateurs" and an anchored hasText regex
+  // silently never matches.
+  await page.getByRole('button', { name: /Utilisateurs/ }).first().click();
+  await page.getByRole('button', { name: /Ajouter un utilisateur/i }).first().click();
+
+  const modal = page.locator('[class*="nova-card"]').filter({ hasText: 'Nouvel utilisateur' }).last();
+  const texts = modal.locator('input[type="text"]');
+  await texts.nth(0).fill(user.prenom);
+  await texts.nth(1).fill(user.nom);
+  await modal.locator('select').first().selectOption(user.role);
+  const pins = modal.locator('input[type="password"]');
+  await pins.nth(0).fill(user.pin);
+  await pins.nth(1).fill(user.pin);
+  // The modal's submit button reuses the settings.users.add label, so it reads
+  // "Ajouter un utilisateur" - the same words as the button that opened it.
+  // Scoping to the modal is what keeps them apart.
+  await modal.getByRole('button', { name: /Ajouter un utilisateur/i }).last().click();
+
+  await expect(page.getByText(`${user.prenom} ${user.nom}`).first()).toBeVisible({ timeout: 30_000 });
+}
+
+/** Sign the current user out, back to the profile picker. */
+export async function logout(page: Page): Promise<void> {
+  await page.getByRole('button', { name: /Déconnexion/i }).first().click();
+  await expect(page.getByText(/Sélectionnez votre profil/i)).toBeVisible({ timeout: 30_000 });
+}
+
+/** Open a cash session with the given float; required before a caissier can sell. */
+export async function openCashSession(page: Page, fond = '10000'): Promise<void> {
+  const openButton = page.locator('button').filter({ hasText: /Ouvrir une session/i }).first();
+  if (await openButton.isVisible().catch(() => false)) await openButton.click();
+  await expect(page.getByText(/Ouvrir la session/i).first()).toBeVisible({ timeout: 30_000 });
+  await page.locator('input[type="number"]').first().fill(fond);
+  await page.locator('button').filter({ hasText: /Démarrer la session/i }).first().click();
+  await expect(page.getByText(/Panier/i).first()).toBeVisible({ timeout: 30_000 });
 }
 
 /** Stock of a product as stored in Firestore, or null if absent. */

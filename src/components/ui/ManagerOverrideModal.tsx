@@ -2,7 +2,12 @@
  * ManagerOverrideModal - autorisation gérant pour vendre sous le prix plancher.
  *
  * Sécurité :
- *   • Le PIN saisi est hashé via hashPin() avant comparaison
+ *   • Le PIN saisi est vérifié par verifyPin(), la même fonction que la
+ *     connexion. Elle applique l'algorithme et le sel enregistrés sur le compte.
+ *     Ce modal appelait auparavant hashPin(pin) SANS le sel du gérant : depuis
+ *     que les PIN sont stockés en PBKDF2 salé (v1.4.2), la comparaison ne
+ *     pouvait plus jamais correspondre et l'autorisation était impossible à
+ *     obtenir - donc vendre sous le plancher était inaccessible en production.
  *   • Le PIN n'est jamais loggué ni stocké en clair
  *   • Le rate-limiting des tentatives est géré par useAuthStore (5 max)
  *     mais n'est PAS branché ici pour Phase 1 - à industrialiser plus tard
@@ -10,8 +15,7 @@
  *     ne devient pas une porte de brute-force pratique en boutique).
  */
 import React, { useState, useEffect, useMemo } from 'react';
-import { useAuthStore } from '@/stores/useAuthStore';
-import { hashPin } from '@/lib/crypto';
+import { useAuthStore, verifyPin } from '@/stores/useAuthStore';
 import { formatFCFA } from '@/utils/formatters';
 import { X, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
@@ -32,6 +36,7 @@ export const ManagerOverrideModal: React.FC<ManagerOverrideModalProps> = ({
   const { t } = useTranslation();
 
   const gerants = useMemo(() => users.filter(u => u.role === 'gérant'), [users]);
+  const hidesCostInformation = useAuthStore(s => s.currentUser?.role) === 'caissier';
 
   const [managerId, setManagerId] = useState('');
   const [pin, setPin] = useState('');
@@ -63,8 +68,7 @@ export const ManagerOverrideModal: React.FC<ManagerOverrideModalProps> = ({
         toast.error(t('override.gerantNotFound'));
         return;
       }
-      const hashed = await hashPin(pin);
-      if (manager.pin !== hashed) {
+      if (!await verifyPin(pin, manager)) {
         toast.error(t('override.pinIncorrect'));
         setPin('');
         return;
@@ -111,10 +115,15 @@ export const ManagerOverrideModal: React.FC<ManagerOverrideModalProps> = ({
             <span className="text-muted-foreground">{t('override.requestedPrice')}</span>
             <span className="text-destructive font-semibold tabular-nums">{formatFCFA(context.requestedPrice)}</span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">{t('override.floor')}</span>
-            <span className="text-foreground tabular-nums">{formatFCFA(context.floor)}</span>
-          </div>
+          {/* Le plancher vaut le prix d'achat quand il n'est pas renseigné, et
+              ce modal s'ouvre sur l'écran du caissier : ne l'afficher qu'au
+              gérant, qui connaît déjà ses propres marges. */}
+          {!hidesCostInformation && (
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">{t('override.floor')}</span>
+              <span className="text-foreground tabular-nums">{formatFCFA(context.floor)}</span>
+            </div>
+          )}
         </div>
 
         {gerants.length === 0 ? (

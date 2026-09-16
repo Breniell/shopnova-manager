@@ -64,6 +64,12 @@ export interface Sale {
   changeGiven?: number;
   userId: string;
   userName: string;
+  /**
+   * Gérant ayant autorisé une remise passant sous les limites de prix.
+   * Absent = remise dans les limites, ou aucune remise.
+   */
+  discountAuthorizedBy?: string;
+  discountAuthorizedByName?: string;
   // ─── Client (optionnel) ────────────────────────────────────────────────
   // Présent si la vente est associée à un client identifié. `customerName`
   // est dénormalisé pour l'affichage rapide dans les listes (et préserve

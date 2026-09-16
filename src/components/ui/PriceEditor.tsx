@@ -14,6 +14,7 @@ import {
   checkPrice, getEffectiveFloor, getEffectiveTarget,
   getMarginPercent,
 } from '@/lib/pricing';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { formatFCFA } from '@/utils/formatters';
 import { cn } from '@/lib/utils';
 import { X, AlertTriangle, CheckCircle2, ShieldAlert, Info } from 'lucide-react';
@@ -37,6 +38,13 @@ export const PriceEditor: React.FC<PriceEditorProps> = ({
 }) => {
   const { t } = useTranslation();
   const [priceInput, setPriceInput] = useState(String(currentPrice));
+
+  /**
+   * Le plancher et la marge dévoilent le prix d'achat : un plancher laissé vide
+   * EST le prix d'achat, et la marge permet de le recalculer. Le catalogue est
+   * réservé au gérant, ces deux valeurs le sont donc aussi.
+   */
+  const hidesCostInformation = useAuthStore(s => s.currentUser?.role) === 'caissier';
 
   // Reset à l'ouverture
   useEffect(() => {
@@ -75,7 +83,12 @@ export const PriceEditor: React.FC<PriceEditorProps> = ({
       }
     : check.status === 'blocked' && check.reason === 'below_floor' ? {
         icon: <ShieldAlert className="w-4 h-4" />,
-        text: t('priceEditor.statusBelowFloor').replace('{floor}', formatFCFA(floor)),
+        // Un caissier apprend qu'une autorisation est requise, sans le montant
+        // du plancher : celui-ci vaut le prix d'achat quand il n'est pas
+        // renseigné, et l'afficher revenait à révéler la marge de la boutique.
+        text: hidesCostInformation
+          ? t('priceEditor.authNote')
+          : t('priceEditor.statusBelowFloor').replace('{floor}', formatFCFA(floor)),
         color: 'bg-destructive/15 text-destructive border-destructive/30',
       }
     : check.status === 'blocked' && check.reason === 'above_display' ? {
@@ -124,11 +137,13 @@ export const PriceEditor: React.FC<PriceEditorProps> = ({
         </div>
 
         {/* Rappel des seuils */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          <div className="p-2 rounded-lg bg-muted/40 text-center">
-            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{t('priceEditor.floorLabel')}</p>
-            <p className="text-xs font-semibold text-destructive tabular-nums">{formatFCFA(floor)}</p>
-          </div>
+        <div className={cn('grid gap-2 mb-4', hidesCostInformation ? 'grid-cols-2' : 'grid-cols-3')}>
+          {!hidesCostInformation && (
+            <div className="p-2 rounded-lg bg-muted/40 text-center">
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{t('priceEditor.floorLabel')}</p>
+              <p className="text-xs font-semibold text-destructive tabular-nums">{formatFCFA(floor)}</p>
+            </div>
+          )}
           <div className="p-2 rounded-lg bg-muted/40 text-center">
             <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{t('priceEditor.targetLabel')}</p>
             <p className="text-xs font-semibold text-amber-400 tabular-nums">{formatFCFA(target)}</p>
@@ -166,8 +181,8 @@ export const PriceEditor: React.FC<PriceEditorProps> = ({
           </div>
         )}
 
-        {/* Marge en temps réel */}
-        <div className="flex items-center justify-between text-xs mb-4 px-1">
+        {/* Marge en temps réel - jamais devant un caissier */}
+        <div className={cn('flex items-center justify-between text-xs mb-4 px-1', hidesCostInformation && 'hidden')}>
           <span className="text-muted-foreground">{t('priceEditor.marginLabel')}</span>
           <span className={cn(
             'font-semibold tabular-nums',
