@@ -61,19 +61,41 @@ Formulaire : <https://www.avast.com/false-positive-file-form.php>
 - **Type de soumission** : *File is incorrectly detected* (fichier détecté à tort)
 - **Email** : support@legwan.cm
 - **Fichier** : l'installeur ci-dessus
+- **Detection name** : `Autosandbox / CyberCapture - no signature detection`
+- **Alert ID** : `N/A`
+
+Ces deux derniers champs n'ont pas de vraie valeur, et il ne faut rien inventer :
+Avast ne **détecte** pas Legwan, il l'**isole**. Vérifié le 18/09/2026 dans ses
+propres journaux (`event_manager.log`, `AvastSvc.log`, `ashshell.log`) : aucune
+détection nommée, aucune signature. Seul `autosandbox.log` réagit, et son
+mécanisme ne produit ni nom de menace ni identifiant d'alerte. Un faux nom de
+détection ferait rejeter ou mal router la demande.
+
+Sur la machine du développeur, le blocage **n'est plus reproductible** — le
+journal indique `Not sandboxing (because the file is in the exception list)`
+depuis que Legwan y a été mis en exception. Capturer une vraie alerte
+demanderait une machine vierge ; ce n'est pas nécessaire pour la soumission.
 
 Description à coller :
 
 > Legwan is a point-of-sale application for small retailers in Cameroon and
 > French-speaking Africa. The installer is a standard Electron/NSIS package
-> built with electron-builder. It is not code-signed yet, which we believe is
-> the sole reason for the detection: the file has no network behaviour beyond
-> Firebase Firestore synchronisation and GitHub release checks for automatic
-> updates, and it installs per-user under %LOCALAPPDATA% without elevation.
+> built with electron-builder.
 >
-> Avast currently terminates the installer during setup, which prevents
-> legitimate customers from installing the software. Source repository and
-> published checksums: https://github.com/Breniell/shopnova-manager
+> There is no named detection: Avast does not flag the file as malware, it
+> auto-sandboxes it. Our autosandbox.log reads "Autosandbox candidate:
+> Legwan-Setup.exe --> Result: Sandboxing (custody processed with result
+> Terminate)", so setup is killed part-way and the customer sees only a
+> generic Windows path error. We believe the sole cause is that the binary is
+> not code-signed yet.
+>
+> Behaviour for reference: no network activity beyond Firebase Firestore
+> synchronisation and GitHub release checks for automatic updates; per-user
+> installation under %LOCALAPPDATA%, no elevation requested.
+>
+> This blocks legitimate customers from installing the software. Source
+> repository and published checksums:
+> https://github.com/Breniell/shopnova-manager
 
 ---
 
