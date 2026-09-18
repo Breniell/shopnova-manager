@@ -1,13 +1,16 @@
 # Déclarer Legwan en faux positif — Avast et Microsoft
 
-Les deux démarches sont **gratuites**. Elles ne remplacent pas un certificat de
-signature, mais elles retirent le blocage chez les deux moteurs qui touchent le
-plus de machines au Cameroun : Avast (très répandu en boutique) et Windows
-Defender / SmartScreen (présent sur toutes les machines).
+Les démarches sont **gratuites**. Elles ne remplacent pas un certificat de
+signature.
 
-Compter quelques jours de traitement chez chacun. Les deux formulaires
-demandent le fichier lui-même, ce qui oblige à passer par un navigateur — il
-n'existe pas d'API publique utilisable sans compte.
+**Une seule est à faire aujourd'hui : celle d'Avast.** C'est le blocage réel,
+prouvé par ses propres journaux. La démarche Microsoft n'a pas lieu d'être tant
+qu'aucun client n'a signalé de détection Defender — voir la section 2, qui
+explique pourquoi et à quelle condition elle deviendra utile.
+
+Compter quelques jours de traitement. Le formulaire demande le fichier
+lui-même, ce qui oblige à passer par un navigateur : il n'existe pas d'API
+publique utilisable sans compte.
 
 **À refaire à chaque version publiée.** L'analyse porte sur une empreinte de
 fichier précise, et chaque version est un fichier différent — donc de nouveau
@@ -99,24 +102,69 @@ Description à coller :
 
 ---
 
-## 2. Microsoft (Defender et SmartScreen)
+## 2. Microsoft — à ne PAS soumettre pour l'instant
 
 Portail : <https://www.microsoft.com/en-us/wdsi/filesubmission>
 
-- Choisir **Software developer** puis *Submit a file for malware analysis*
-- Une connexion avec un compte Microsoft est demandée (gratuite)
-- **Detection name** : laisser vide si Defender ne signale rien — la soumission
-  sert alors à établir la réputation du fichier, ce qui réduit l'avertissement
-  SmartScreen au téléchargement
-- Cocher **Incorrectly detected as malware**
+**Ce formulaire ne s'applique pas aujourd'hui.** Il sert à faire corriger une
+**détection** de Defender, et son champ **Detection name** est obligatoire. Or
+il n'y a aucune détection à corriger :
+
+- `Get-MpThreatDetection` et `Get-MpThreat` ne renvoient rien — l'historique de
+  Defender est vide (vérifié le 18/09/2026) ;
+- Defender est de toute façon **désactivé** sur la machine de développement,
+  Avast s'étant enregistré comme antivirus actif (`Get-MpComputerStatus` :
+  `AntivirusEnabled = False`). Il n'a donc jamais analysé Legwan.
+
+Une soumission avec un nom de détection inventé serait close en
+« no detection reproduced », et aurait coûté le téléversement de 95 Mo pour
+rien.
+
+**Le vrai problème Microsoft n'est pas Defender, c'est SmartScreen** —
+l'avertissement « Windows a protégé votre ordinateur » au téléchargement. Il
+repose sur la **réputation** du fichier, pas sur une signature de menace, et ce
+formulaire ne le traite pas. La réputation se construit par le volume de
+téléchargements et, beaucoup plus vite, par la signature de code.
+
+### Quand ce formulaire deviendra le bon outil
+
+Le jour où **un client signale que Defender a bloqué Legwan** avec un nom de
+menace. Les applications Electron non signées déclenchent régulièrement des
+faux positifs heuristiques du type `Trojan:Win32/Wacatac.B!ml`.
+
+Demander alors au client :
+
+> Sécurité Windows > Protection contre les virus et menaces > Historique de
+> protection > ouvrir la ligne concernant Legwan.
+
+Relever le **nom exact de la menace** et la **version des définitions**
+(Paramètres > Protection contre les virus > Mises à jour de la protection).
+Avec ces deux valeurs, la soumission devient légitime et utile.
+
+Champs à remplir ce jour-là :
+
+| Champ | Valeur |
+|---|---|
+| Security product | Microsoft Defender Antivirus |
+| Company Name | Legwan |
+| Support case number | No |
+| File | `release\Legwan-Setup-1.8.0.exe` |
+| Remove from database | *No — remove automatically after inactivity* |
+| What do you believe this file is | *Incorrectly detected as malware/malicious* |
+| Detection name | le nom relevé chez le client |
+| Definition version | celle relevée chez le client |
 
 Description à coller :
 
-> Point-of-sale desktop application for small retailers, distributed as an
-> unsigned Electron/NSIS installer. Per-user installation, no elevation
-> required. Network activity limited to Firebase Firestore and GitHub Releases.
-> Requesting reputation review so that SmartScreen stops warning end users on
-> download. Published checksums and source:
+> Point-of-sale desktop application for small retailers in Cameroon and
+> French-speaking Africa, distributed as an unsigned Electron/NSIS installer
+> built with electron-builder. Per-user installation under %LOCALAPPDATA%, no
+> elevation requested. Network activity limited to Firebase Firestore
+> synchronisation and GitHub Releases update checks.
+>
+> A customer running Microsoft Defender reports the detection named above on
+> this installer. We believe it is a heuristic false positive on an unsigned
+> Electron binary. Published SHA-256 checksums and full source:
 > https://github.com/Breniell/shopnova-manager
 
 ---
