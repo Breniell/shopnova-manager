@@ -486,6 +486,12 @@ const fr = {
     motifRequired:           'Motif requis',
     successAmount:           'Sortie de {n} enregistrée',
     error:                   'Erreur',
+    listTitle:               'Sorties de caisse',
+    listHint:                "L'argent retiré du tiroir pendant le service : avance, prêt, remboursement, achat imprévu. Non déclaré, il manquera au comptage.",
+    listAdd:                 'Déclarer une sortie',
+    listEmpty:               'Aucune sortie déclarée pendant cette session.',
+    listTotal:               'Total des sorties',
+    listDelete:              'Supprimer cette sortie',
   },
 
   override: {
@@ -1040,10 +1046,14 @@ const fr = {
     title:            "Clôture de caisse",
     tabCloture:       "Clôture du jour",
     tabHistory:       "Historique",
-    cashSales:        "Ventes espèces",
-    mobileSales:      "Ventes Mobile Money",
+    // "Ventes espèces" mentait : ce total comprend aussi les règlements de
+    // crédit encaissés en espèces, qui ne sont pas des ventes du jour.
+    cashSales:        "Encaissé en espèces",
+    mobileSales:      "Encaissé Mobile Money",
     collectedRevenue: "Chiffre d'affaires encaissé",
     cashFund:         "Fond de caisse",
+    cashFundSession:  "Fond déclaré à l'ouverture",
+    expectedAfterCashOuts: "dont sorties déduites",
     dailyBalance:     "Solde journalier",
     dailyBalanceHint: "CA encaissé + fond de caisse",
     physicalCount:    "Comptage physique de la caisse",

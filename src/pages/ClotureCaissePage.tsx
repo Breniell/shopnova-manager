@@ -9,7 +9,7 @@ import { NovaCard } from '@/components/ui/NovaCard';
 import { StatCard } from '@/components/ui/StatCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/lib/utils';
-import { Calculator, Check, DollarSign, Smartphone, History, AlertTriangle, Wallet, Edit2, Receipt, Plus, Clock, LogIn } from 'lucide-react';
+import { Calculator, Check, DollarSign, Smartphone, History, AlertTriangle, Wallet, Edit2, Receipt, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPrice, formatFCFA, formatDate, formatTime, formatDateShort } from '@/utils/formatters';
 import { useTranslation } from '@/i18n';
@@ -35,7 +35,7 @@ const ClotureCaissePage: React.FC = () => {
   const { clotures, fondDeCaisse, addCloture, setFondDeCaisse } = useCaisseStore();
   const { currentUser } = useAuthStore();
   const { payments } = usePaymentStore();
-  const { getCurrentSession, getSessionCashOuts, closeSession } = useCashSessionStore();
+  const { getCurrentSession, closeSession, deleteCashOut, cashOuts } = useCashSessionStore();
   const [activeTab, setActiveTab] = useState<'cloture' | 'historique'>('cloture');
   const [counts, setCounts] = useState<Record<number, string>>({});
   const [notes, setNotes] = useState('');
@@ -89,10 +89,13 @@ const ClotureCaissePage: React.FC = () => {
   }, [payments, inSessionMode, currentSession, periodStart]);
 
   // ── Sorties de caisse dans la session (mode session uniquement) ─────────
+  // On filtre `cashOuts` plutôt que d'appeler getSessionCashOuts() : ce
+  // sélecteur est une référence stable, donc une sortie qui vient d'être
+  // déclarée ne changerait aucune dépendance et la liste resterait figée.
   const sessionCashOuts = useMemo(() => {
     if (!currentSession) return [];
-    return getSessionCashOuts(currentSession.id);
-  }, [currentSession, getSessionCashOuts]);
+    return cashOuts.filter(c => c.cashSessionId === currentSession.id);
+  }, [currentSession, cashOuts]);
 
   const totalCashOuts = sessionCashOuts.reduce((sum, c) => sum + c.amount, 0);
 
@@ -246,9 +249,14 @@ const ClotureCaissePage: React.FC = () => {
                   <span className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
                     <Wallet className="w-4 h-4 text-amber-400" />
                   </span>
-                  <span className="text-xs text-muted-foreground leading-tight">{t('cloture.cashFund')}</span>
+                  <span className="text-xs text-muted-foreground leading-tight">
+                    {inSessionMode ? t('cloture.cashFundSession') : t('cloture.cashFund')}
+                  </span>
                 </div>
-                {isGerant && !editingFond && (
+                {/* En mode session, le fond de référence est celui déclaré à
+                    l'ouverture : modifier le fond global n'aurait aucun effet
+                    sur le calcul affiché, donc on ne propose pas le crayon. */}
+                {isGerant && !inSessionMode && !editingFond && (
                   <button
                     onClick={() => { setFondInput(String(fondDeCaisse)); setEditingFond(true); }}
                     className="text-muted-foreground hover:text-foreground transition-colors"
@@ -272,7 +280,7 @@ const ClotureCaissePage: React.FC = () => {
                   <button onClick={handleSaveFond} className="nova-btn-primary px-2 py-1 text-xs rounded-lg shrink-0">OK</button>
                 </div>
               ) : (
-                <span className="text-xl font-bold text-foreground tabular-nums">{formatFCFA(fondDeCaisse)}</span>
+                <span className="text-xl font-bold text-foreground tabular-nums">{formatFCFA(fondReference)}</span>
               )}
             </div>
           </div>
@@ -298,6 +306,66 @@ const ClotureCaissePage: React.FC = () => {
                   {t('cloture.creditSalesDesc')}
                 </p>
               </div>
+            </div>
+          )}
+
+          {/* Sorties de caisse de la session.
+              Sans cet écran, l'argent retiré du tiroir pendant le service était
+              indéclarable : il manquait au comptage et l'écart retombait sur le
+              caissier. Le calcul le soustrayait déjà, mais rien ne permettait
+              d'en créer une. */}
+          {inSessionMode && currentSession && (
+            <div className="nova-card p-4 mb-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-8 h-8 rounded-lg bg-destructive/15 flex items-center justify-center shrink-0">
+                    <Wallet className="w-4 h-4 text-destructive" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">{t('cashout.listTitle')}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t('cashout.listHint')}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowCashOutModal(true)}
+                  className="nova-btn-primary px-3 py-2 text-xs inline-flex items-center gap-1.5 shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5" /> {t('cashout.listAdd')}
+                </button>
+              </div>
+
+              {sessionCashOuts.length === 0 ? (
+                <p className="text-xs text-muted-foreground mt-3">{t('cashout.listEmpty')}</p>
+              ) : (
+                <div className="mt-3 space-y-1.5">
+                  {sessionCashOuts.map(cashOut => (
+                    <div key={cashOut.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30 text-xs">
+                      <span className="px-2 py-0.5 rounded bg-destructive/10 text-destructive font-medium shrink-0">
+                        {CASHOUT_TYPE_LABELS[cashOut.type]}
+                      </span>
+                      <span className="flex-1 min-w-0 truncate text-foreground">
+                        {cashOut.motif}{cashOut.beneficiaire ? ` — ${cashOut.beneficiaire}` : ''}
+                      </span>
+                      <span className="text-muted-foreground shrink-0">{formatTime(new Date(cashOut.date))}</span>
+                      <span className="text-destructive font-semibold tabular-nums shrink-0">
+                        -{formatFCFA(cashOut.amount)}
+                      </span>
+                      <button
+                        onClick={() => deleteCashOut(cashOut.id)}
+                        className="p-1 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                        aria-label={t('cashout.listDelete')}
+                        title={t('cashout.listDelete')}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                  <div className="flex justify-between pt-2 border-t border-border text-xs">
+                    <span className="text-muted-foreground">{t('cashout.listTotal')}</span>
+                    <span className="text-destructive font-semibold tabular-nums">-{formatFCFA(totalCashOuts)}</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -347,6 +415,13 @@ const ClotureCaissePage: React.FC = () => {
                     <span className="text-muted-foreground">{t('cloture.expected')}</span>
                     <span className="text-foreground font-medium tabular-nums">{formatFCFA(totalAttenduPhysique)}</span>
                   </div>
+                  {/* Sans cette ligne, l'attendu baisse sans explication visible. */}
+                  {totalCashOuts > 0 && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">{t('cloture.expectedAfterCashOuts')}</span>
+                      <span className="text-destructive tabular-nums">-{formatFCFA(totalCashOuts)}</span>
+                    </div>
+                  )}
                   <div className="border-t border-border pt-3">
                     <div className="flex justify-between items-center">
                       <span className="text-base font-semibold text-foreground">{t('cloture.gap')}</span>
@@ -433,6 +508,12 @@ const ClotureCaissePage: React.FC = () => {
           )}
         </NovaCard>
       )}
+
+      <CashOutModal
+        open={showCashOutModal}
+        cashSessionId={currentSession?.id ?? ''}
+        onClose={() => setShowCashOutModal(false)}
+      />
     </div>
   );
 };
