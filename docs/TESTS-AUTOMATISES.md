@@ -30,7 +30,7 @@ variable **avant** toute autre hypothèse.
 | `npm test` | 650+ tests unitaires et composants (dont la bannière de mise à jour) | ~5 min |
 | `npm run test:electron-runtime` | processus principal : journal, sauvegardes, interop updater, packaging | ~5 s |
 | `npm run e2e:electron` | **l'app packagée réelle**, mise à jour de bout en bout | ~45 s |
-| `npm run e2e:flows` | parcours métier sur émulateur Firebase (voir plus bas) | ~55 s |
+| `npm run e2e:flows` | parcours métier sur émulateur Firebase (voir plus bas) | ~3 min |
 | `npm run e2e:print` | rendu du reçu thermique, logo compris (voir plus bas) | ~13 s |
 | `npm run smoke:offline:packaged` | démarrage hors-ligne de l'app packagée | ~40 s |
 
@@ -101,6 +101,80 @@ Il consigne aussi deux observations sans échouer : le compte gérant provisoire
 qu'une installation neuve oblige à créer disparaît bien après restauration,
 mais la boutique qu'il a créée reste orpheline dans le projet Firebase.
 
+### La clôture de caisse
+
+`tests/e2e-flows/cloture.spec.ts` joue un service complet — vente en espèces,
+vente Mobile Money, vente à crédit — puis compte le tiroir.
+
+Trois nombres sont faciles à confondre, et coûteux quand on les confond :
+
+- **le Mobile Money est du chiffre d'affaires, mais il n'est pas dans le
+  tiroir** ;
+- **une vente à crédit n'est ni l'un ni l'autre** : rien n'a été encaissé ;
+- **le fond à comparer est celui déclaré à l'ouverture de la session**, pas le
+  fond par défaut de la boutique. Le test ouvre exprès avec 7 500 alors que le
+  défaut est 10 000, pour que les deux ne puissent pas se confondre.
+
+Le test vérifie ensuite qu'un tiroir incomplet est signalé (« Manque en
+caisse » plus l'avertissement d'écart important), qu'un comptage exact donne un
+écart nul, et qu'après validation la clôture **et** la session de caisse sont
+écrites dans Firestore avec les mêmes chiffres. Enfin, que la caisse se referme :
+le caissier ne peut plus vendre sans rouvrir une session.
+
+### Le crédit et les règlements
+
+`tests/e2e-flows/credit.spec.ts` couvre les deux règles qui protègent
+l'argent du commerçant :
+
+- **le plafond du client arrête réellement la vente** — le bouton « Valider la
+  vente » se désactive, il ne se contente pas d'afficher un avertissement ;
+- **un règlement encaissé sur une ancienne dette est de l'argent entré dans le
+  tiroir aujourd'hui**, donc la clôture doit l'attendre. Le test vend
+  uniquement à crédit, encaisse 5 000 sur la dette, et vérifie que la clôture
+  attend bien ces 5 000 en espèces.
+
+Il vérifie aussi qu'un règlement partiel fait passer la vente de « En attente »
+à « Partiel », libère la marge nécessaire pour une nouvelle vente à crédit, et
+qu'il est rattaché à la session de caisse en cours.
+
+### La console super-admin
+
+`tests/e2e-flows/superadmin.spec.ts` couvre la console développeur, empaquetée
+dans le serveur de test parce que `.env.emulator` fixe
+`VITE_ENABLE_SUPERADMIN=true` (la variante client passe `false`, et ce fichier
+n'est lu que par `vite --mode emulator` : rien de livré au commerçant n'est
+touché).
+
+Le test est construit autour de la distinction qui a fait passer la console
+pour cassée pendant des semaines — **il faut deux droits sans rapport** :
+
+1. l'adresse connectée doit être exactement `VITE_SUPERADMIN_EMAIL` : cela
+   ouvre les écrans, et c'est une constante de compilation ;
+2. le compte Firebase doit porter le droit `superadmin`, que `firestore.rules`
+   contrôle avant toute lecture du registre. **Déployer les règles ne l'accorde
+   pas** : seul le SDK Admin le fait (`npm run staff:claims`).
+
+Le test crée donc le compte avec l'adresse mais **sans** le droit, constate que
+la console laisse entrer puis refuse toutes les données, accorde le droit comme
+le ferait `staff:claims`, se reconnecte — un droit n'atteint le client que sur
+un jeton neuf — et vérifie que la boutique apparaît enfin. Il parcourt ensuite
+les cinq onglets, dont la Carte qui plantait à l'audit du 19/08/2026.
+
+Le second test vérifie qu'un **compte Firebase valide mais qui n'est pas le
+super-admin** est refusé, et qu'aucun code d'erreur Firebase brut ne s'affiche.
+
+### Ces tests peuvent-ils échouer ?
+
+Un test qui ne peut pas échouer est pire qu'aucun test : il rassure à tort.
+Les deux ci-dessus ont donc été vérifiés par mutation du code de production —
+Mobile Money ajouté au montant attendu dans le tiroir, contrôle du plafond
+retiré de la condition de validation. Les deux ont échoué au bon endroit
+(« attendu 12 500, reçu 15 500 » ; « bouton attendu désactivé, reçu activé »),
+puis le code a été remis en l'état.
+
+C'est la précaution qui manquait quand l'autorisation gérant est restée morte
+cinq versions durant.
+
 ### Pourquoi la base réelle ne risque rien
 
 Trois protections indépendantes :
@@ -136,6 +210,28 @@ Trois protections indépendantes :
   `dev:emulator` utilise 8099 avec `--strictPort`.
 - **L'UI est en français, le schéma ne l'est pas** : la collection des ventes
   s'appelle `sales`, pas `ventes`.
+- **Les onglets de paiement portent un émoji** (« 💵 Espèces », « 📱 Mobile »,
+  « 🧾 Crédit »). Un nom accessible exact ne correspond jamais ; il faut une
+  expression régulière sur le mot.
+- **Un libellé peut s'attraper lui-même.** « Écart important détecté » contient
+  « Écart » : viser le conteneur qui porte le libellé lit alors
+  l'avertissement au lieu du montant. Les assertions de montant s'ancrent sur
+  le libellé **exact** et lisent l'élément voisin.
+- **Changer le fragment d'URL ne suffit pas juste après une connexion.**
+  `LoginPage` émet son propre `navigate('/')` un instant après le PIN ; un
+  `page.goto('/#/superadmin')` lancé avant se fait écraser sans bruit et le
+  test regarde le tableau de bord. Passer par `about:blank` force un vrai
+  chargement de document.
+- **Le refus d'une règle ne se dit pas pareil partout.** La production répond
+  « Missing or insufficient permissions. », l'émulateur renvoie la règle qui a
+  refusé (« Property superadmin is undefined on object … @ L400 »). Un message
+  destiné à l'utilisateur doit donc s'appuyer sur le **code** d'erreur, jamais
+  sur le texte.
+- **Le séparateur de milliers n'est pas une espace ordinaire.** Selon la
+  version d'ICU, `Intl` produit U+202F ou U+00A0 pour `fr-FR`. Les assertions
+  passent par une expression régulière tolérante, avec une contre-vérification
+  arrière pour que « 5 000 FCFA » ne corresponde pas à l'intérieur de
+  « 15 000 FCFA ».
 
 ## Impression thermique : ce qui se teste sans imprimante
 
