@@ -74,13 +74,22 @@ export const useSuperAdminStore = create<SuperAdminState>((set, get) => ({
       set({ isAuthenticated: true, adminEmail: cred.user.email });
       await get().loadBoutiques();
     } catch (err) {
+      // Read the code as well as the wording: only two of the codes a failed
+      // sign-in can carry were mapped, so an unknown address showed the raw
+      // "Firebase: Error (auth/user-not-found)." on screen. Which code comes
+      // back also depends on the environment - production hides whether an
+      // account exists and answers auth/invalid-credential, the emulator says
+      // auth/user-not-found - so both must land on the same sentence.
+      const code = String((err as { code?: unknown })?.code ?? '');
       const msg = err instanceof Error ? err.message : 'Erreur inconnue.';
-      const friendly = msg.includes('auth/invalid-credential') || msg.includes('auth/wrong-password')
-        ? 'Email ou mot de passe incorrect.'
-        : msg.includes('auth/too-many-requests')
-        ? 'Trop de tentatives. Réessayez dans quelques minutes.'
-        : msg.includes('auth/network')
-        ? 'Connexion réseau indisponible.'
+      const signals = (needle: string) => code.includes(needle) || msg.includes(needle);
+      const friendly =
+        signals('auth/too-many-requests') ? 'Trop de tentatives. Réessayez dans quelques minutes.'
+        : signals('auth/network') ? 'Connexion réseau indisponible.'
+        : signals('auth/invalid-credential') || signals('auth/wrong-password')
+          || signals('auth/user-not-found') || signals('auth/invalid-email')
+          || signals('auth/user-disabled')
+          ? 'Email ou mot de passe incorrect.'
         : msg;
       set({ error: friendly });
     } finally {
@@ -114,8 +123,24 @@ export const useSuperAdminStore = create<SuperAdminState>((set, get) => ({
 
       set({ boutiques: entries });
     } catch (err) {
+      // Match on the FirebaseError code, not on the wording: production says
+      // "Missing or insufficient permissions." while the emulator returns the
+      // rule that refused ("Property superadmin is undefined on object ... @
+      // L400"), and a merchant-facing message must not depend on which one.
+      //
+      // The old wording sent the reader to the Firestore rules. That is the
+      // wrong place most of the time: the rules check a custom claim that only
+      // the Admin SDK can grant (npm run staff:claims), so deploying rules
+      // again changes nothing. This cost weeks of looking in the wrong file.
+      const code = (err as { code?: unknown })?.code;
       const msg = err instanceof Error ? err.message : 'Erreur de chargement.';
-      set({ error: msg.includes('permission') ? 'Accès refusé - vérifiez les règles Firestore.' : msg });
+      const denied = code === 'permission-denied' || msg.includes('permission');
+      set({
+        error: denied
+          ? "Accès refusé. Ce compte doit porter le droit superadmin (npm run staff:claims), "
+            + 'et les règles Firestore doivent être déployées.'
+          : msg,
+      });
     } finally {
       set({ loading: false });
     }
