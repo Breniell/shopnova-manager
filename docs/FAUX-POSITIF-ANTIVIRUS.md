@@ -10,7 +10,9 @@ demandent le fichier lui-même, ce qui oblige à passer par un navigateur — il
 n'existe pas d'API publique utilisable sans compte.
 
 **À refaire à chaque version publiée.** L'analyse porte sur une empreinte de
-fichier précise : la 1.8.0 sera un fichier différent, donc de nouveau inconnu.
+fichier précise, et chaque version est un fichier différent — donc de nouveau
+inconnu des deux moteurs, quelle que soit la réponse obtenue pour la
+précédente.
 
 ---
 
@@ -20,11 +22,11 @@ Elles sont identiques pour les deux formulaires.
 
 | Champ | Valeur |
 |---|---|
-| Fichier à téléverser | `release\Legwan-Setup-1.7.9.exe` |
-| Taille | 99 233 277 octets (94,6 Mo) |
-| SHA-256 | `623590d661393869025fad390d33d32efda735da7ce0e5776ebd58b2d9b86ff6` |
+| Fichier à téléverser | `release\Legwan-Setup-1.8.0.exe` |
+| Taille | 99 235 473 octets (94,6 Mo) |
+| SHA-256 | `8245060aeb525ca9855588d130ebc231524a571071ddd91970ac940e315c6d9d` |
 | Nom du produit | Legwan |
-| Version | 1.7.9 |
+| Version | 1.8.0 |
 | Éditeur | Legwan |
 | Contact | support@legwan.cm |
 | URL de téléchargement | https://github.com/Breniell/shopnova-manager/releases/latest |
@@ -33,10 +35,22 @@ Vérifier l'empreinte avant l'envoi, pour être certain de soumettre le fichier
 réellement distribué :
 
 ```powershell
-Get-FileHash release\Legwan-Setup-1.7.9.exe -Algorithm SHA256
+Get-FileHash release\Legwan-Setup-1.8.0.exe -Algorithm SHA256
 ```
 
 Elle doit correspondre au `SHA256SUMS.txt` publié avec la release.
+
+### Régénérer ce tableau pour une version ultérieure
+
+Cette commande imprime les trois valeurs à reporter ci-dessus :
+
+```powershell
+$f = Get-ChildItem release\Legwan-Setup-*.exe |
+     Sort-Object LastWriteTime -Descending | Select-Object -First 1
+$f.Name
+"$($f.Length) octets"
+(Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLower()
+```
 
 ---
 
