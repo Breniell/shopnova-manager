@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useProductStore, Product } from '@/stores/useProductStore';
+import { useProductStore, Product, isParent } from '@/stores/useProductStore';
 import { useSaleStore, PaymentMode, MobileOperator } from '@/stores/useSaleStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useCashSessionStore } from '@/stores/useCashSessionStore';
@@ -14,6 +14,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ReceiptModal } from '@/components/ui/ReceiptModal';
 import { BarcodeScanner } from '@/components/ui/BarcodeScanner';
 import { CustomerPicker } from '@/components/ui/CustomerPicker';
+import { VariantPicker } from '@/components/ui/VariantPicker';
 import { PriceEditor } from '@/components/ui/PriceEditor';
 import { ManagerOverrideModal } from '@/components/ui/ManagerOverrideModal';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -51,6 +52,8 @@ const CaissePage: React.FC = () => {
   const [showReceipt, setShowReceipt] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
+  /** Parent dont on est en train de choisir la déclinaison, ou null. */
+  const [variantParent, setVariantParent] = useState<Product | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [dueDate, setDueDate] = useState<string>('');
   const [priceEditorTarget, setPriceEditorTarget] = useState<{ productId: string; currentPrice: number } | null>(null);
@@ -148,6 +151,13 @@ const CaissePage: React.FC = () => {
   }, [handleBarcodeScanned]);
 
   const handleAddProduct = (product: Product) => {
+    // Un parent regroupe des déclinaisons : il n'a ni prix ni stock, et le
+    // laisser entrer au panier fausserait le total comme le contrôle des
+    // remises. On ouvre le sélecteur à la place.
+    if (isParent(product)) {
+      setVariantParent(product);
+      return;
+    }
     const inCart = cart.find(c => c.productId === product.id);
     const qtyInCart = inCart ? inCart.quantity : 0;
     if (product.stock <= 0) {
@@ -295,10 +305,29 @@ const CaissePage: React.FC = () => {
     setMobileView('products');
   };
 
-  const filteredProducts = products.filter(p =>
-    p.nom.toLowerCase().includes(search.toLowerCase()) ||
-    p.codeBarre.includes(search)
-  );
+  /**
+   * La grille montre les produits ordinaires et les parents - jamais les
+   * déclinaisons, sinon une perruque en 60 combinaisons rendrait l'écran
+   * inutilisable, ce que les déclinaisons existent précisément pour éviter.
+   *
+   * Exception : quand la recherche désigne explicitement des déclinaisons
+   * (« Noir », un code-barres), les afficher directement épargne un détour par
+   * le sélecteur.
+   */
+  const needle = search.toLowerCase();
+  const matchedVariants = search.trim()
+    ? products.filter(p => p.parentId && (p.nom.toLowerCase().includes(needle) || p.codeBarre.includes(search)))
+    : [];
+  const filteredProducts = [
+    ...products.filter(p =>
+      !p.parentId && (
+        p.nom.toLowerCase().includes(needle)
+        || p.codeBarre.includes(search)
+        || products.some(v => v.parentId === p.id && v.nom.toLowerCase().includes(needle))
+      )
+    ),
+    ...matchedVariants,
+  ];
 
   const getProductImage = (product: Product) => product.imageUrl || productImages[product.id] || null;
   const getProductImageById = (productId: string) => {
@@ -751,7 +780,19 @@ const CaissePage: React.FC = () => {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2 lg:gap-3">
               {filteredProducts.map(product => {
-                const status = getStockStatus(product.stock, product.seuilAlerte);
+                // Un parent ne porte pas de stock : sans ce cumul il
+                // s'afficherait en rupture et serait impossible à ouvrir.
+                const children = isParent(product)
+                  ? products.filter(p => p.parentId === product.id)
+                  : [];
+                const effectiveStock = isParent(product)
+                  ? children.reduce((sum, c) => sum + c.stock, 0)
+                  : product.stock;
+                const effectiveThreshold = isParent(product)
+                  ? children.reduce((sum, c) => sum + c.seuilAlerte, 0)
+                  : product.seuilAlerte;
+                const prices = children.map(c => c.prixVente);
+                const status = getStockStatus(effectiveStock, effectiveThreshold);
                 const isOut = status === 'stockout';
                 const justAdded = addedProductId === product.id;
                 const image = getProductImage(product);
@@ -795,7 +836,15 @@ const CaissePage: React.FC = () => {
                     </div>
                     <div className="p-2 lg:p-3">
                       <p className="text-[13px] font-semibold text-foreground line-clamp-2 leading-tight">{product.nom}</p>
-                      <p className="money text-sm text-primary mt-1">{formatFCFA(product.prixVente)}</p>
+                      <p className="money text-sm text-primary mt-1">
+                        {isParent(product)
+                          ? (prices.length === 0
+                              ? '—'
+                              : Math.min(...prices) === Math.max(...prices)
+                                ? formatFCFA(Math.min(...prices))
+                                : `${formatFCFA(Math.min(...prices))} – ${formatFCFA(Math.max(...prices))}`)
+                          : formatFCFA(product.prixVente)}
+                      </p>
                     </div>
                   </button>
                 );
@@ -851,6 +900,14 @@ const CaissePage: React.FC = () => {
         onScan={handleBarcodeScanned}
       />
       <ReceiptModal sale={receiptSale} open={showReceipt} onClose={() => setShowReceipt(false)} />
+
+      {/* Choix d'une déclinaison avant l'ajout au panier */}
+      <VariantPicker
+        parent={variantParent}
+        variants={variantParent ? products.filter(p => p.parentId === variantParent.id) : []}
+        onClose={() => setVariantParent(null)}
+        onPick={variant => { setVariantParent(null); handleAddProduct(variant); }}
+      />
 
       {/* Négociation de prix */}
       <PriceEditor

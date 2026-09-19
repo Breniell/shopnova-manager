@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useProductStore } from '@/stores/useProductStore';
+import { useProductStore, bearsStock } from '@/stores/useProductStore';
 import { useStockStore } from '@/stores/useStockStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useSupplierStore } from '@/stores/useSupplierStore';
@@ -64,10 +64,15 @@ const StockPage: React.FC = () => {
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
   const [selectedAlertProducts, setSelectedAlertProducts] = useState<Set<string>>(new Set());
 
-  const outOfStock = products.filter(p => p.stock <= 0);
-  const lowStock = products.filter(p => p.stock > 0 && p.stock <= p.seuilAlerte);
+  // Un produit parent ne porte pas de stock, ce sont ses déclinaisons qui en
+  // portent. Le laisser ici l'afficherait en rupture permanente, polluerait
+  // les alertes et fausserait la valorisation.
+  const stocked = products.filter(bearsStock);
+
+  const outOfStock = stocked.filter(p => p.stock <= 0);
+  const lowStock = stocked.filter(p => p.stock > 0 && p.stock <= p.seuilAlerte);
   const alertProducts = [...outOfStock, ...lowStock];
-  const totalValue = products.reduce((sum, p) => sum + p.prixAchat * p.stock, 0);
+  const totalValue = stocked.reduce((sum, p) => sum + p.prixAchat * p.stock, 0);
 
   const suppliersWithEmail = suppliers.filter(s => s.email);
 
@@ -219,7 +224,7 @@ const StockPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {products.map(p => (
+                  {stocked.map(p => (
                     <tr key={p.id} className="border-t border-border hover:bg-muted/30 transition-colors">
                       <td className="p-3 text-sm font-medium text-foreground">{p.nom}</td>
                       <td className="p-3 text-sm text-muted-foreground hidden sm:table-cell">{p.categorie}</td>
@@ -382,7 +387,7 @@ const StockPage: React.FC = () => {
                 <label className="text-xs text-muted-foreground mb-1 block">{t('stock.labelProduct')}</label>
                 <select value={selectedProduct} onChange={e => handleProductSelect(e.target.value)} className="nova-input w-full">
                   <option value="">{t('stock.selectProduct')}</option>
-                  {products.map(p => <option key={p.id} value={p.id}>{p.nom} (stock: {p.stock})</option>)}
+                  {stocked.map(p => <option key={p.id} value={p.id}>{p.nom} (stock: {p.stock})</option>)}
                 </select>
               </div>
               <div>

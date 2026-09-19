@@ -5,7 +5,7 @@ import { StatCard } from '@/components/ui/StatCard';
 import { NovaCard } from '@/components/ui/NovaCard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { PaymentBadge } from '@/components/ui/PaymentBadge';
-import { useProductStore } from '@/stores/useProductStore';
+import { useProductStore, bearsStock } from '@/stores/useProductStore';
 import { useSaleStore } from '@/stores/useSaleStore';
 import { getStockStatus } from '@/lib/utils';
 import { productImages } from '@/assets/productImages';
@@ -28,9 +28,12 @@ const DashboardPage: React.FC = () => {
 
   const todaySales = activeSales.filter(s => new Date(s.date) >= today);
   const todayRevenue = todaySales.reduce((sum, s) => sum + s.total, 0);
-  const outOfStock = products.filter(p => p.stock <= 0);
-  const lowStock = products.filter(p => p.stock > 0 && p.stock <= p.seuilAlerte);
-  const totalStockValue = products.reduce((sum, p) => sum + p.prixVente * p.stock, 0);
+  // Les parents ne portent pas de stock : les compter ici afficherait des
+  // ruptures fantômes dans les alertes du tableau de bord.
+  const stocked = products.filter(bearsStock);
+  const outOfStock = stocked.filter(p => p.stock <= 0);
+  const lowStock = stocked.filter(p => p.stock > 0 && p.stock <= p.seuilAlerte);
+  const totalStockValue = stocked.reduce((sum, p) => sum + p.prixVente * p.stock, 0);
 
   // Dynamic trends vs yesterday
   const yesterday = new Date(today);

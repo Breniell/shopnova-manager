@@ -284,6 +284,21 @@ export async function persistRestoreBeforeStoreMutation(
  * Restore a validated BackupData into all stores and sync to Firestore.
  * onProgress is called with incremental progress (for the UI).
  */
+/**
+ * Une restauration **écrit**, elle ne supprime rien - et ne le peut pas.
+ *
+ * Ne pas « corriger » cela en ajoutant des suppressions : `firestore.rules`
+ * refuse explicitement `delete` sur les journaux comptables
+ * (`stock_movements`, `payments`, `clotures`, `cash_sessions`,
+ * `inventory_sessions`, `refunds`, `sale_operations`), parce qu'ils
+ * constituent la piste d'audit de la boutique. Un remplacement intégral
+ * échouerait sur la moitié des collections, à moitié appliqué.
+ *
+ * Conséquence pour l'utilisateur : ce qui existe aujourd'hui sans figurer dans
+ * la sauvegarde survit, et le listener `onSnapshot` le ramène à l'écran même
+ * si les stores locaux ont été remplacés. Le message de confirmation dit
+ * désormais cela ; il annonçait auparavant un remplacement total.
+ */
 export async function restoreBackupData(
   data: BackupData,
   onProgress?: (p: RestoreProgress) => void

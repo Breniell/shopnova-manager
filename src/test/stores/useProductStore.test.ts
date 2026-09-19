@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { useProductStore } from '@/stores/useProductStore';
+import {
+  useProductStore, DEFAULT_CATEGORIES,
+  isParent, isVariant, bearsStock, composeVariantName,
+} from '@/stores/useProductStore';
 import type { Product } from '@/stores/useProductStore';
+import { useSettingsStore, defaultShopSettings, shopCategories } from '@/stores/useSettingsStore';
 import * as firestoreService from '@/services/firestoreService';
 
 // Seed products used across tests
@@ -12,26 +16,36 @@ const seedProducts: Product[] = [
 
 beforeEach(() => {
   localStorage.clear();
-  useProductStore.setState({
-    products: seedProducts.map(p => ({ ...p })),
-    categories: ['Alimentation', 'Boissons', 'Hygiène', 'Électronique', 'Vêtements', 'Électroménager', 'Autre'],
-  });
+  useProductStore.setState({ products: seedProducts.map(p => ({ ...p })) });
+  useSettingsStore.setState({ shop: { ...defaultShopSettings } });
 });
 
 describe('useProductStore - initial state', () => {
   it('starts with seed products', () => {
     expect(useProductStore.getState().products).toHaveLength(3);
   });
+});
 
-  it('exposes 7 categories', () => {
-    expect(useProductStore.getState().categories).toHaveLength(7);
+// Les catégories ne sont plus figées dans le code : le gérant gère sa propre
+// liste, parce qu'aucune des sept d'origine ne convenait à la beauté, à la
+// coiffure ou à la quincaillerie.
+describe('categories de la boutique', () => {
+  it('retombe sur la liste par défaut quand la boutique n\'en a pas', () => {
+    const cats = shopCategories(useSettingsStore.getState().shop);
+    expect(cats).toEqual(DEFAULT_CATEGORIES);
+    expect(cats).toContain('Alimentation');
   });
 
-  it('includes expected categories', () => {
-    const cats = useProductStore.getState().categories;
-    expect(cats).toContain('Alimentation');
-    expect(cats).toContain('Boissons');
-    expect(cats).toContain('Électronique');
+  it('utilise la liste de la boutique dès qu\'elle en a une', () => {
+    useSettingsStore.setState({
+      shop: { ...defaultShopSettings, categories: ['Beauté & coiffure', 'Mèches'] },
+    });
+    expect(shopCategories(useSettingsStore.getState().shop)).toEqual(['Beauté & coiffure', 'Mèches']);
+  });
+
+  it('ignore une liste vide plutôt que de ne rien proposer', () => {
+    useSettingsStore.setState({ shop: { ...defaultShopSettings, categories: [] } });
+    expect(shopCategories(useSettingsStore.getState().shop)).toEqual(DEFAULT_CATEGORIES);
   });
 });
 
@@ -64,6 +78,105 @@ describe('useProductStore - addProduct', () => {
     expect(p.prixAchat).toBe(400);
     expect(p.prixVente).toBe(600);
     expect(p.description).toBe('Délicieux jus');
+  });
+});
+
+/**
+ * Déclinaisons : une variante est un produit à part entière, rattaché à un
+ * parent. Ce sont ces règles-là qui permettent aux ventes, au stock et aux
+ * prix plancher de continuer à fonctionner sans être modifiés.
+ */
+describe('déclinaisons', () => {
+  /** Crée un parent à deux axes et ses déclinaisons. Renvoie les ids. */
+  const seedWig = () => {
+    const parent = useProductStore.getState().addProduct({
+      nom: 'Perruque Bob', categorie: 'Autre', codeBarre: '',
+      prixAchat: 0, prixVente: 0, stock: 0, seuilAlerte: 0,
+      variantAxes: ['Longueur', 'Couleur'],
+    });
+    const noir = useProductStore.getState().addProduct({
+      nom: composeVariantName('Perruque Bob', ['Longueur', 'Couleur'], { Longueur: '12 pouces', Couleur: 'Noir' }),
+      categorie: 'Autre', codeBarre: '2000000000001',
+      prixAchat: 8000, prixVente: 15000, stock: 4, seuilAlerte: 2,
+      parentId: parent.id, variantValues: { Longueur: '12 pouces', Couleur: 'Noir' },
+    });
+    const brun = useProductStore.getState().addProduct({
+      nom: composeVariantName('Perruque Bob', ['Longueur', 'Couleur'], { Longueur: '12 pouces', Couleur: 'Brun' }),
+      categorie: 'Autre', codeBarre: '2000000000002',
+      prixAchat: 8000, prixVente: 15000, stock: 2, seuilAlerte: 2,
+      parentId: parent.id, variantValues: { Longueur: '12 pouces', Couleur: 'Brun' },
+    });
+    return { parent, noir, brun };
+  };
+
+  it('compose un nom lisible à partir des axes', () => {
+    expect(composeVariantName('Perruque Bob', ['Longueur', 'Couleur'], { Longueur: '12 pouces', Couleur: 'Noir' }))
+      .toBe('Perruque Bob — 12 pouces / Noir');
+  });
+
+  it('retombe sur le nom du parent quand aucune valeur n\'est renseignée', () => {
+    expect(composeVariantName('Perruque Bob', ['Couleur'], {})).toBe('Perruque Bob');
+  });
+
+  it('distingue parent, déclinaison et produit ordinaire', () => {
+    const { parent, noir } = seedWig();
+    const ordinary = useProductStore.getState().products.find(p => p.id === 'p1')!;
+    expect(isParent(parent)).toBe(true);
+    expect(isVariant(parent)).toBe(false);
+    expect(isVariant(noir)).toBe(true);
+    expect(isParent(noir)).toBe(false);
+    expect(isParent(ordinary)).toBe(false);
+    expect(isVariant(ordinary)).toBe(false);
+  });
+
+  it('exclut le parent du stock, mais pas ses déclinaisons', () => {
+    // Un parent laissé dans les listes de stock s'afficherait en rupture
+    // permanente et fausserait la valorisation.
+    const { parent, noir } = seedWig();
+    expect(bearsStock(parent)).toBe(false);
+    expect(bearsStock(noir)).toBe(true);
+
+    const valuation = useProductStore.getState().products
+      .filter(bearsStock)
+      .reduce((sum, p) => sum + p.prixAchat * p.stock, 0);
+    const withParent = useProductStore.getState().products
+      .reduce((sum, p) => sum + p.prixAchat * p.stock, 0);
+    expect(valuation).toBe(withParent); // le parent vaut 0, mais il fausserait les alertes
+    expect(useProductStore.getState().products.filter(bearsStock)).not.toContainEqual(parent);
+  });
+
+  it('renomme les déclinaisons quand le parent est renommé', () => {
+    // Le nom composé part dans le panier, le reçu et l'étiquette : le laisser
+    // périmé afficherait l'ancien nom au client.
+    const { parent } = seedWig();
+    useProductStore.getState().updateProduct(parent.id, { nom: 'Perruque Carré' });
+    const names = useProductStore.getState().products
+      .filter(p => p.parentId === parent.id).map(p => p.nom);
+    expect(names).toEqual([
+      'Perruque Carré — 12 pouces / Noir',
+      'Perruque Carré — 12 pouces / Brun',
+    ]);
+  });
+
+  it('supprime les déclinaisons avec leur parent', () => {
+    // Sinon elles resteraient vendables au scan tout en étant invisibles dans
+    // la grille, qui n'affiche que les parents.
+    const { parent } = seedWig();
+    useProductStore.getState().deleteProduct(parent.id);
+    const left = useProductStore.getState().products;
+    expect(left.find(p => p.id === parent.id)).toBeUndefined();
+    expect(left.filter(p => p.parentId === parent.id)).toHaveLength(0);
+    expect(left).toHaveLength(3); // les trois produits ordinaires du seed
+  });
+
+  it('retrouve une déclinaison par son code-barres, sans passer par le parent', () => {
+    const { noir } = seedWig();
+    expect(useProductStore.getState().getProductByBarcode('2000000000001')?.id).toBe(noir.id);
+  });
+
+  it('liste les déclinaisons d\'un parent', () => {
+    const { parent, noir, brun } = seedWig();
+    expect(useProductStore.getState().getVariants(parent.id).map(v => v.id)).toEqual([noir.id, brun.id]);
   });
 });
 

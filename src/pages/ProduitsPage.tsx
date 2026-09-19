@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { useProductStore, Product, Category } from '@/stores/useProductStore';
+import {
+  useProductStore, Product, Category,
+  isParent, composeVariantName, VARIANT_AXIS_SUGGESTIONS,
+} from '@/stores/useProductStore';
+import { useSettingsStore, shopCategories } from '@/stores/useSettingsStore';
 import { useSaleStore } from '@/stores/useSaleStore';
 import { useTranslation } from '@/i18n';
 import { formatFCFA } from '@/utils/formatters';
@@ -11,11 +15,34 @@ import { LabelPrint } from '@/components/ui/LabelPrint';
 import { getStockStatus, generateInternalBarcode, isValidEAN13, cn } from '@/lib/utils';
 import { productImages } from '@/assets/productImages';
 import { compressImageToDataUrl } from '@/lib/imageUtils';
-import { Search, Plus, Edit, Trash2, Package, X, Camera, Hash, Tag, Upload, Loader2, Image as ImageIcon } from 'lucide-react';
+import {
+  Search, Plus, Edit, Trash2, Package, X, Camera, Hash, Tag, Upload, Loader2,
+  Image as ImageIcon, ChevronRight, ChevronDown, Layers,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
+/** Une ligne du tableau de déclinaisons pendant la saisie. */
+interface VariantDraft {
+  /** Clé locale de la ligne ; l'id Firestore arrive dans `id` à l'édition. */
+  key: string;
+  id?: string;
+  values: Record<string, string>;
+  prixAchat: string;
+  prixVente: string;
+  stock: string;
+  seuilAlerte: string;
+  codeBarre: string;
+}
+
+const newVariantDraft = (): VariantDraft => ({
+  key: `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  values: {}, prixAchat: '', prixVente: '', stock: '', seuilAlerte: '5', codeBarre: '',
+});
+
 const ProduitsPage: React.FC = () => {
-  const { products, categories, addProduct, updateProduct, deleteProduct } = useProductStore();
+  const { products, addProduct, updateProduct, deleteProduct, getVariants } = useProductStore();
+  const { shop, updateShop } = useSettingsStore();
+  const categories = shopCategories(shop);
   const { cart } = useSaleStore();
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
@@ -28,25 +55,25 @@ const ProduitsPage: React.FC = () => {
   const [labelProduct, setLabelProduct] = useState<Product | null>(null);
   const [isImageProcessing, setIsImageProcessing] = useState(false);
   const imageFileRef = React.useRef<HTMLInputElement>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  const [form, setForm] = useState({
-    nom: '', categorie: 'Alimentation' as Category, codeBarre: '', prixAchat: '',
+  const emptyForm = {
+    nom: '', categorie: categories[0] ?? 'Autre', codeBarre: '', prixAchat: '',
     prixVente: '', prixCible: '', prixPlancher: '', negociable: false,
     stock: '', seuilAlerte: '5', description: '', imageUrl: '',
-  });
+    hasVariants: false, axes: [] as string[], variants: [] as VariantDraft[],
+  };
+  const [form, setForm] = useState(emptyForm);
 
   const openAdd = () => {
     setEditingProduct(null);
-    setForm({
-      nom: '', categorie: 'Alimentation', codeBarre: '', prixAchat: '',
-      prixVente: '', prixCible: '', prixPlancher: '', negociable: false,
-      stock: '', seuilAlerte: '5', description: '', imageUrl: '',
-    });
+    setForm(emptyForm);
     setShowModal(true);
   };
 
   const openEdit = (p: Product) => {
     setEditingProduct(p);
+    const axes = p.variantAxes ?? [];
     setForm({
       nom: p.nom, categorie: p.categorie, codeBarre: p.codeBarre,
       prixAchat: String(p.prixAchat), prixVente: String(p.prixVente),
@@ -55,9 +82,27 @@ const ProduitsPage: React.FC = () => {
       negociable: p.negociable === true,
       stock: String(p.stock), seuilAlerte: String(p.seuilAlerte), description: p.description || '',
       imageUrl: p.imageUrl || '',
+      hasVariants: isParent(p),
+      axes,
+      variants: getVariants(p.id).map(variant => ({
+        key: variant.id,
+        id: variant.id,
+        values: { ...(variant.variantValues ?? {}) },
+        prixAchat: String(variant.prixAchat),
+        prixVente: String(variant.prixVente),
+        stock: String(variant.stock),
+        seuilAlerte: String(variant.seuilAlerte),
+        codeBarre: variant.codeBarre,
+      })),
     });
     setShowModal(true);
   };
+
+  const toggleExpanded = (id: string) => setExpanded(previous => {
+    const next = new Set(previous);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -86,8 +131,96 @@ const ProduitsPage: React.FC = () => {
     ? products.find(p => p.codeBarre === form.codeBarre.trim() && p.id !== editingProduct?.id) ?? null
     : null;
 
+  /**
+   * Enregistre un produit à déclinaisons : le parent, puis une fiche par
+   * déclinaison. Le parent ne porte ni prix ni stock - ce sont les
+   * déclinaisons qui les portent - et pas de code-barres non plus, pour qu'un
+   * scan ne puisse jamais faire tomber un parent invendable dans le panier.
+   */
+  const submitWithVariants = () => {
+    const axes = form.axes.map(axis => axis.trim()).filter(Boolean);
+    if (axes.length === 0) {
+      toast.error(t('produits.axisRequired'));
+      return;
+    }
+    if (form.variants.length === 0) {
+      toast.error(t('produits.variantRequired'));
+      return;
+    }
+    for (const variant of form.variants) {
+      if (axes.some(axis => !variant.values[axis]?.trim())) {
+        toast.error(t('produits.variantValuesRequired'));
+        return;
+      }
+      if (!variant.prixAchat || !variant.prixVente) {
+        toast.error(t('produits.variantPricesRequired'));
+        return;
+      }
+    }
+    // Deux déclinaisons identiques donneraient deux fiches au même nom, donc
+    // deux stocks distincts pour un même article réel.
+    const signatures = form.variants.map(v => axes.map(a => v.values[a].trim()).join(' / '));
+    const duplicate = signatures.find((sig, index) => signatures.indexOf(sig) !== index);
+    if (duplicate) {
+      toast.error(t('produits.variantDuplicate').replace('{values}', duplicate));
+      return;
+    }
+
+    const parentFields = {
+      nom: form.nom, categorie: form.categorie, codeBarre: '',
+      prixAchat: 0, prixVente: 0, stock: 0, seuilAlerte: 0,
+      description: form.description, imageUrl: form.imageUrl,
+      variantAxes: axes,
+    };
+
+    const parentId = editingProduct
+      ? (updateProduct(editingProduct.id, parentFields), editingProduct.id)
+      : addProduct(parentFields).id;
+
+    const keptIds = new Set<string>();
+    for (const variant of form.variants) {
+      const values = Object.fromEntries(axes.map(axis => [axis, variant.values[axis].trim()]));
+      const fields = {
+        nom: composeVariantName(form.nom, axes, values),
+        categorie: form.categorie,
+        codeBarre: variant.codeBarre.trim() || generateInternalBarcode(),
+        prixAchat: parseInt(variant.prixAchat, 10) || 0,
+        prixVente: parseInt(variant.prixVente, 10) || 0,
+        seuilAlerte: parseInt(variant.seuilAlerte, 10) || 5,
+        description: form.description,
+        imageUrl: form.imageUrl,
+        parentId,
+        variantValues: values,
+      };
+      if (variant.id) {
+        updateProduct(variant.id, fields);
+        keptIds.add(variant.id);
+      } else {
+        keptIds.add(addProduct({ ...fields, stock: parseInt(variant.stock, 10) || 0 }).id);
+      }
+    }
+
+    // Les lignes retirées du tableau pendant l'édition doivent disparaître.
+    if (editingProduct) {
+      for (const existing of getVariants(editingProduct.id)) {
+        if (!keptIds.has(existing.id)) deleteProduct(existing.id);
+      }
+    }
+
+    toast.success(editingProduct ? t('produits.updated') : t('produits.added'));
+    setShowModal(false);
+  };
+
   const handleSubmit = () => {
-    if (!form.nom || !form.prixAchat || !form.prixVente) {
+    if (!form.nom) {
+      toast.error(t('produits.requiredFields'));
+      return;
+    }
+    if (form.hasVariants) {
+      submitWithVariants();
+      return;
+    }
+    if (!form.prixAchat || !form.prixVente) {
       toast.error(t('produits.requiredFields'));
       return;
     }
@@ -119,9 +252,16 @@ const ProduitsPage: React.FC = () => {
     // Auto-generate an internal code (prefix '2') only when left empty
     const codeBarre = form.codeBarre.trim() || generateInternalBarcode();
 
+    // Décocher « déclinaisons » sur un produit qui en avait doit les emporter,
+    // sinon elles resteraient vendables au scan tout en étant invisibles.
+    if (editingProduct && isParent(editingProduct)) {
+      for (const orphan of getVariants(editingProduct.id)) deleteProduct(orphan.id);
+    }
+
     const data = {
       nom: form.nom, categorie: form.categorie, codeBarre,
       prixAchat: prixAchatNum, prixVente: prixVenteNum,
+      variantAxes: undefined,
       prixCible: form.negociable ? prixCibleNum : undefined,
       prixPlancher: form.negociable ? prixPlancherNum : undefined,
       negociable: form.negociable,
@@ -141,8 +281,10 @@ const ProduitsPage: React.FC = () => {
 
   const handleDelete = () => {
     if (!deleteTarget) return;
-    const inCart = cart.find(c => c.productId === deleteTarget.id);
-    if (inCart) {
+    // Supprimer un parent emporte ses déclinaisons : il faut donc vérifier le
+    // panier pour chacune, pas seulement pour le parent.
+    const doomedIds = [deleteTarget.id, ...getVariants(deleteTarget.id).map(v => v.id)];
+    if (cart.some(item => doomedIds.includes(item.productId))) {
       toast.error(t('produits.inCartError'));
       setDeleteTarget(null);
       return;
@@ -156,11 +298,49 @@ const ProduitsPage: React.FC = () => {
     ? (((parseInt(form.prixVente, 10) || 0) - (parseInt(form.prixAchat, 10) || 0)) / (parseInt(form.prixAchat, 10) || 1) * 100)
     : 0;
 
-  let filtered = products.filter(p => p.nom.toLowerCase().includes(search.toLowerCase()) || p.codeBarre.includes(search));
+  /**
+   * Le tableau liste des lignes de premier niveau : produits ordinaires et
+   * parents. Les déclinaisons s'affichent en retrait sous leur parent, sinon
+   * on retrouverait la liste interminable que les déclinaisons corrigent.
+   */
+  const variantsOf = (parent: Product) => products.filter(p => p.parentId === parent.id);
+
+  /**
+   * Chiffres d'une ligne : ceux du produit lui-même, ou le cumul de ses
+   * déclinaisons pour un parent, qui ne porte rien en propre.
+   */
+  const rowFigures = (p: Product) => {
+    if (!isParent(p)) {
+      return { stock: p.stock, seuilAlerte: p.seuilAlerte, prixMin: p.prixVente, prixMax: p.prixVente, count: 0 };
+    }
+    const children = variantsOf(p);
+    const prices = children.map(c => c.prixVente);
+    return {
+      stock: children.reduce((sum, c) => sum + c.stock, 0),
+      seuilAlerte: children.reduce((sum, c) => sum + c.seuilAlerte, 0),
+      prixMin: prices.length ? Math.min(...prices) : 0,
+      prixMax: prices.length ? Math.max(...prices) : 0,
+      count: children.length,
+    };
+  };
+
+  const needle = search.toLowerCase();
+  // Chercher « Noir » doit trouver le parent dont une déclinaison est noire.
+  const matchesSearch = (p: Product) =>
+    p.nom.toLowerCase().includes(needle)
+    || p.codeBarre.includes(search)
+    || variantsOf(p).some(v => v.nom.toLowerCase().includes(needle) || v.codeBarre.includes(search));
+
+  let filtered = products.filter(p => !p.parentId && matchesSearch(p));
   if (catFilter) filtered = filtered.filter(p => p.categorie === catFilter);
-  if (stockFilter === 'ok') filtered = filtered.filter(p => p.stock > p.seuilAlerte);
-  if (stockFilter === 'low') filtered = filtered.filter(p => p.stock > 0 && p.stock <= p.seuilAlerte);
-  if (stockFilter === 'out') filtered = filtered.filter(p => p.stock <= 0);
+  if (stockFilter) {
+    filtered = filtered.filter(p => {
+      const { stock, seuilAlerte } = rowFigures(p);
+      if (stockFilter === 'ok') return stock > seuilAlerte;
+      if (stockFilter === 'low') return stock > 0 && stock <= seuilAlerte;
+      return stock <= 0;
+    });
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
@@ -216,14 +396,27 @@ const ProduitsPage: React.FC = () => {
               </thead>
               <tbody>
                 {filtered.map((p, i) => {
-                  const status = getStockStatus(p.stock, p.seuilAlerte);
+                  const figures = rowFigures(p);
+                  const parent = isParent(p);
+                  const status = getStockStatus(figures.stock, figures.seuilAlerte);
                   const margin = ((p.prixVente - p.prixAchat) / p.prixAchat * 100);
                   const isInternal = p.codeBarre.startsWith('2');
+                  const open = expanded.has(p.id);
                   return (
-                    <tr key={p.id} className="border-t border-border hover:bg-muted/30 transition-colors group">
+                    <React.Fragment key={p.id}>
+                    <tr className="border-t border-border hover:bg-muted/30 transition-colors group">
                       <td className="p-3 text-sm text-muted-foreground">{i + 1}</td>
                       <td className="p-3">
                         <div className="flex items-center gap-2 lg:gap-3">
+                          {parent && (
+                            <button
+                              onClick={() => toggleExpanded(p.id)}
+                              aria-label={t('produits.variantsToggle')}
+                              className="p-0.5 rounded hover:bg-muted text-muted-foreground shrink-0"
+                            >
+                              {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                            </button>
+                          )}
                           {p.imageUrl || productImages[p.id] ? (
                             <img src={p.imageUrl || productImages[p.id]} alt={p.nom} className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg object-cover shrink-0" />
                           ) : (
@@ -234,32 +427,52 @@ const ProduitsPage: React.FC = () => {
                           <div>
                             <p className="text-sm font-medium text-foreground">{p.nom}</p>
                             <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{p.categorie}</span>
+                            {parent && (
+                              <span className="ml-1 text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded inline-flex items-center gap-1">
+                                <Layers className="w-2.5 h-2.5" />
+                                {t('produits.variantsCount').replace('{n}', String(figures.count))}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </td>
                       <td
                         className="p-3 text-sm font-mono text-muted-foreground cursor-pointer hover:text-foreground hidden md:table-cell"
-                        onClick={() => { navigator.clipboard.writeText(p.codeBarre); toast.success(t('produits.copied')); }}
+                        onClick={() => {
+                          if (!p.codeBarre) return;
+                          navigator.clipboard.writeText(p.codeBarre);
+                          toast.success(t('produits.copied'));
+                        }}
                       >
                         <span className="flex items-center gap-1.5">
-                          {p.codeBarre}
+                          {p.codeBarre || '—'}
                           {isInternal && (
                             <span className="text-[9px] bg-amber-500/15 text-amber-600 px-1 py-0.5 rounded font-sans">vrac</span>
                           )}
                         </span>
                       </td>
-                      <td className="p-3 money text-right text-muted-foreground hidden sm:table-cell">{formatFCFA(p.prixAchat)}</td>
-                      <td className="p-3 money text-right text-foreground">{formatFCFA(p.prixVente)}</td>
+                      <td className="p-3 money text-right text-muted-foreground hidden sm:table-cell">
+                        {parent ? '—' : formatFCFA(p.prixAchat)}
+                      </td>
+                      <td className="p-3 money text-right text-foreground">
+                        {parent
+                          ? (figures.prixMin === figures.prixMax
+                              ? formatFCFA(figures.prixMin)
+                              : `${formatFCFA(figures.prixMin)} – ${formatFCFA(figures.prixMax)}`)
+                          : formatFCFA(p.prixVente)}
+                      </td>
                       <td className={cn('p-3 text-sm text-right font-medium tabular-nums hidden sm:table-cell', margin >= 20 ? 'text-emerald-400' : margin >= 10 ? 'text-amber-400' : 'text-red-400')}>
-                        {margin.toFixed(1)}%
+                        {parent ? '—' : `${margin.toFixed(1)}%`}
                       </td>
                       <td className="p-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <StatusBadge status={status} />
-                          <span className="text-sm tabular-nums text-foreground">{p.stock}</span>
+                          <span className="text-sm tabular-nums text-foreground">{figures.stock}</span>
                         </div>
                       </td>
-                      <td className="p-3 money text-right text-muted-foreground hidden md:table-cell">{p.seuilAlerte}</td>
+                      <td className="p-3 money text-right text-muted-foreground hidden md:table-cell">
+                        {parent ? '—' : p.seuilAlerte}
+                      </td>
                       <td className="p-3 text-right">
                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           {isInternal && (
@@ -280,6 +493,48 @@ const ProduitsPage: React.FC = () => {
                         </div>
                       </td>
                     </tr>
+
+                    {/* Déclinaisons, en retrait sous leur parent */}
+                    {parent && open && variantsOf(p).map(variant => {
+                      const variantStatus = getStockStatus(variant.stock, variant.seuilAlerte);
+                      const variantMargin = ((variant.prixVente - variant.prixAchat) / variant.prixAchat * 100);
+                      return (
+                        <tr key={variant.id} className="border-t border-border/50 bg-muted/10 group/variant">
+                          <td className="p-3" />
+                          <td className="p-3 pl-10">
+                            <p className="text-sm text-foreground">
+                              {(p.variantAxes ?? []).map(axis => variant.variantValues?.[axis]).filter(Boolean).join(' / ')}
+                            </p>
+                            <span className="text-[10px] font-mono text-muted-foreground">{variant.codeBarre}</span>
+                          </td>
+                          <td className="p-3 hidden md:table-cell" />
+                          <td className="p-3 money text-right text-muted-foreground hidden sm:table-cell">{formatFCFA(variant.prixAchat)}</td>
+                          <td className="p-3 money text-right text-foreground">{formatFCFA(variant.prixVente)}</td>
+                          <td className={cn('p-3 text-sm text-right font-medium tabular-nums hidden sm:table-cell', variantMargin >= 20 ? 'text-emerald-400' : variantMargin >= 10 ? 'text-amber-400' : 'text-red-400')}>
+                            {variantMargin.toFixed(1)}%
+                          </td>
+                          <td className="p-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <StatusBadge status={variantStatus} />
+                              <span className="text-sm tabular-nums text-foreground">{variant.stock}</span>
+                            </div>
+                          </td>
+                          <td className="p-3 money text-right text-muted-foreground hidden md:table-cell">{variant.seuilAlerte}</td>
+                          <td className="p-3 text-right">
+                            <div className="flex justify-end gap-1 opacity-0 group-hover/variant:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => setLabelProduct(variant)}
+                                title={t('produits.labelPrintBtn')}
+                                className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                              >
+                                <Tag className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
@@ -306,8 +561,28 @@ const ProduitsPage: React.FC = () => {
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">{t('produits.labelCategory')}</label>
-                <select value={form.categorie} onChange={e => setForm({ ...form, categorie: e.target.value as Category })} className="nova-input w-full">
+                <select
+                  value={form.categorie}
+                  onChange={e => {
+                    // Les catégories étaient figées dans le code : aucune ne
+                    // convenait à la beauté, à la coiffure ou à la quincaillerie.
+                    if (e.target.value !== '__new__') {
+                      setForm({ ...form, categorie: e.target.value as Category });
+                      return;
+                    }
+                    const name = window.prompt(t('produits.categoryNewPrompt'))?.trim();
+                    if (!name) return;
+                    if (categories.some(c => c.toLowerCase() === name.toLowerCase())) {
+                      toast.error(t('produits.categoryExists'));
+                      return;
+                    }
+                    updateShop({ categories: [...categories, name] });
+                    setForm({ ...form, categorie: name });
+                  }}
+                  className="nova-input w-full"
+                >
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                  <option value="__new__">{t('produits.categoryNew')}</option>
                 </select>
               </div>
 
@@ -356,8 +631,172 @@ const ProduitsPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* ── Déclinaisons ────────────────────────────────────────── */}
+              <div className="border-t border-border pt-4">
+                <label className="flex items-center gap-2 text-sm font-medium text-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.hasVariants}
+                    onChange={e => setForm({
+                      ...form,
+                      hasVariants: e.target.checked,
+                      // Amorcer avec un axe et une ligne : partir d'un tableau
+                      // vide oblige le commerçant à deviner quoi faire.
+                      axes: e.target.checked && form.axes.length === 0 ? [''] : form.axes,
+                      variants: e.target.checked && form.variants.length === 0
+                        ? [newVariantDraft()] : form.variants,
+                    })}
+                    className="w-4 h-4 rounded"
+                  />
+                  <Layers className="w-4 h-4 text-primary" />
+                  {t('produits.variantsEnable')}
+                </label>
+                <p className="text-[11px] text-muted-foreground mt-1 ml-6">
+                  {t('produits.variantsHint')}
+                </p>
+
+                {form.hasVariants && (
+                  <div className="mt-4 space-y-4">
+                    {/* Axes */}
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block">{t('produits.axisLabel')}</label>
+                      <div className="space-y-2">
+                        {form.axes.map((axis, axisIndex) => (
+                          <div key={axisIndex} className="flex gap-2">
+                            <input
+                              type="text"
+                              value={axis}
+                              onChange={e => setForm(f => {
+                                const previousName = f.axes[axisIndex];
+                                const axes = [...f.axes];
+                                axes[axisIndex] = e.target.value;
+                                // Renommer un axe doit déplacer les valeurs
+                                // déjà saisies, sinon elles deviennent orphelines.
+                                const variants = f.variants.map(v => {
+                                  const values = { ...v.values };
+                                  if (previousName in values) {
+                                    values[e.target.value] = values[previousName];
+                                    delete values[previousName];
+                                  }
+                                  return { ...v, values };
+                                });
+                                return { ...f, axes, variants };
+                              })}
+                              className="nova-input flex-1"
+                              placeholder={t('produits.axisPlaceholder')}
+                              list="axis-suggestions"
+                            />
+                            {form.axes.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => setForm(f => ({ ...f, axes: f.axes.filter((_, index) => index !== axisIndex) }))}
+                                className="px-3 rounded-lg border border-border bg-muted hover:bg-destructive/20 hover:text-destructive text-muted-foreground transition-colors shrink-0"
+                                aria-label={t('produits.axisRemove')}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        <datalist id="axis-suggestions">
+                          {VARIANT_AXIS_SUGGESTIONS.map(s => <option key={s} value={s} />)}
+                        </datalist>
+                        <button
+                          type="button"
+                          onClick={() => setForm(f => ({ ...f, axes: [...f.axes, ''] }))}
+                          className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                          <Plus className="w-3 h-3" /> {t('produits.axisAdd')}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Tableau des déclinaisons */}
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block">{t('produits.variantsTitle')}</label>
+                      <div className="space-y-2">
+                        {form.variants.map((variant, variantIndex) => (
+                          <div key={variant.key} className="p-2.5 rounded-lg bg-muted/40 space-y-2">
+                            <div className="flex items-start gap-2">
+                              <div className="flex-1 grid grid-cols-2 gap-2">
+                                {form.axes.filter(Boolean).map(axis => (
+                                  <input
+                                    key={axis}
+                                    type="text"
+                                    value={variant.values[axis] ?? ''}
+                                    onChange={e => setForm(f => ({
+                                      ...f,
+                                      variants: f.variants.map((v, index) => index === variantIndex
+                                        ? { ...v, values: { ...v.values, [axis]: e.target.value } }
+                                        : v),
+                                    }))}
+                                    className="nova-input py-1.5 text-sm"
+                                    placeholder={axis}
+                                  />
+                                ))}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setForm(f => ({ ...f, variants: f.variants.filter((_, index) => index !== variantIndex) }))}
+                                className="p-1.5 rounded-lg hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                                aria-label={t('produits.variantRemove')}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2">
+                              <input
+                                type="number" value={variant.prixAchat}
+                                onChange={e => setForm(f => ({
+                                  ...f,
+                                  variants: f.variants.map((v, index) => index === variantIndex ? { ...v, prixAchat: e.target.value } : v),
+                                }))}
+                                className="nova-input py-1.5 text-sm" placeholder={t('produits.colPurchasePrice')}
+                              />
+                              <input
+                                type="number" value={variant.prixVente}
+                                onChange={e => setForm(f => ({
+                                  ...f,
+                                  variants: f.variants.map((v, index) => index === variantIndex ? { ...v, prixVente: e.target.value } : v),
+                                }))}
+                                className="nova-input py-1.5 text-sm" placeholder={t('produits.colSalePrice')}
+                              />
+                              {variant.id ? (
+                                // Le stock d'une déclinaison existante ne se
+                                // modifie que par une entrée de stock, comme
+                                // pour tout autre produit.
+                                <div className="nova-input py-1.5 text-sm text-muted-foreground flex items-center">
+                                  {t('produits.colStock')} : {variant.stock}
+                                </div>
+                              ) : (
+                                <input
+                                  type="number" value={variant.stock}
+                                  onChange={e => setForm(f => ({
+                                    ...f,
+                                    variants: f.variants.map((v, index) => index === variantIndex ? { ...v, stock: e.target.value } : v),
+                                  }))}
+                                  className="nova-input py-1.5 text-sm" placeholder={t('produits.colStock')}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => setForm(f => ({ ...f, variants: [...f.variants, newVariantDraft()] }))}
+                          className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                          <Plus className="w-3 h-3" /> {t('produits.variantAdd')}
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-2">{t('produits.variantBarcodeHint')}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* ── Code-barres ─────────────────────────────────────────── */}
-              <div>
+              <div className={cn(form.hasVariants && 'hidden')}>
                 <label className="text-xs text-muted-foreground mb-1 block">{t('produits.labelBarcode')}</label>
                 <div className="flex gap-2">
                   <input
@@ -401,7 +840,9 @@ const ProduitsPage: React.FC = () => {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              {/* Prix, négociation et stock appartiennent à chaque déclinaison
+                  dès qu'il y en a : le parent n'en porte aucun. */}
+              <div className={cn('grid grid-cols-2 gap-4', form.hasVariants && 'hidden')}>
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">{t('produits.labelPurchasePrice')}</label>
                   <input type="number" value={form.prixAchat} onChange={e => setForm({ ...form, prixAchat: e.target.value })} className="nova-input w-full" />
@@ -411,14 +852,14 @@ const ProduitsPage: React.FC = () => {
                   <input type="number" value={form.prixVente} onChange={e => setForm({ ...form, prixVente: e.target.value })} className="nova-input w-full" />
                 </div>
               </div>
-              {form.prixAchat && form.prixVente && (
+              {form.prixAchat && form.prixVente && !form.hasVariants && (
                 <div className={cn('text-sm font-medium', marge >= 20 ? 'text-emerald-400' : marge >= 10 ? 'text-amber-400' : 'text-red-400')}>
                   {t('produits.colMargin')}: {formatFCFA((parseInt(form.prixVente, 10) || 0) - (parseInt(form.prixAchat, 10) || 0))} ({marge.toFixed(1)}%)
                 </div>
               )}
 
               {/* ── Négociation ─────────────────────────────────────────── */}
-              <div className="border-t border-border pt-4">
+              <div className={cn('border-t border-border pt-4', form.hasVariants && 'hidden')}>
                 <label className="flex items-center gap-2 text-sm font-medium text-foreground cursor-pointer">
                   <input
                     type="checkbox"
@@ -464,13 +905,13 @@ const ProduitsPage: React.FC = () => {
                 )}
               </div>
 
-              {!editingProduct && (
+              {!editingProduct && !form.hasVariants && (
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">{t('produits.labelInitialStock')}</label>
                   <input type="number" value={form.stock} onChange={e => setForm({ ...form, stock: e.target.value })} className="nova-input w-full" />
                 </div>
               )}
-              <div>
+              <div className={cn(form.hasVariants && 'hidden')}>
                 <label className="text-xs text-muted-foreground mb-1 block">{t('produits.labelThreshold')}</label>
                 <input type="number" value={form.seuilAlerte} onChange={e => setForm({ ...form, seuilAlerte: e.target.value })} className="nova-input w-full" />
               </div>
