@@ -185,8 +185,13 @@ const fr = {
       decryptBtn:            "Déchiffrer",
       wrongPassword:         "Mot de passe incorrect",
       confirmTitle:          "Restaurer la sauvegarde ?",
-      crossBoutiqueWarning:  "Cette sauvegarde appartient à une autre boutique. Restaurer remplacera toutes vos données actuelles.",
-      confirmWarning:        "Toutes les données actuelles seront remplacées par celles de la sauvegarde. Cette action est irréversible.",
+      // Ce message annonçait un remplacement total. C'était faux, et surtout
+      // irréalisable : la restauration n'écrit que des documents, et les
+      // journaux comptables (mouvements de stock, règlements, clôtures) sont
+      // volontairement indélébiles. Un avertissement grave doit décrire ce qui
+      // se passe vraiment.
+      crossBoutiqueWarning:  "Cette sauvegarde appartient à une autre boutique. Ses données viendront s'ajouter aux vôtres.",
+      confirmWarning:        "Les données de la sauvegarde seront écrites par-dessus les vôtres. Ce qui existe aujourd'hui sans figurer dans la sauvegarde est conservé : une restauration ajoute et remplace, elle n'efface pas. Cette action est irréversible.",
       sumProducts:           "Produits",
       sumSales:              "Ventes",
       sumCustomers:          "Clients",
@@ -465,6 +470,11 @@ const fr = {
     negotiableBadge:           "Négociable",
     negotiableHint:            "Touchez le prix pour négocier",
     originalPrice:             "Prix original",
+    variantPickTitle:          "Choisissez une déclinaison",
+    variantClose:              "Fermer",
+    variantNone:               "Aucune déclinaison",
+    variantInStock:            "{n} en stock",
+    variantAdd:                "Ajouter au panier",
   },
 
   cashout: {
@@ -561,6 +571,27 @@ const fr = {
     barcodeInvalid:     "Code non reconnu - doit être un EAN-13 valide (13 chiffres)",
     barcodeDuplicate:   "Ce code est déjà utilisé par : {name}",
     barcodeAutoGenerate:"Laissez vide → un code interne (préfixe 2) sera généré automatiquement",
+    // Déclinaisons : tailles, couleurs, modèles… chacune avec ses prix et son stock
+    variantsEnable:     "Ce produit a des déclinaisons",
+    variantsHint:       "Tailles, couleurs, modèles… Chaque déclinaison a ses propres prix et son propre stock.",
+    variantsTitle:      "Déclinaisons",
+    variantsCount:      "{n} décl.",
+    variantsToggle:     "Afficher les déclinaisons",
+    axisLabel:          "Critères de déclinaison",
+    axisPlaceholder:    "ex. Couleur, Longueur, Pointure…",
+    axisAdd:            "Ajouter un critère",
+    axisRemove:         "Retirer ce critère",
+    axisRequired:       "Nommez au moins un critère de déclinaison",
+    variantAdd:         "Ajouter une déclinaison",
+    variantRemove:      "Retirer cette déclinaison",
+    variantRequired:    "Ajoutez au moins une déclinaison",
+    variantValuesRequired: "Renseignez chaque critère pour toutes les déclinaisons",
+    variantPricesRequired: "Chaque déclinaison a besoin d'un prix d'achat et d'un prix de vente",
+    variantDuplicate:   "Deux déclinaisons identiques : {values}",
+    variantBarcodeHint: "Code-barres laissé vide → un code interne est généré pour chaque déclinaison.",
+    categoryNew:        "＋ Nouvelle catégorie…",
+    categoryNewPrompt:  "Nom de la nouvelle catégorie",
+    categoryExists:     "Cette catégorie existe déjà",
     labelPrint:         "Imprimer",
     labelPrintBtn:      "Imprimer l'étiquette",
     labelPrintHint:     "Étiquette à coller sur les produits en vrac. Les emballés ont déjà leur code.",

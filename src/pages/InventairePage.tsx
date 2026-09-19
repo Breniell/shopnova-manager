@@ -19,7 +19,8 @@ import {
   ADJUSTMENT_REASON_LABELS,
   type AdjustmentReason,
 } from '@/stores/useStockStore';
-import { useProductStore } from '@/stores/useProductStore';
+import { useProductStore, bearsStock } from '@/stores/useProductStore';
+import { useSettingsStore, shopCategories } from '@/stores/useSettingsStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { NovaCard } from '@/components/ui/NovaCard';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -43,7 +44,9 @@ const REASONS: AdjustmentReason[] = [
 const InventairePage: React.FC = () => {
   const { t } = useTranslation();
   const { sessions, createSession, updateLine, validateSession, cancelSession, updateNotes } = useInventoryStore();
-  const { products, categories } = useProductStore();
+  const { products } = useProductStore();
+  const { shop } = useSettingsStore();
+  const categories = shopCategories(shop);
   const { currentUser } = useAuthStore();
 
   const [tab, setTab] = useState<Tab>('new');
@@ -76,9 +79,12 @@ const InventairePage: React.FC = () => {
 
   // ── Création d'une session ───────────────────────────────────────────────
   const productsInScope = useMemo(() => {
-    if (newScope === 'complet') return products;
-    if (newScope === 'categorie') return products.filter(p => p.categorie === newCategorie);
-    if (newScope === 'manuel') return products.filter(p => newSelection.has(p.id));
+    // On ne compte que ce qui porte du stock : un parent n'a rien à compter,
+    // ce sont ses déclinaisons qui sont sur l'étagère.
+    const countable = products.filter(bearsStock);
+    if (newScope === 'complet') return countable;
+    if (newScope === 'categorie') return countable.filter(p => p.categorie === newCategorie);
+    if (newScope === 'manuel') return countable.filter(p => newSelection.has(p.id));
     return [];
   }, [newScope, newCategorie, newSelection, products]);
 

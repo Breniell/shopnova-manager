@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useSaleStore } from '@/stores/useSaleStore';
-import { useProductStore } from '@/stores/useProductStore';
+import { useProductStore, bearsStock } from '@/stores/useProductStore';
 import { useExpenseStore } from '@/stores/useExpenseStore';
 import { StatCard } from '@/components/ui/StatCard';
 import { NovaCard } from '@/components/ui/NovaCard';
@@ -82,7 +82,9 @@ const RapportsPage: React.FC = () => {
   ].filter(d => d.value > 0);
 
   // Critical stock
-  const criticalProducts = products.filter(p => getStockStatus(p.stock, p.seuilAlerte) !== 'healthy')
+  // Un parent n'a pas de stock propre : sans ce filtre il apparaîtrait en
+  // rupture dans tous les rapports.
+  const criticalProducts = products.filter(p => bearsStock(p) && getStockStatus(p.stock, p.seuilAlerte) !== 'healthy')
     .map(p => ({ ...p, recommended: Math.max(0, p.seuilAlerte * 3 - p.stock) }));
 
   const periodLabels: Record<Period, string> = {
