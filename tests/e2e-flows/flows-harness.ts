@@ -385,6 +385,52 @@ export async function payTab(page: Page, label: 'Espèces' | 'Mobile' | 'Crédit
 }
 
 /**
+ * Create a product that comes in options (sizes, colours, models…).
+ *
+ * Each option is a product in its own right, with its own prices and stock -
+ * that is what lets the till, the stock ledger and the floor-price control keep
+ * working untouched.
+ */
+export async function createProductWithVariants(page: Page, product: {
+  nom: string;
+  axes: string[];
+  variants: Array<{ values: string[]; achat: string; vente: string; stock: string }>;
+}): Promise<void> {
+  await goTo(page, 'Produits');
+  await page.getByRole('button', { name: /Ajouter un produit/i }).first().click();
+  const modal = page.locator('[class*="nova-card"]').filter({ has: page.locator('input') }).last();
+  await modal.locator('input[type="text"]').first().fill(product.nom);
+
+  await modal.getByText(/Ce produit a des déclinaisons/i).click();
+
+  // Une ligne d'axe et une ligne de déclinaison existent déjà à l'ouverture.
+  for (let i = 1; i < product.axes.length; i++) {
+    await modal.getByRole('button', { name: /Ajouter un critère/i }).click();
+  }
+  const axisInputs = modal.getByPlaceholder(/ex\. Couleur/);
+  for (const [index, axis] of product.axes.entries()) {
+    await axisInputs.nth(index).fill(axis);
+  }
+
+  for (let i = 1; i < product.variants.length; i++) {
+    await modal.getByRole('button', { name: /Ajouter une déclinaison/i }).click();
+  }
+  for (const [row, variant] of product.variants.entries()) {
+    // Chaque cellule de valeur porte le nom de son axe en placeholder, ce qui
+    // donne un repère stable ligne par ligne.
+    for (const [index, axis] of product.axes.entries()) {
+      await modal.getByPlaceholder(axis, { exact: true }).nth(row).fill(variant.values[index]);
+    }
+    await modal.getByPlaceholder('P. Achat').nth(row).fill(variant.achat);
+    await modal.getByPlaceholder('P. Vente').nth(row).fill(variant.vente);
+    await modal.getByPlaceholder('Stock', { exact: true }).nth(row).fill(variant.stock);
+  }
+
+  await modal.getByRole('button', { name: /^Ajouter$/ }).last().click();
+  await expect(page.getByText(product.nom).first()).toBeVisible({ timeout: 30_000 });
+}
+
+/**
  * Sell for Mobile Money. The shop must already carry a merchant code, otherwise
  * the till refuses the payment and shows the "configure it first" warning.
  */

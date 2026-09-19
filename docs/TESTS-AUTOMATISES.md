@@ -137,6 +137,30 @@ Il vérifie aussi qu'un règlement partiel fait passer la vente de « En attente
 à « Partiel », libère la marge nécessaire pour une nouvelle vente à crédit, et
 qu'il est rattaché à la session de caisse en cours.
 
+### Les déclinaisons de produits
+
+`tests/e2e-flows/variants.spec.ts` couvre les produits déclinés en tailles,
+couleurs et modèles — une perruque en 5 longueurs × 4 couleurs × 3 modèles.
+
+Le test vérifie les deux propriétés qui justifient toute la conception :
+
+- **la caisse reste lisible** : un parent donne **une** tuile, pas soixante,
+  et cette tuile annonce une fourchette de prix ;
+- **chaque déclinaison a son propre stock** : vendre le 12 pouces noir
+  décrémente cette fiche-là et **ne touche pas** le 12 pouces brun.
+
+C'est cette seconde propriété qui impose qu'une déclinaison soit un `Product`
+à part entière plutôt qu'une ligne dans un tableau imbriqué : le stock se
+décrémente par `increment()` sur un document Firestore, et `increment()` ne
+s'applique pas à un élément de tableau. Un modèle imbriqué casserait la
+réconciliation multi-postes que `multi-poste.spec.ts` protège.
+
+Le test vérifie aussi qu'un parent **ne porte pas de code-barres** (sinon un
+scan le ferait tomber dans le panier alors qu'il est invendable), que le reçu
+porte le nom composé « Perruque Bob — 12 pouces / Noir », qu'une déclinaison en
+rupture est proposée grisée plutôt que masquée, et qu'un parent n'apparaît ni
+dans le stock ni dans les alertes.
+
 ### La console super-admin
 
 `tests/e2e-flows/superadmin.spec.ts` couvre la console développeur, empaquetée
