@@ -131,6 +131,43 @@ test('chaque déclinaison a son prix et son stock, et la caisse reste lisible', 
   expect(await readStoredStock(boutiqueId!, WIG.nom), 'le parent porte du stock').toBe(0);
 });
 
+test('le gérant peut créer sa propre catégorie', async ({ page }) => {
+  test.setTimeout(300_000);
+  const assertEmulatorMode = requireEmulatorMode(page);
+
+  await completeOnboarding(page, GERANT);
+  await loginAs(page, GERANT_NAME, GERANT.pin);
+  assertEmulatorMode();
+  const boutiqueId = await firstBoutiqueId();
+
+  await goTo(page, 'Produits');
+  await page.getByRole('button', { name: /Ajouter un produit/i }).first().click();
+  const modal = page.locator('[class*="nova-card"]').filter({ has: page.locator('input') }).last();
+  await modal.locator('input[type="text"]').first().fill('Mèches brésiliennes');
+
+  // Aucune des sept catégories d'origine ne convenait à la coiffure.
+  await modal.locator('select').first().selectOption('__new__');
+
+  // La saisie doit apparaître DANS la fenêtre. La première version appelait
+  // window.prompt(), qui ne s'affiche pas dans Electron et renvoyait null : le
+  // choix restait sans effet dans l'application installée.
+  const input = modal.getByPlaceholder(/Nom de la nouvelle catégorie/i);
+  await expect(input, 'choisir « Nouvelle catégorie » n\'ouvre aucune saisie').toBeVisible();
+  await input.fill('Beauté & coiffure');
+  await modal.getByRole('button', { name: /^Ajouter$/ }).first().click();
+
+  // Elle est sélectionnée, et la saisie se referme.
+  await expect(modal.locator('select').first()).toHaveValue('Beauté & coiffure');
+  await expect(input).toHaveCount(0);
+
+  // Et elle est partagée avec les autres caisses, donc enregistrée côté boutique.
+  await expect.poll(async () => {
+    const settings = await readCollection(`boutiques/${boutiqueId}/settings`);
+    return JSON.stringify(settings[0]?.fields?.categories ?? {});
+  }, { timeout: 30_000, message: 'la catégorie créée n\'est pas partagée entre les caisses' })
+    .toContain('Beauté & coiffure');
+});
+
 test('une déclinaison en rupture se voit et se refuse', async ({ page }) => {
   test.setTimeout(300_000);
   await completeOnboarding(page, GERANT);

@@ -529,6 +529,7 @@ const zh: Translations = {
     variantBarcodeHint: "条码留空 → 将为每种规格生成内部条码。",
     categoryNew:        "＋ 新建类别…",
     categoryNewPrompt:  "新类别名称",
+    categoryNewConfirm:  "添加",
     categoryExists:     "该类别已存在",
     labelPrint:         "打印",
     labelPrintBtn:      "打印标签",

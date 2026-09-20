@@ -529,6 +529,7 @@ const pt: Translations = {
     variantBarcodeHint: "Código de barras vazio → um código interno é gerado para cada variação.",
     categoryNew:        "＋ Nova categoria…",
     categoryNewPrompt:  "Nome da nova categoria",
+    categoryNewConfirm:  "Adicionar",
     categoryExists:     "Essa categoria já existe",
     labelPrint:         "Imprimir",
     labelPrintBtn:      "Imprimir etiqueta",

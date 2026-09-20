@@ -529,6 +529,7 @@ const ar: Translations = {
     variantBarcodeHint: "إن تُرك الباركود فارغاً يُنشأ كود داخلي لكل خيار.",
     categoryNew:        "＋ فئة جديدة…",
     categoryNewPrompt:  "اسم الفئة الجديدة",
+    categoryNewConfirm:  "إضافة",
     categoryExists:     "هذه الفئة موجودة بالفعل",
     labelPrint:         "طباعة",
     labelPrintBtn:      "طباعة الملصق",

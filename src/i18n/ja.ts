@@ -529,6 +529,7 @@ const ja: Translations = {
     variantBarcodeHint: "バーコードが空欄の場合、種類ごとに内部コードを生成します。",
     categoryNew:        "＋ 新しいカテゴリ…",
     categoryNewPrompt:  "新しいカテゴリ名",
+    categoryNewConfirm:  "追加",
     categoryExists:     "そのカテゴリは既に存在します",
     labelPrint:         "印刷",
     labelPrintBtn:      "ラベルを印刷",

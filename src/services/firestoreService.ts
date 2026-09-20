@@ -122,6 +122,70 @@ const p = {
   saleCounter:   (bid: string) => `boutiques/${bid}/meta/saleCounter`,
 };
 
+// ─── Remise à zéro de l'exploitation ─────────────────────────────────────────
+
+/** Ce que le gérant a choisi d'effacer. Tout est optionnel et indépendant. */
+export interface ResetScope {
+  sales: boolean;
+  cashOuts: boolean;
+  products: boolean;
+  customers: boolean;
+  suppliers: boolean;
+  expenses: boolean;
+}
+
+/** Nombre de documents réellement supprimés, par collection. */
+export type ResetReport = Record<string, number>;
+
+/** Firestore plafonne un lot à 500 écritures ; on garde de la marge. */
+const RESET_BATCH_SIZE = 400;
+
+async function deleteEveryDoc(collectionPath: string): Promise<number> {
+  const snap = await getDocs(collection(db, collectionPath));
+  for (let index = 0; index < snap.docs.length; index += RESET_BATCH_SIZE) {
+    const batch = writeBatch(db);
+    for (const found of snap.docs.slice(index, index + RESET_BATCH_SIZE)) {
+      batch.delete(found.ref);
+    }
+    await batch.commit();
+  }
+  return snap.docs.length;
+}
+
+/**
+ * Efface les données d'exploitation de la boutique, et **conserve les livres**.
+ *
+ * Ce que cette fonction ne touche pas est un choix, pas un oubli :
+ * `firestore.rules` refuse `delete` sur les mouvements de stock, les
+ * règlements, les clôtures, les sessions de caisse, les inventaires et les
+ * remboursements, parce qu'ils constituent la piste d'audit de la boutique.
+ * Vouloir les effacer ici échouerait à moitié. Ils restent d'ailleurs lisibles
+ * seuls : un `StockMovement` garde le nom du produit en instantané.
+ *
+ * On interroge Firestore plutôt que les stores : le listener des ventes ne
+ * charge que les récentes, donc effacer depuis la mémoire laisserait les
+ * anciennes en base.
+ */
+export async function fsResetShopData(scope: ResetScope, bid: string): Promise<ResetReport> {
+  if (!isFirebaseConfigured) return {};
+  const report: ResetReport = {};
+
+  if (scope.sales) {
+    report.sales = await deleteEveryDoc(p.sales(bid));
+    // Repartir à la vente n°1. Le marqueur anti-rejeu de chaque vente
+    // (sale_operations) est indélébile mais sans conséquence : les nouvelles
+    // ventes reçoivent des identifiants neufs.
+    await deleteDoc(doc(db, p.saleCounter(bid))).catch(() => { /* jamais créé */ });
+  }
+  if (scope.cashOuts)  report.cashOuts  = await deleteEveryDoc(p.cashOuts(bid));
+  if (scope.products)  report.products  = await deleteEveryDoc(p.products(bid));
+  if (scope.customers) report.customers = await deleteEveryDoc(p.customers(bid));
+  if (scope.suppliers) report.suppliers = await deleteEveryDoc(p.suppliers(bid));
+  if (scope.expenses)  report.expenses  = await deleteEveryDoc(p.expenses(bid));
+
+  return report;
+}
+
 // ─── Timestamp helpers ───────────────────────────────────────────────────────
 function toDate(v: unknown): Date {
   if (v instanceof Timestamp) return v.toDate();

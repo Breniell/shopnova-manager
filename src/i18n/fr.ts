@@ -591,6 +591,7 @@ const fr = {
     variantBarcodeHint: "Code-barres laissé vide → un code interne est généré pour chaque déclinaison.",
     categoryNew:        "＋ Nouvelle catégorie…",
     categoryNewPrompt:  "Nom de la nouvelle catégorie",
+    categoryNewConfirm:  "Ajouter",
     categoryExists:     "Cette catégorie existe déjà",
     labelPrint:         "Imprimer",
     labelPrintBtn:      "Imprimer l'étiquette",

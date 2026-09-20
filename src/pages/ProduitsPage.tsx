@@ -56,6 +56,20 @@ const ProduitsPage: React.FC = () => {
   const [isImageProcessing, setIsImageProcessing] = useState(false);
   const imageFileRef = React.useRef<HTMLInputElement>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  /** Nom de la catégorie en cours de création, ou null si la saisie est fermée. */
+  const [newCategory, setNewCategory] = useState<string | null>(null);
+
+  const handleAddCategory = () => {
+    const name = (newCategory ?? '').trim();
+    if (!name) return;
+    if (categories.some(c => c.toLowerCase() === name.toLowerCase())) {
+      toast.error(t('produits.categoryExists'));
+      return;
+    }
+    updateShop({ categories: [...categories, name] });
+    setForm(f => ({ ...f, categorie: name }));
+    setNewCategory(null);
+  };
 
   const emptyForm = {
     nom: '', categorie: categories[0] ?? 'Autre', codeBarre: '', prixAchat: '',
@@ -68,11 +82,13 @@ const ProduitsPage: React.FC = () => {
   const openAdd = () => {
     setEditingProduct(null);
     setForm(emptyForm);
+    setNewCategory(null);
     setShowModal(true);
   };
 
   const openEdit = (p: Product) => {
     setEditingProduct(p);
+    setNewCategory(null);
     const axes = p.variantAxes ?? [];
     setForm({
       nom: p.nom, categorie: p.categorie, codeBarre: p.codeBarre,
@@ -566,24 +582,53 @@ const ProduitsPage: React.FC = () => {
                   onChange={e => {
                     // Les catégories étaient figées dans le code : aucune ne
                     // convenait à la beauté, à la coiffure ou à la quincaillerie.
-                    if (e.target.value !== '__new__') {
-                      setForm({ ...form, categorie: e.target.value as Category });
+                    if (e.target.value === '__new__') {
+                      // Surtout pas window.prompt() : Electron ne l'implémente
+                      // pas et renvoie null sans rien afficher. Le choix restait
+                      // donc sans effet dans l'application installée, alors
+                      // qu'il fonctionnait en navigateur.
+                      setNewCategory('');
                       return;
                     }
-                    const name = window.prompt(t('produits.categoryNewPrompt'))?.trim();
-                    if (!name) return;
-                    if (categories.some(c => c.toLowerCase() === name.toLowerCase())) {
-                      toast.error(t('produits.categoryExists'));
-                      return;
-                    }
-                    updateShop({ categories: [...categories, name] });
-                    setForm({ ...form, categorie: name });
+                    setForm({ ...form, categorie: e.target.value as Category });
                   }}
                   className="nova-input w-full"
                 >
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
                   <option value="__new__">{t('produits.categoryNew')}</option>
                 </select>
+
+                {newCategory !== null && (
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      type="text"
+                      value={newCategory}
+                      onChange={e => setNewCategory(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') { e.preventDefault(); handleAddCategory(); }
+                        if (e.key === 'Escape') setNewCategory(null);
+                      }}
+                      className="nova-input flex-1"
+                      placeholder={t('produits.categoryNewPrompt')}
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddCategory}
+                      className="nova-btn-primary px-4 shrink-0 text-sm"
+                    >
+                      {t('produits.categoryNewConfirm')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewCategory(null)}
+                      className="px-3 rounded-lg border border-border bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                      aria-label={t('produits.cancel')}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* ── Image du produit ────────────────────────────────────── */}

@@ -529,6 +529,7 @@ const tr: Translations = {
     variantBarcodeHint: "Barkod boş bırakılırsa her seçenek için dahili bir kod üretilir.",
     categoryNew:        "＋ Yeni kategori…",
     categoryNewPrompt:  "Yeni kategorinin adı",
+    categoryNewConfirm:  "Ekle",
     categoryExists:     "Bu kategori zaten var",
     labelPrint:         "Yazdır",
     labelPrintBtn:      "Etiket yazdır",

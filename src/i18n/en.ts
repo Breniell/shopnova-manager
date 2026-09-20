@@ -529,6 +529,7 @@ const en: Translations = {
     variantBarcodeHint: "Barcode left empty → an internal code is generated for each option.",
     categoryNew:        "＋ New category…",
     categoryNewPrompt:  "Name of the new category",
+    categoryNewConfirm:  "Add",
     categoryExists:     "That category already exists",
     labelPrint:         "Print",
     labelPrintBtn:      "Print label",
