@@ -187,6 +187,32 @@ les cinq onglets, dont la Carte qui plantait à l'audit du 19/08/2026.
 Le second test vérifie qu'un **compte Firebase valide mais qui n'est pas le
 super-admin** est refusé, et qu'aucun code d'erreur Firebase brut ne s'affiche.
 
+### La remise à zéro de la boutique
+
+`tests/e2e-flows/reset-shop.spec.ts` couvre la fonction la plus destructive du
+logiciel : elle efface ce que le gérant coche — produits, ventes, clients,
+fournisseurs, dépenses, sorties de caisse — et **conserve les livres**.
+
+Trois propriétés sont vérifiées, la troisième étant la seule qui compte
+vraiment :
+
+1. ce qui est coché disparaît, y compris en base ;
+2. ce qui n'est pas coché survit (cocher « ventes » ne doit pas emporter le
+   catalogue) ;
+3. **les mouvements de stock, règlements et clôtures survivent toujours.**
+
+Le test vérifie aussi les garde-fous : le bouton reste inactif tant que rien
+n'est coché, il le reste après un cochage seul, et il exige que le nom exact de
+la boutique soit saisi. Et que le compte du gérant n'est jamais emporté — sinon
+la boutique deviendrait inaccessible à son propre propriétaire.
+
+**Deux lignes de défense indépendantes.** Le contrôle par mutation l'a mis en
+évidence : en ajoutant volontairement la suppression des mouvements de stock,
+les tests tombent — mais avant même leur assertion, parce que
+`firestore.rules` **refuse** la suppression côté serveur et que le code remonte
+l'erreur au lieu d'annoncer un succès. Le périmètre est donc garanti par le
+serveur autant que par le client.
+
 ### Ces tests peuvent-ils échouer ?
 
 Un test qui ne peut pas échouer est pire qu'aucun test : il rassure à tort.

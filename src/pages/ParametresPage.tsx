@@ -5,6 +5,9 @@ import { NovaCard } from '@/components/ui/NovaCard';
 import { cn } from '@/lib/utils';
 import { Store, Users, KeyRound, Trash2, Plus, X, Copy, Check, Cloud, Mail, Pencil, MapPin, LocateFixed, Loader2, PenLine, Smartphone, Printer, HardDrive, Download, Upload, ShieldCheck, ShieldOff, AlertTriangle, RotateCcw, Navigation, Image as ImageIcon } from 'lucide-react';
 import { isThermalAvailable } from '@/lib/thermalPrint';
+import {
+  resetShopData, hasAnythingToReset, EMPTY_RESET_SCOPE, type ResetScope,
+} from '@/lib/resetShop';
 import { compressImageToDataUrl } from '@/lib/imageUtils';
 import LocationPicker from '@/components/LocationPicker';
 import {
@@ -98,6 +101,30 @@ const ParametresPage: React.FC = () => {
   const boutiqueId = getBoutiqueId();
   const boutiqueCode = getBoutiqueCode(boutiqueId);
   const isLocalMode = boutiqueId === 'local-boutique' || boutiqueId.startsWith('local-');
+  // ── Remise à zéro de l'exploitation ──────────────────────────────────────
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetScope, setResetScope] = useState<ResetScope>(EMPTY_RESET_SCOPE);
+  const [resetConfirm, setResetConfirm] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleReset = async () => {
+    setIsResetting(true);
+    try {
+      const report = await resetShopData(resetScope);
+      const total = Object.values(report).reduce((sum, count) => sum + count, 0);
+      toast.success(t('settings.reset.done').replace('{n}', String(total)));
+      setResetOpen(false);
+      setResetConfirm('');
+      setResetScope(EMPTY_RESET_SCOPE);
+    } catch (error) {
+      // Ne jamais annoncer un effacement qui n'a pas eu lieu : c'est
+      // exactement ce que faisait l'avertissement de restauration.
+      toast.error(error instanceof Error ? error.message : t('settings.reset.failed'));
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   const isBoutiqueTab = activeTab === 'boutique';
   const isUsersTab = activeTab === 'users';
 
@@ -975,6 +1002,101 @@ const ParametresPage: React.FC = () => {
                 onActivated={() => { licenseGate?.recheck(); }}
               />
             </div>
+          </div>
+        </NovaCard>
+
+        {/* ── Zone de danger : remise à zéro de l'exploitation ──────────────
+            Efface ce qui décrit l'activité courante et conserve les livres.
+            Ce n'est pas une demi-mesure : firestore.rules refuse la
+            suppression des mouvements, règlements et clôtures, qui forment la
+            piste d'audit de la boutique. */}
+        <NovaCard className="w-full max-w-2xl mt-4 border-destructive/30">
+          <div className="space-y-4">
+            <div className="flex items-start gap-2">
+              <span className="w-9 h-9 rounded-lg bg-destructive/15 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-foreground">{t('settings.reset.title')}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t('settings.reset.subtitle')}</p>
+              </div>
+            </div>
+
+            {!resetOpen ? (
+              <button
+                onClick={() => { setResetOpen(true); setResetScope(EMPTY_RESET_SCOPE); setResetConfirm(''); }}
+                className="px-4 py-2 rounded-lg border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors text-sm font-medium"
+              >
+                {t('settings.reset.openBtn')}
+              </button>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {([
+                    ['sales',     t('settings.reset.scopeSales')],
+                    ['cashOuts',  t('settings.reset.scopeCashOuts')],
+                    ['products',  t('settings.reset.scopeProducts')],
+                    ['customers', t('settings.reset.scopeCustomers')],
+                    ['suppliers', t('settings.reset.scopeSuppliers')],
+                    ['expenses',  t('settings.reset.scopeExpenses')],
+                  ] as const).map(([key, label]) => (
+                    <label key={key} className="flex items-center gap-2.5 text-sm text-foreground cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={resetScope[key]}
+                        onChange={e => setResetScope(s => ({ ...s, [key]: e.target.checked }))}
+                        className="w-4 h-4 rounded accent-destructive"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+
+                <div className="p-3 rounded-lg bg-muted/50 space-y-1.5">
+                  <p className="text-xs text-foreground font-medium">{t('settings.reset.keptTitle')}</p>
+                  <p className="text-xs text-muted-foreground">{t('settings.reset.keptDesc')}</p>
+                  {resetScope.sales && (
+                    <p className="text-xs text-amber-500">{t('settings.reset.stockNote')}</p>
+                  )}
+                </div>
+
+                <p className="text-xs text-muted-foreground">{t('settings.reset.backupFirst')}</p>
+
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">
+                    {t('settings.reset.confirmLabel').replace('{name}', shop.nom)}
+                  </label>
+                  <input
+                    type="text"
+                    value={resetConfirm}
+                    onChange={e => setResetConfirm(e.target.value)}
+                    className="nova-input w-full"
+                    placeholder={shop.nom}
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setResetOpen(false)}
+                    className="px-4 py-2.5 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors text-sm"
+                  >
+                    {t('settings.reset.cancel')}
+                  </button>
+                  <button
+                    onClick={handleReset}
+                    disabled={
+                      isResetting
+                      || !hasAnythingToReset(resetScope)
+                      || resetConfirm.trim() !== shop.nom.trim()
+                    }
+                    className="flex-1 py-2.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isResetting && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {t('settings.reset.confirmBtn')}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </NovaCard>
         </>

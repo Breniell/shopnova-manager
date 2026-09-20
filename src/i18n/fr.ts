@@ -139,6 +139,29 @@ const fr = {
       hint:          'Code court pour identifier la boutique. Pour restaurer sur une autre machine, activez le compte cloud ci-dessous.',
       firebaseLabel: 'Identifiant complet Firebase',
     },
+    // Remise à zéro : efface l'exploitation, conserve les livres. Les journaux
+    // comptables sont indélébiles par règle Firestore, et restent lisibles
+    // seuls puisqu'un mouvement garde le nom du produit en instantané.
+    reset: {
+      title:           "Remettre la boutique à zéro",
+      subtitle:        "Pour repartir propre après une période d'essai, ou à l'ouverture réelle.",
+      openBtn:         "Remettre à zéro…",
+      scopeSales:      "Ventes et encaissements",
+      scopeCashOuts:   "Sorties de caisse",
+      scopeProducts:   "Produits et stock",
+      scopeCustomers:  "Clients",
+      scopeSuppliers:  "Fournisseurs",
+      scopeExpenses:   "Dépenses",
+      keptTitle:       "Ce qui est conservé dans tous les cas",
+      keptDesc:        "Vos utilisateurs, vos réglages, et vos livres : mouvements de stock, règlements, clôtures de caisse, sessions et inventaires. Ce sont des pièces comptables, Legwan ne les détruit jamais.",
+      stockNote:       "Effacer les ventes ne remet pas le stock : faites un inventaire ensuite si besoin.",
+      backupFirst:     "Exportez d'abord une sauvegarde ci-dessus : cette action est définitive.",
+      confirmLabel:    "Tapez « {name} » pour confirmer",
+      confirmBtn:      "Effacer définitivement",
+      cancel:          "Annuler",
+      done:            "{n} éléments effacés",
+      failed:          "Échec de la remise à zéro",
+    },
     momo: {
       title:      "Paiement Mobile Money",
       subtitle:   "Code marchand sur lequel vos clients déposent l'argent",
