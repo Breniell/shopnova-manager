@@ -187,6 +187,39 @@ les cinq onglets, dont la Carte qui plantait à l'audit du 19/08/2026.
 Le second test vérifie qu'un **compte Firebase valide mais qui n'est pas le
 super-admin** est refusé, et qu'aucun code d'erreur Firebase brut ne s'affiche.
 
+### L'import de produits depuis un tableur
+
+`tests/e2e-flows/import-produits.spec.ts` charge un catalogue depuis un fichier
+CSV, et `src/test/lib/csvImport.test.ts` couvre le lecteur lui-même.
+
+Ce module existe surtout pour trois conventions propres au marché visé, qu'un
+lecteur naïf casserait toutes les trois :
+
+- **Excel en configuration française écrit `;`**, pas `,` — la virgule y est le
+  séparateur décimal. Le séparateur est détecté sur la ligne d'en-tête, en
+  ignorant ce qui est entre guillemets (sans quoi « Savon, grand format » ferait
+  conclure à tort à un fichier séparé par des virgules).
+- **Excel enregistre en ANSI**, pas en UTF-8, dès qu'on choisit « CSV
+  (séparateur : point-virgule) ». « Hygiène » ressortirait illisible. La
+  détection s'appuie sur un décodage UTF-8 **strict** : un octet accentué ANSI y
+  est invalide, l'exception désigne windows-1252 sans ambiguïté.
+- **« 1 500,00 » vaut 1500**, espace insécable et espace fine insécable
+  comprises — celles qu'Excel insère lui-même dans les milliers.
+
+Le parcours de bout en bout écrit un vrai fichier **en latin1** sur le disque et
+le fait avaler à l'application, pour que la détection d'encodage soit exercée
+pour de vrai et non simulée.
+
+Il vérifie aussi que les colonnes inconnues deviennent des critères de
+déclinaison, que les lignes de même nom forment un parent et ses déclinaisons,
+qu'un second import du même fichier ne crée pas de doublons, et **qu'un import
+ne modifie jamais le stock d'un produit existant**.
+
+**Contrôle par mutation :** en retirant le repli windows-1252, le test
+d'encodage tombe (« expected 'utf-8' to be 'windows-1252' »). Sans lui, tous
+les autres tests resteraient verts — l'encodage est précisément le genre de
+piège invisible tant qu'on ne teste qu'en UTF-8.
+
 ### La remise à zéro de la boutique
 
 `tests/e2e-flows/reset-shop.spec.ts` couvre la fonction la plus destructive du

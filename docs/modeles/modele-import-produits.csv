@@ -1,0 +1,5 @@
+﻿Nom;Categorie;Prix achat;Prix vente;Stock;Seuil;Code-barres;Description;Longueur;Couleur
+Savon de Marseille;Hygiene;800;1200;40;10;;Exemple de produit simple;;
+Perruque Bob;Beaute;8000;15000;4;2;;Exemple avec declinaisons;12 pouces;Noir
+Perruque Bob;Beaute;8000;15000;2;2;;;12 pouces;Brun
+Perruque Bob;Beaute;11000;20000;3;2;;;16 pouces;Noir

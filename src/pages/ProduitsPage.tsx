@@ -12,6 +12,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { BarcodeScanner } from '@/components/ui/BarcodeScanner';
 import { LabelPrint } from '@/components/ui/LabelPrint';
+import { ProductImportModal } from '@/components/ui/ProductImportModal';
 import { getStockStatus, generateInternalBarcode, isValidEAN13, cn } from '@/lib/utils';
 import { productImages } from '@/assets/productImages';
 import { compressImageToDataUrl } from '@/lib/imageUtils';
@@ -56,6 +57,7 @@ const ProduitsPage: React.FC = () => {
   const [isImageProcessing, setIsImageProcessing] = useState(false);
   const imageFileRef = React.useRef<HTMLInputElement>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [showImport, setShowImport] = useState(false);
   /** Nom de la catégorie en cours de création, ou null si la saisie est fermée. */
   const [newCategory, setNewCategory] = useState<string | null>(null);
 
@@ -362,9 +364,17 @@ const ProduitsPage: React.FC = () => {
     <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
         <h1 className="text-2xl nova-heading text-foreground">{t('produits.title')}</h1>
-        <button onClick={openAdd} className="nova-btn-primary flex items-center gap-2 px-5 py-2.5 shrink-0">
-          <Plus className="w-4 h-4" /> {t('produits.addBtn')}
-        </button>
+        <div className="flex gap-2 shrink-0">
+          <button
+            onClick={() => setShowImport(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-muted hover:bg-muted/80 text-foreground transition-colors text-sm font-medium"
+          >
+            <Upload className="w-4 h-4" /> {t('produits.importBtn')}
+          </button>
+          <button onClick={openAdd} className="nova-btn-primary flex items-center gap-2 px-5 py-2.5">
+            <Plus className="w-4 h-4" /> {t('produits.addBtn')}
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -1002,6 +1012,9 @@ const ProduitsPage: React.FC = () => {
         product={labelProduct}
         onClose={() => setLabelProduct(null)}
       />
+
+      {/* Import depuis un tableur */}
+      <ProductImportModal open={showImport} onClose={() => setShowImport(false)} />
     </div>
   );
 };
