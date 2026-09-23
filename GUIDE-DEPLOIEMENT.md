@@ -79,7 +79,20 @@ Firebase est utilisé pour le stockage des données (Firestore) et l'authentific
 
 Les règles de sécurité sont **critiques** : sans elles, n'importe qui peut lire/écrire toutes les données.
 
-Depuis ton dossier `legwan-v1.1/` :
+> **Pour un projet déjà en service**, utiliser plutôt le script du dépôt, qui
+> s'appuie sur le compte de service et ne demande aucune connexion
+> interactive. La procédure complète, avec sa vérification, est dans
+> [docs/RELEASE-RUNBOOK.md](docs/RELEASE-RUNBOOK.md) :
+>
+> ```powershell
+> $env:GOOGLE_APPLICATION_CREDENTIALS = "<chemin>\service-account.json"
+> node scripts/deploy-firestore-rules.mjs --project=<projet-firebase>
+> ```
+>
+> Appeler `node` directement : `npm run firestore:deploy-rules -- --project=…`
+> avale l'argument.
+
+Première installation, depuis ton dossier projet :
 ```bash
 firebase login
 firebase use --add        # Choisis le projet créé à l'étape 2.1

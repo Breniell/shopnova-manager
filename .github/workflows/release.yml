@@ -46,7 +46,26 @@ jobs:
           npm test
           npm run test:electron-runtime
 
+      # Sans certificat Authenticode, `npm run release:client` refuse de
+      # construire - c'est voulu. Mais le tag cree par `gh release create`
+      # declenchait quand meme ce workflow, qui echouait a chaque publication :
+      # un echec rouge sur chaque version, qui masque les vrais.
+      # On s'arrete donc proprement tant qu'aucun certificat n'est configure.
+      - name: Certificat de signature disponible ?
+        id: signing
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:CSC_LINK)) {
+            Write-Host "::notice::Aucun certificat Authenticode (secret WIN_CSC_LINK absent). Publication automatique ignoree : les versions sont publiees a la main, non signees. Voir docs/RELEASE-RUNBOOK.md."
+            "available=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          } else {
+            "available=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          }
+        env:
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+
       - name: Create .env from secrets
+        if: steps.signing.outputs.available == 'true'
         shell: pwsh
         run: |
           $content = @(
@@ -78,6 +97,7 @@ jobs:
           VITE_LICENSE_PUBKEY: ${{ secrets.VITE_LICENSE_PUBKEY }}
 
       - name: Cache electron-builder binaries
+        if: steps.signing.outputs.available == 'true'
         uses: actions/cache@v4
         with:
           path: |
@@ -86,6 +106,7 @@ jobs:
           key: ${{ runner.os }}-electron-builder-cache-v2
 
       - name: Prepare rcedit (winCodeSign) for afterPack hook
+        if: steps.signing.outputs.available == 'true'
         shell: pwsh
         run: |
           $cacheRoot = "$env:LOCALAPPDATA\electron-builder\Cache\winCodeSign"
@@ -108,6 +129,7 @@ jobs:
           }
 
       - name: Signed release build and verification
+        if: steps.signing.outputs.available == 'true'
         run: npm run release:client
         env:
           CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
@@ -116,13 +138,17 @@ jobs:
           WIN_CSC_SUBJECT: ${{ secrets.WIN_CSC_SUBJECT }}
 
       - name: Packaged offline smoke test
+        if: steps.signing.outputs.available == 'true'
         run: npm run smoke:offline:packaged
 
+      # Ce workflow met a jour une release deja creee a la main. Ni le titre ni
+      # les notes ne sont regeneres : elles sont redigees pour des commercants,
+      # et `generate_release_notes` les remplacerait par une liste de commits.
       - name: Publish GitHub Release
+        if: steps.signing.outputs.available == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }} - Legwan Complete POS
           files: |
             release/Legwan-Setup-*.exe
             release/Legwan-Setup-*.exe.blockmap
@@ -130,6 +156,6 @@ jobs:
             release/SHA256SUMS.txt
           draft: false
           prerelease: false
-          generate_release_notes: true
+          generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
