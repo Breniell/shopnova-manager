@@ -433,7 +433,16 @@ service cloud.firestore {
     // can change or delete the document, so re-entering the key cannot clear it.
     match /boutiques/{boutiqueId}/_license/{docId} {
       allow read: if hasBoutiqueAccess(boutiqueId) || isSuperAdmin();
+      // Le document 'trial' ancre le debut de l'essai gratuit. Il est creable
+      // une seule fois et jamais modifiable ni supprimable (voir plus bas) :
+      // c'est ce qui le fait survivre a une reinstallation.
+      // `startedAt == request.time` impose l'horloge du serveur, donc un poste
+      // ne peut pas antidater son propre essai.
       allow create: if isSuperAdmin()
+                    || (hasBoutiqueAccess(boutiqueId)
+                        && docId == 'trial'
+                        && request.resource.data.keys().hasOnly(['startedAt'])
+                        && request.resource.data.startedAt == request.time)
                     || (isManager(boutiqueId)
                         && docId == 'current'
                         && isValidLicenseDocument(request.resource.data)

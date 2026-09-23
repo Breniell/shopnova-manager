@@ -220,6 +220,47 @@ d'encodage tombe (« expected 'utf-8' to be 'windows-1252' »). Sans lui, tous
 les autres tests resteraient verts — l'encodage est précisément le genre de
 piège invisible tant qu'on ne teste qu'en UTF-8.
 
+### L'essai gratuit, et pourquoi il repartait à zéro
+
+`tests/e2e-flows/license-trial.spec.ts` et
+`src/test/lib/licenseTrialAnchor.test.ts` couvrent l'ancre de l'essai — la date
+qui fonde les 30 jours.
+
+**Ce défaut est la meilleure illustration du piège que ce document combat.** La
+logique pure de la licence était couverte par 77 tests : signature, expiration,
+période de grâce, révocation, horloge déréglée, pile CMOS. La **persistance**,
+elle, n'en avait aucun. `getOrCreateInstallDate` — la fonction qui perdait
+l'ancre — n'était exercée nulle part.
+
+Trois défauts s'enchaînaient :
+
+1. l'ancre ne quittait jamais le poste, alors que le commentaire du fichier
+   affirmait que Firestore servait « à survivre à une réinstallation » — vrai
+   pour la licence payée, jamais pour l'essai ;
+2. elle était chiffrée avec une clé dérivée du `boutiqueId`, qui **n'est pas
+   stable** : `LicenseGate` démarre avant l'authentification anonyme et
+   retombe sur `'local-boutique'`, ce qui rendait l'ancre illisible au
+   lancement suivant ;
+3. et « illisible » était traité comme « première installation », donc
+   **30 jours de plus, en silence**.
+
+La règle que les tests défendent désormais : **la date la plus ancienne connue
+gagne, toujours.** Une incertitude doit raccourcir l'essai, jamais le prolonger.
+
+Le parcours de bout en bout rejoue le cas exact : même boutique, ancre locale
+supprimée. Il ne vide pas tout le stockage — cela effacerait aussi l'identité de
+la boutique, l'application en créerait une autre, et un nouvel essai serait
+alors légitime. Il vérifie que l'ancre du serveur n'a pas bougé, que le poste
+l'a reprise, et qu'il n'en existe qu'une.
+
+**Contrôle par mutation :** en redérivant la clé du `boutiqueId`, deux tests
+tombent — « l'essai est reparti à zéro au deuxième lancement » et « un
+changement de boutiqueId relance 30 jours d'essai ».
+
+Un test vérifie aussi qu'une ancre écrite par une version **antérieure** reste
+lisible : un client en cours d'essai ne doit ni perdre ses jours restants, ni
+s'en voir offrir de nouveaux au moment de la mise à jour.
+
 ### La remise à zéro de la boutique
 
 `tests/e2e-flows/reset-shop.spec.ts` couvre la fonction la plus destructive du
