@@ -198,13 +198,14 @@ const ProduitsPage: React.FC = () => {
     const keptIds = new Set<string>();
     for (const variant of form.variants) {
       const values = Object.fromEntries(axes.map(axis => [axis, variant.values[axis].trim()]));
+      const alertThreshold = parseInt(variant.seuilAlerte, 10);
       const fields = {
         nom: composeVariantName(form.nom, axes, values),
         categorie: form.categorie,
         codeBarre: variant.codeBarre.trim() || generateInternalBarcode(),
         prixAchat: parseInt(variant.prixAchat, 10) || 0,
         prixVente: parseInt(variant.prixVente, 10) || 0,
-        seuilAlerte: parseInt(variant.seuilAlerte, 10) || 5,
+        seuilAlerte: Number.isNaN(alertThreshold) ? 5 : alertThreshold,
         description: form.description,
         imageUrl: form.imageUrl,
         parentId,
@@ -799,7 +800,7 @@ const ProduitsPage: React.FC = () => {
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-2 gap-2">
                               <input
                                 type="number" value={variant.prixAchat}
                                 onChange={e => setForm(f => ({
@@ -833,6 +834,19 @@ const ProduitsPage: React.FC = () => {
                                   className="nova-input py-1.5 text-sm" placeholder={t('produits.colStock')}
                                 />
                               )}
+                              <label className="block">
+                                <span className="mb-1 block text-[10px] text-muted-foreground">
+                                  {t('produits.labelThreshold')}
+                                </span>
+                                <input
+                                  type="number" min="0" value={variant.seuilAlerte}
+                                  onChange={e => setForm(f => ({
+                                    ...f,
+                                    variants: f.variants.map((v, index) => index === variantIndex ? { ...v, seuilAlerte: e.target.value } : v),
+                                  }))}
+                                  className="nova-input w-full py-1.5 text-sm"
+                                />
+                              </label>
                             </div>
                           </div>
                         ))}
