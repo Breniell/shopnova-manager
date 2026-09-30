@@ -395,7 +395,17 @@ ipcMain.on('update-quit-and-install', async (event) => {
       updateInstallInProgress = false;
       return;
     }
-    autoUpdater.quitAndInstall(false, true);
+    // isSilent = true : l'installeur s'execute sans afficher son assistant.
+    // Il valait false, si bien qu'apres le telechargement le commercant devait
+    // derouler a nouveau tout l'installeur - page de licence comprise - pour
+    // une simple mise a jour. Plusieurs retours negatifs sur ce point.
+    //
+    // La premiere installation, elle, garde son assistant : `oneClick` reste a
+    // false dans electron-builder.yml, donc la page de licence continue d'etre
+    // presentee et acceptee au premier contact.
+    //
+    // isForceRunAfter = true : l'application se rouvre seule ensuite.
+    autoUpdater.quitAndInstall(true, true);
   } catch (error) {
     updateInstallInProgress = false;
     console.error('[Legwan updater] installation failed:', error);

@@ -103,6 +103,73 @@ test('a cashier needs a gérant to discount below the price limits', async ({ pa
     .toBe(GERANT_NAME);
 });
 
+test('un produit a prix fixe se negocie avec l\'accord du gerant', async ({ page }) => {
+  test.setTimeout(240_000);
+  const assertEmulatorMode = requireEmulatorMode(page);
+
+  // Signale par le proprietaire : en boutique, un gerant present accepte une
+  // remise sur un article a prix fixe, et la caisse refusait malgre son accord.
+  // Le prix n'etait meme pas cliquable, et checkPrice renvoyait
+  // 'not_negotiable', une impasse sans recours.
+  await completeOnboarding(page, GERANT);
+  await loginAs(page, GERANT_NAME, GERANT.pin);
+  assertEmulatorMode();
+  const boutiqueId = await firstBoutiqueId();
+
+  await createProduct(page, PRODUCT);   // prix fixe, non negociable
+  await createUser(page, CAISSIER);
+
+  await logout(page);
+  await loginAs(page, CAISSIER_NAME, CAISSIER.pin);
+  await openCashSession(page, '5000');
+
+  await page.getByText(PRODUCT.nom).first().click();
+
+  // Le prix de la ligne doit s'ouvrir, meme sur un produit a prix fixe.
+  await page.getByRole('button', { name: /1\s*200\s*FCFA \/ u\./ }).click();
+  const editor = page.locator('[class*="nova-card"]').filter({ hasText: 'Négocier le prix' }).last();
+  await expect(editor, 'le prix d\'un produit a prix fixe reste inaccessible').toBeVisible();
+
+  await editor.locator('input[type="number"]').first().fill('900');
+
+  // Un caissier voit qu'une autorisation est requise, sans le montant du
+  // plancher : PriceEditor lui affiche `authNote` et non `statusBelowFloor`,
+  // pour ne pas laisser deviner la marge de la boutique.
+  // .first() : pour un caissier, PriceEditor affiche cette phrase deux fois -
+  // comme statut de la ligne, et comme note explicative sous le champ.
+  await expect(
+    editor.getByText(/demander le PIN d'un gérant/i).first(),
+    'la caisse refuse la baisse au lieu de proposer une autorisation',
+  ).toBeVisible();
+
+  // Et le prix d'achat n'arrive jamais sur son ecran.
+  await expect(
+    editor.getByText(new RegExp(PRODUCT.achat)),
+    'le prix d\'achat est visible par le caissier',
+  ).toHaveCount(0);
+
+  await editor.getByRole('button', { name: /Demander autorisation/i }).click();
+
+  const override = page.locator('[class*="nova-card"]').filter({ hasText: /Autorisation gérant/i }).last();
+  const picker = override.locator('select');
+  if (await picker.count() > 0) await picker.first().selectOption({ label: GERANT_NAME });
+  await override.locator('input[type="password"]').first().fill(GERANT.pin);
+  await override.getByRole('button', { name: /^Autoriser$/ }).first().click();
+
+  // ── La vente passe au prix negocie ────────────────────────────────────────
+  await page.getByPlaceholder(/Montant reçu/i).fill('1000');
+  const validate = page.locator('button').filter({ hasText: /Valider la vente/i }).first();
+  await expect(validate, 'la vente reste bloquee apres l\'accord du gerant').toBeEnabled({ timeout: 30_000 });
+  await validate.click();
+  await expect(page.getByText(/Reçu\s*:|Reçu n/i).first()).toBeVisible({ timeout: 30_000 });
+
+  // ── Et le prix negocie est bien celui enregistre ──────────────────────────
+  await expect.poll(async () => {
+    const sales = await readCollection(`boutiques/${boutiqueId}/sales`);
+    return sales[0] ? Number(sales[0].fields?.total?.integerValue ?? sales[0].fields?.total?.doubleValue) : null;
+  }, { timeout: 30_000, message: 'la vente au prix negocie n\'a pas ete enregistree' }).toBe(900);
+});
+
 test('a discount within the limits still needs nobody', async ({ page }) => {
   test.setTimeout(240_000);
   // The control must not turn every small gesture into a manager summons.

@@ -409,16 +409,12 @@ const CaissePage: React.FC = () => {
                   {(() => {
                     const product = products.find(p => p.id === item.productId);
                     const applied = getAppliedPrice(item);
-                    const negotiable = product ? isNegociable(product) : false;
                     const isNegotiated = !!item.negotiated;
                     const belowFloor = item.negotiated?.belowFloor;
-                    if (!negotiable) {
-                      return (
-                        <span className="text-[11px] mt-0.5 px-1 py-0.5 text-muted-foreground inline-block">
-                          <span className="tabular-nums">{formatFCFA(applied)}</span> / u.
-                        </span>
-                      );
-                    }
+                    // Le prix d'un produit a prix fixe s'ouvre aussi : c'etait
+                    // un simple <span>, donc aucun chemin n'existait pour
+                    // negocier, meme avec le gerant a cote. Toute baisse passe
+                    // desormais par son autorisation (voir checkPrice).
                     return (
                       <button
                         type="button"
@@ -925,7 +921,10 @@ const CaissePage: React.FC = () => {
               productId: product.id,
               productName: product.nom,
               requestedPrice: newPrice,
-              floor: getEffectiveFloor(product),
+              // Le plancher d'un produit a prix fixe est son prix de VENTE,
+              // pas son prix d'achat : getEffectiveFloor() retomberait sur
+              // l'achat, et l'annoncer comme plancher revelerait la marge.
+              floor: isNegociable(product) ? getEffectiveFloor(product) : product.prixVente,
             });
             setPriceEditorTarget(null);
           } else {

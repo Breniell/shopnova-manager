@@ -33,11 +33,18 @@ interface VariantDraft {
   stock: string;
   seuilAlerte: string;
   codeBarre: string;
+  // La negociation se regle par declinaison, jamais sur le parent : chacune a
+  // son prix, donc son plancher. Ces champs manquaient, si bien qu'activer les
+  // declinaisons rendait un produit definitivement non negociable.
+  negociable: boolean;
+  prixPlancher: string;
+  prixCible: string;
 }
 
 const newVariantDraft = (): VariantDraft => ({
   key: `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   values: {}, prixAchat: '', prixVente: '', stock: '', seuilAlerte: '5', codeBarre: '',
+  negociable: false, prixPlancher: '', prixCible: '',
 });
 
 const ProduitsPage: React.FC = () => {
@@ -111,6 +118,9 @@ const ProduitsPage: React.FC = () => {
         stock: String(variant.stock),
         seuilAlerte: String(variant.seuilAlerte),
         codeBarre: variant.codeBarre,
+        negociable: variant.negociable === true,
+        prixPlancher: variant.prixPlancher !== undefined ? String(variant.prixPlancher) : '',
+        prixCible: variant.prixCible !== undefined ? String(variant.prixCible) : '',
       })),
     });
     setShowModal(true);
@@ -174,6 +184,27 @@ const ProduitsPage: React.FC = () => {
         toast.error(t('produits.variantPricesRequired'));
         return;
       }
+      // Memes garde-fous que pour un produit simple : un plancher sous le prix
+      // d'achat ferait vendre a perte sans le dire, et une cible hors bornes
+      // rendrait l'alerte de marge reduite incoherente.
+      if (variant.negociable) {
+        const achat = parseInt(variant.prixAchat, 10) || 0;
+        const vente = parseInt(variant.prixVente, 10) || 0;
+        const plancher = variant.prixPlancher ? parseInt(variant.prixPlancher, 10) : undefined;
+        const cible = variant.prixCible ? parseInt(variant.prixCible, 10) : undefined;
+        if (plancher !== undefined && plancher < achat) {
+          toast.error(t('produits.floorBelowCost'));
+          return;
+        }
+        if (cible !== undefined && plancher !== undefined && cible < plancher) {
+          toast.error(t('produits.targetBelowFloor'));
+          return;
+        }
+        if (cible !== undefined && cible > vente) {
+          toast.error(t('produits.targetAboveSale'));
+          return;
+        }
+      }
     }
     // Deux déclinaisons identiques donneraient deux fiches au même nom, donc
     // deux stocks distincts pour un même article réel.
@@ -199,6 +230,8 @@ const ProduitsPage: React.FC = () => {
     for (const variant of form.variants) {
       const values = Object.fromEntries(axes.map(axis => [axis, variant.values[axis].trim()]));
       const alertThreshold = parseInt(variant.seuilAlerte, 10);
+      const floor = variant.prixPlancher ? parseInt(variant.prixPlancher, 10) : undefined;
+      const target = variant.prixCible ? parseInt(variant.prixCible, 10) : undefined;
       const fields = {
         nom: composeVariantName(form.nom, axes, values),
         categorie: form.categorie,
@@ -206,6 +239,9 @@ const ProduitsPage: React.FC = () => {
         prixAchat: parseInt(variant.prixAchat, 10) || 0,
         prixVente: parseInt(variant.prixVente, 10) || 0,
         seuilAlerte: Number.isNaN(alertThreshold) ? 5 : alertThreshold,
+        negociable: variant.negociable,
+        prixPlancher: variant.negociable ? floor : undefined,
+        prixCible: variant.negociable ? target : undefined,
         description: form.description,
         imageUrl: form.imageUrl,
         parentId,
@@ -848,6 +884,54 @@ const ProduitsPage: React.FC = () => {
                                 />
                               </label>
                             </div>
+
+                            {/* Négociation, par déclinaison : chacune a son
+                                prix, donc son propre plancher. */}
+                            <label className="flex items-center gap-2 text-xs text-foreground cursor-pointer pt-1">
+                              <input
+                                type="checkbox"
+                                checked={variant.negociable}
+                                onChange={e => setForm(f => ({
+                                  ...f,
+                                  variants: f.variants.map((v, index) => index === variantIndex ? { ...v, negociable: e.target.checked } : v),
+                                }))}
+                                className="w-3.5 h-3.5 rounded"
+                              />
+                              {t('produits.negotiableLabel')}
+                            </label>
+
+                            {variant.negociable && (
+                              <div className="grid grid-cols-2 gap-2">
+                                <label className="block">
+                                  <span className="mb-1 block text-[10px] text-muted-foreground">
+                                    {t('produits.labelFloorPrice')}
+                                  </span>
+                                  <input
+                                    type="number" min="0" value={variant.prixPlancher}
+                                    onChange={e => setForm(f => ({
+                                      ...f,
+                                      variants: f.variants.map((v, index) => index === variantIndex ? { ...v, prixPlancher: e.target.value } : v),
+                                    }))}
+                                    className="nova-input w-full py-1.5 text-sm"
+                                    placeholder={variant.prixAchat || '0'}
+                                  />
+                                </label>
+                                <label className="block">
+                                  <span className="mb-1 block text-[10px] text-muted-foreground">
+                                    {t('produits.labelTargetPrice')}
+                                  </span>
+                                  <input
+                                    type="number" min="0" value={variant.prixCible}
+                                    onChange={e => setForm(f => ({
+                                      ...f,
+                                      variants: f.variants.map((v, index) => index === variantIndex ? { ...v, prixCible: e.target.value } : v),
+                                    }))}
+                                    className="nova-input w-full py-1.5 text-sm"
+                                    placeholder={variant.prixVente || '0'}
+                                  />
+                                </label>
+                              </div>
+                            )}
                           </div>
                         ))}
                         <button

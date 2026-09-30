@@ -8,7 +8,8 @@
  *     demandé est OK, alerte, ou bloqué
  *
  * Règles métier :
- *   • Si un produit n'est pas négociable → seul prixVente est accepté
+ *   • Si un produit n'est pas négociable → prixVente passe seul ; toute baisse
+ *     demande l'accord d'un gérant (son plancher est son prix de vente)
  *   • Si prix demandé > prixVente → refusé (on ne vend pas plus cher qu'affiché)
  *   • Si prix demandé < plancher → bloqué (sauf override gérant)
  *   • Si plancher < prix < cible → ok mais alerte ("marge réduite")
@@ -31,7 +32,11 @@ export type PriceCheckResult =
   | { status: 'ok'; level: 'below_target' }          // entre plancher et cible (alerte jaune)
   | { status: 'blocked'; reason: 'below_floor'; floor: number }    // sous plancher (rouge, override requis)
   | { status: 'blocked'; reason: 'above_display'; display: number } // au-dessus du prix affiché (refusé)
-  | { status: 'blocked'; reason: 'not_negotiable' }; // produit non négociable, prix demandé ≠ prixVente
+  // Plus jamais renvoyé : une baisse sur un produit à prix fixe est désormais
+  // un `below_floor`, donc autorisable par un gérant. Le variant est conservé
+  // le temps que d'anciennes ventes enregistrées y fassent encore référence ;
+  // ne pas le réintroduire comme verdict, c'était une impasse sans recours.
+  | { status: 'blocked'; reason: 'not_negotiable' };
 
 // ────────────────────────────────────────────────────────────────────────────
 // Helpers internes
@@ -62,12 +67,25 @@ export function isNegociable(product: Product): boolean {
  * un prix dans le panier.
  */
 export function checkPrice(product: Product, requestedPrice: number): PriceCheckResult {
-  // 1. Produit non négociable : seul le prix affiché est accepté
+  // 1. Produit non négociable : le prix affiché passe seul, toute baisse exige
+  //    l'accord d'un gérant.
+  //
+  //    Cela renvoyait `not_negotiable`, une impasse sans recours : en boutique,
+  //    un gérant présent acceptait une remise, et la caisse refusait malgré son
+  //    accord. Le plancher d'un produit à prix fixe est donc son propre prix de
+  //    vente - toute baisse est « sous le plancher », donc autorisable, et
+  //    tracée au nom du gérant sur la vente.
+  //
+  //    Le plancher annoncé ici est le prix de VENTE, jamais le prix d'achat :
+  //    ce dernier ne doit pas transiter vers l'écran d'un caissier.
   if (!isNegociable(product)) {
     if (requestedPrice === product.prixVente) {
       return { status: 'ok', level: 'normal' };
     }
-    return { status: 'blocked', reason: 'not_negotiable' };
+    if (requestedPrice > product.prixVente) {
+      return { status: 'blocked', reason: 'above_display', display: product.prixVente };
+    }
+    return { status: 'blocked', reason: 'below_floor', floor: product.prixVente };
   }
 
   // 2. Pas vendre plus cher que le prix affiché (protection client)

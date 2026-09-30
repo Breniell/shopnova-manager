@@ -91,9 +91,28 @@ describe('checkPrice - produit NON négociable', () => {
     expect(checkPrice(p, 2000)).toEqual({ status: 'ok', level: 'normal' });
   });
 
-  it('blocks any other price', () => {
-    expect(checkPrice(p, 1500)).toEqual({ status: 'blocked', reason: 'not_negotiable' });
-    expect(checkPrice(p, 2500)).toEqual({ status: 'blocked', reason: 'not_negotiable' });
+  // Une baisse etait renvoyee en 'not_negotiable', une impasse sans recours :
+  // en boutique, un gerant present acceptait une remise et la caisse la refusait
+  // malgre son accord. Une baisse est desormais « sous le plancher », donc
+  // autorisable par lui et tracee a son nom sur la vente.
+  it('une baisse demande l\'accord du gerant au lieu d\'etre refusee', () => {
+    expect(
+      checkPrice(p, 1500),
+      'une baisse sur un produit a prix fixe reste une impasse sans recours',
+    ).toEqual({ status: 'blocked', reason: 'below_floor', floor: 2000 });
+  });
+
+  it('annonce le prix de vente comme plancher, jamais le prix d\'achat', () => {
+    // Le plancher voyage jusqu'a l'ecran du caissier : y faire figurer le prix
+    // d'achat revelerait la marge de la boutique.
+    const withCost = makeProduct({ negociable: false, prixVente: 2000, prixAchat: 700 });
+    expect(checkPrice(withCost, 1200))
+      .toEqual({ status: 'blocked', reason: 'below_floor', floor: 2000 });
+  });
+
+  it('refuse toujours de vendre plus cher que le prix affiche', () => {
+    expect(checkPrice(p, 2500))
+      .toEqual({ status: 'blocked', reason: 'above_display', display: 2000 });
   });
 });
 
