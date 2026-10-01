@@ -8,7 +8,7 @@
  *   4. ready        → bandeau proéminent "Prête à installer" + bouton Redémarrer
  */
 import React, { useEffect, useState } from 'react';
-import { Download, RefreshCw, X, ArrowDownToLine } from 'lucide-react';
+import { Download, RefreshCw, X, ArrowDownToLine, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/i18n';
 import { toast } from 'sonner';
@@ -17,7 +17,9 @@ type UpdateState =
   | { phase: 'idle' }
   | { phase: 'available';    version: string }
   | { phase: 'downloading';  percent: number }
-  | { phase: 'ready';        version: string };
+  | { phase: 'ready';        version: string }
+  /** The previous attempt installed nothing - see getUpdatePendingOutcome. */
+  | { phase: 'stalled';      targetVersion: string; attempts: number };
 
 export const UpdateBanner: React.FC = () => {
   const { t } = useTranslation();
@@ -27,6 +29,16 @@ export const UpdateBanner: React.FC = () => {
   useEffect(() => {
     const api = window.legwan;
     if (!api?.isElectron) return; // Web / dev browser - no-op
+
+    // A failed installation comes first: it is about what already went wrong, and
+    // offering the same update again on top of it would be absurd. The verdict was
+    // decided at startup, so it is waiting here however late this mounts.
+    void api.getUpdatePendingOutcome?.().then((failure) => {
+      if (!failure) return;
+      setState(current => (current.phase === 'idle'
+        ? { phase: 'stalled', targetVersion: failure.targetVersion, attempts: failure.attempts }
+        : current));
+    }).catch(() => undefined);
 
     // The check finishes ~5s after launch, but this component only mounts after
     // the user has logged in, so the event that matters has almost always been
@@ -50,17 +62,23 @@ export const UpdateBanner: React.FC = () => {
       });
     }).catch(() => undefined);
 
+    // A stall outranks every live event until the merchant has acknowledged it.
+    // Offering the next download over the top of "the last one installed nothing"
+    // would send them round the same loop without ever naming the cause.
+    const keepUnlessStalled = (next: UpdateState) =>
+      setState(current => (current.phase === 'stalled' ? current : next));
+
     const unsubscribers = [api.onUpdateAvailable?.((info) => {
-      setState({ phase: 'available', version: info.version });
+      keepUnlessStalled({ phase: 'available', version: info.version });
       setDismissed(false);
     }),
 
     api.onUpdateDownloadProgress?.((p) => {
-      setState({ phase: 'downloading', percent: p.percent });
+      keepUnlessStalled({ phase: 'downloading', percent: p.percent });
     }),
 
     api.onUpdateDownloaded?.((info) => {
-      setState({ phase: 'ready', version: info.version });
+      keepUnlessStalled({ phase: 'ready', version: info.version });
       setDismissed(false);
     }),
     api.onUpdateInstallBlocked?.(() => {
@@ -74,6 +92,44 @@ export const UpdateBanner: React.FC = () => {
 
   // Nothing to show
   if (state.phase === 'idle' || dismissed) return null;
+
+  // ── Previous installation never happened ──────────────────────────────────
+  if (state.phase === 'stalled') {
+    // A first stall is worth simply retrying. A repeat means something on this
+    // machine is holding the installer - almost always an antivirus sandboxing
+    // the temporary uninstaller - and waiting will not fix it.
+    const repeated = state.attempts > 1;
+    return (
+      <div
+        role="alert"
+        className="fixed bottom-4 right-4 z-[9998] w-80 rounded-xl border border-destructive/40 bg-card shadow-2xl overflow-hidden"
+      >
+        <div className="h-1 bg-destructive w-full" />
+        <div className="p-4 flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-destructive/15 flex items-center justify-center shrink-0 mt-0.5">
+            <AlertTriangle className="w-4 h-4 text-destructive" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground">
+              {t('update.stalled').replace('{version}', state.targetVersion)}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {t(repeated ? 'update.stalledRepeatDesc' : 'update.stalledDesc')}
+            </p>
+            <button
+              onClick={() => {
+                void window.legwan?.acknowledgeUpdateStall?.();
+                setState({ phase: 'idle' });
+              }}
+              className="mt-3 w-full py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-muted transition-colors"
+            >
+              {t('update.stalledAck')}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ── Ready to install ──────────────────────────────────────────────────────
   if (state.phase === 'ready') {

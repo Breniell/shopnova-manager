@@ -31,6 +31,21 @@ interface Window {
     startUpdateDownload?: () => void;
     quitAndInstall?: () => void;
     onUpdateInstallBlocked?: (cb: () => void) => () => void;
+    /**
+     * Whether the previous installation attempt never took effect.
+     *
+     * A silent install reports nothing by construction, and an NSIS update can
+     * deadlock on the uninstaller it runs to remove the old version. The next
+     * launch compares intent with reality, so a dead update can be explained
+     * rather than left as a till that closed and never reopened.
+     */
+    getUpdatePendingOutcome?: () => Promise<{
+      outcome: 'stalled';
+      targetVersion: string;
+      fromVersion: string;
+      attempts: number;
+    } | null>;
+    acknowledgeUpdateStall?: () => Promise<boolean>;
     automaticBackup?: {
       save: (
         payload: string,

@@ -4,9 +4,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
+  clearPendingUpdate,
   createDiagnosticLogger,
   createRendererRecoveryController,
+  evaluatePendingUpdate,
+  pendingUpdatePath,
   pickAutoUpdater,
+  readPendingUpdate,
+  recordUpdateAttempt,
   saveAutomaticBackup,
 } from './runtime-support.mjs';
 
@@ -47,6 +52,43 @@ let autoUpdater = null;
 let updaterConfigured = false;
 let updateInstallInProgress = false;
 let printInProgress = false;
+
+/**
+ * Verdict on the previous launch's installation attempt, decided once at startup.
+ *
+ * Read before anything can overwrite the marker, and kept in memory so the banner
+ * can ask for it whenever it mounts - which, being behind the login screen, is
+ * always long after this point.
+ */
+const pendingUpdateFile = pendingUpdatePath(app.getPath('userData'));
+let pendingUpdateOutcome = { outcome: 'none' };
+/** Version the updater actually downloaded, so the marker records a real target. */
+let downloadedUpdateVersion = null;
+
+try {
+  pendingUpdateOutcome = evaluatePendingUpdate({
+    marker: readPendingUpdate(pendingUpdateFile),
+    currentVersion: releaseVersion,
+  });
+  if (pendingUpdateOutcome.outcome === 'stalled') {
+    console.warn(
+      `[Legwan updater] previous installation did not take: still on ${releaseVersion}, `
+      + `expected ${pendingUpdateOutcome.targetVersion} (attempt ${pendingUpdateOutcome.attempts})`,
+    );
+    // The marker stays: the merchant has not been told yet, and the attempt count
+    // has to survive so a second failure can escalate the advice.
+  } else {
+    // Installed, stale or absent - in all three cases there is nothing left to
+    // report and the marker has done its job.
+    if (pendingUpdateOutcome.outcome === 'installed') {
+      console.log(`[Legwan updater] update to ${pendingUpdateOutcome.version} installed successfully`);
+    }
+    clearPendingUpdate(pendingUpdateFile);
+  }
+} catch (error) {
+  console.warn('[Legwan updater] could not evaluate the pending update marker:', error);
+  pendingUpdateOutcome = { outcome: 'none' };
+}
 if (!isDev) {
   try {
     // Do not destructure `autoUpdater` here: it is a lazy CJS getter that the
@@ -322,6 +364,27 @@ ipcMain.handle('update-get-state', (event) => {
   return lastUpdaterState;
 });
 
+/**
+ * Tell the banner whether the previous installation attempt failed.
+ *
+ * Only a stall is reported: a success needs no announcement, and the renderer has
+ * no business being told about markers that turned out to be stale.
+ */
+ipcMain.handle('update-pending-outcome', (event) => {
+  if (!isTrustedIpcSender(event)) return null;
+  return pendingUpdateOutcome.outcome === 'stalled' ? pendingUpdateOutcome : null;
+});
+
+// Dismissing the warning is what finally retires the marker. Doing it at startup
+// instead would mean a merchant who missed the message never sees it again, and
+// an update that stalls on every launch would stay silent after the first.
+ipcMain.handle('update-acknowledge-stall', (event) => {
+  if (!isTrustedIpcSender(event)) return false;
+  clearPendingUpdate(pendingUpdateFile);
+  pendingUpdateOutcome = { outcome: 'none' };
+  return true;
+});
+
 let lastUpdateCheckAt = 0;
 const RECHECK_MIN_INTERVAL_MS = 2 * 60 * 1000;
 
@@ -365,6 +428,7 @@ function setupAutoUpdater() {
     });
 
     autoUpdater.on('update-downloaded', (info) => {
+      downloadedUpdateVersion = info.version ?? null;
       sendUpdaterEvent('update-downloaded', { version: info.version });
     });
 
@@ -405,6 +469,24 @@ ipcMain.on('update-quit-and-install', async (event) => {
     // presentee et acceptee au premier contact.
     //
     // isForceRunAfter = true : l'application se rouvre seule ensuite.
+    //
+    // Rien apres cette ligne ne peut observer le resultat : le processus se
+    // termine. On laisse donc une trace de ce qu'on essaie de devenir, pour que
+    // le prochain demarrage puisse constater que rien n'a change et le dire au
+    // commercant - sinon une mise a jour bloquee est totalement muette.
+    if (downloadedUpdateVersion) {
+      try {
+        recordUpdateAttempt({
+          filePath: pendingUpdateFile,
+          targetVersion: downloadedUpdateVersion,
+          currentVersion: releaseVersion,
+        });
+      } catch (error) {
+        // Ne jamais empecher une mise a jour parce qu'on n'a pas pu ecrire le
+        // temoin : il sert a expliquer un echec, pas a autoriser l'installation.
+        console.warn('[Legwan updater] could not record the update attempt:', error);
+      }
+    }
     autoUpdater.quitAndInstall(true, true);
   } catch (error) {
     updateInstallInProgress = false;

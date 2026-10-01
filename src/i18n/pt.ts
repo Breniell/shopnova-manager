@@ -1,4 +1,4 @@
-﻿import type { Translations } from './fr';
+import type { Translations } from './fr';
 
 const pt: Translations = {
   nav: {
@@ -1195,6 +1195,10 @@ const pt: Translations = {
     availableDesc:'Uma nova versão do Legwan está disponível.',
     download:     'Baixar',
     later:        'Mais tarde',
+    stalled:        'A atualização v{version} não foi instalada',
+    stalledDesc:    'O Legwan reiniciou na versão anterior. Os seus dados estão intactos. Tente a atualização novamente; se falhar outra vez, o seu antivírus está a bloqueá-la.',
+    stalledRepeatDesc: 'Segunda falha: o seu antivírus bloqueia a instalação. Adicione o Legwan como exceção ou instale a nova versão manualmente. Os seus dados estão intactos.',
+    stalledAck:     'Compreendi',
   },
 
   ...(import.meta.env.VITE_ENABLE_SUPERADMIN === 'true' ? {

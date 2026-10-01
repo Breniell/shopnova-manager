@@ -241,3 +241,104 @@ export function pickAutoUpdater(moduleNamespace) {
   }
   return null;
 }
+
+/**
+ * Detecting a silent update that never happened.
+ *
+ * `quitAndInstall(true, …)` hands an installer to Windows and ends the process.
+ * Nothing after that line can observe whether the install succeeded, and an NSIS
+ * update can stall indefinitely: it extracts a temporary uninstaller to remove
+ * the previous version and waits for it on `ExecWait`, which has no timeout
+ * (app-builder-lib/templates/nsis/include/installUtil.nsh). Avast sandboxes that
+ * uninstaller on every Legwan update - verified across four months of its own
+ * autosandbox.log - and on 2026-10-01 it held it at state `Initialized` with
+ * zero CPU: created, never run. The update deadlocked forever.
+ *
+ * While the wizard was still shown this was survivable: the shopkeeper saw a
+ * frozen progress bar and could cancel. Installing silently removes that signal
+ * entirely - the till closes for an update and simply never comes back, with
+ * nothing on screen to explain it. So the app has to notice on its own.
+ *
+ * The mechanism is a marker written just before quitAndInstall and read on the
+ * next launch. Three outcomes, and the version in hand decides which: the marker
+ * says what we were trying to become, and `app.getVersion()` says what we are.
+ */
+const PENDING_UPDATE_FILE = 'pending-update.json';
+
+export function pendingUpdatePath(userDataDir) {
+  return path.join(userDataDir, PENDING_UPDATE_FILE);
+}
+
+/**
+ * What the next launch should conclude from a marker.
+ *
+ * Pure on purpose: every branch here is reachable in a unit test without an
+ * Electron app, an installer or an antivirus.
+ */
+export function evaluatePendingUpdate({ marker, currentVersion }) {
+  // No attempt recorded, or a file we cannot make sense of. Saying nothing is
+  // right in both cases - inventing a failure from corrupt JSON would alarm a
+  // shopkeeper over a bad disk write.
+  if (!marker || typeof marker !== 'object') return { outcome: 'none' };
+  const { targetVersion, fromVersion } = marker;
+  if (typeof targetVersion !== 'string' || !targetVersion) return { outcome: 'none' };
+
+  if (currentVersion === targetVersion) {
+    return { outcome: 'installed', version: targetVersion };
+  }
+
+  // Still exactly where we started: the installer ran and changed nothing, which
+  // is the deadlock signature.
+  if (currentVersion === fromVersion) {
+    const attempts = Number.isInteger(marker.attempts) && marker.attempts > 0 ? marker.attempts : 1;
+    return { outcome: 'stalled', targetVersion, fromVersion, attempts };
+  }
+
+  // Neither version. Someone installed something else by hand in between, so the
+  // marker no longer describes reality and has nothing useful to say.
+  return { outcome: 'stale' };
+}
+
+export function readPendingUpdate(filePath) {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+export function clearPendingUpdate(filePath) {
+  try {
+    fs.rmSync(filePath, { force: true });
+  } catch {
+    // Nothing to do: a marker we cannot delete will simply be re-evaluated, and
+    // its verdict is idempotent.
+  }
+}
+
+/**
+ * Record that an installation is about to be attempted.
+ *
+ * The attempt count carries the advice: a first stall is worth retrying, a
+ * repeated one means something on that machine is holding the installer and the
+ * merchant needs to be told to act rather than to wait.
+ */
+export function recordUpdateAttempt({ filePath, targetVersion, currentVersion, now = new Date() }) {
+  const previous = readPendingUpdate(filePath);
+  const repeat = previous
+    && previous.targetVersion === targetVersion
+    && previous.fromVersion === currentVersion
+    && Number.isInteger(previous.attempts)
+    && previous.attempts > 0;
+
+  const marker = {
+    targetVersion,
+    fromVersion: currentVersion,
+    attemptedAt: now.toISOString(),
+    attempts: repeat ? previous.attempts + 1 : 1,
+  };
+
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, JSON.stringify(marker), { encoding: 'utf8', mode: 0o600 });
+  return marker;
+}

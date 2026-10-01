@@ -1195,6 +1195,10 @@ const en: Translations = {
     availableDesc:'A new version of Legwan is available.',
     download:     'Download',
     later:        'Later',
+    stalled:        'Update v{version} did not install',
+    stalledDesc:    'Legwan restarted on its previous version. Your data is intact. Try the update again; if it fails once more, your antivirus is blocking it.',
+    stalledRepeatDesc: 'Second failure: your antivirus is blocking the installation. Add Legwan as an exception, or install the new version by hand. Your data is intact.',
+    stalledAck:     'Understood',
   },
 
   ...(import.meta.env.VITE_ENABLE_SUPERADMIN === 'true' ? {

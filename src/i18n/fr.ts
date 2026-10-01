@@ -1228,6 +1228,10 @@ const fr = {
     availableDesc:'Une nouvelle version de Legwan est disponible.',
     download:     'Télécharger',
     later:        'Plus tard',
+    stalled:        'La mise à jour v{version} ne s\'est pas installée',
+    stalledDesc:    'Legwan a redémarré sur son ancienne version. Vos données sont intactes. Réessayez la mise à jour ; si elle échoue encore, votre antivirus la bloque.',
+    stalledRepeatDesc: 'Deuxième échec : votre antivirus bloque l\'installation. Ajoutez Legwan en exception, ou installez la nouvelle version à la main. Vos données sont intactes.',
+    stalledAck:     'J\'ai compris',
   },
 
   ...(import.meta.env.VITE_ENABLE_SUPERADMIN === 'true' ? {

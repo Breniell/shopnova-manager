@@ -20,6 +20,10 @@ type UpdateState =
   | { channel: 'update-available' | 'update-downloaded'; payload: { version: string } }
   | null;
 
+type StalledOutcome =
+  | { outcome: 'stalled'; targetVersion: string; fromVersion: string; attempts: number }
+  | null;
+
 interface FakeBridge {
   fireAvailable: Handler<{ version: string }>;
   fireProgress: Handler<{ percent: number }>;
@@ -27,10 +31,15 @@ interface FakeBridge {
   startUpdateDownload: ReturnType<typeof vi.fn>;
   quitAndInstall: ReturnType<typeof vi.fn>;
   requestUpdateCheck: ReturnType<typeof vi.fn>;
+  acknowledgeUpdateStall: ReturnType<typeof vi.fn>;
 }
 
 /** Stands in for the preload bridge that electron/preload.js exposes. */
-function installFakeBridge({ isElectron = true, pendingState = null as UpdateState } = {}): FakeBridge {
+function installFakeBridge({
+  isElectron = true,
+  pendingState = null as UpdateState,
+  pendingOutcome = null as StalledOutcome,
+} = {}): FakeBridge {
   const handlers: Record<string, Handler<never>> = {};
   const subscribe = (name: string) => (callback: Handler<never>) => {
     handlers[name] = callback;
@@ -40,6 +49,8 @@ function installFakeBridge({ isElectron = true, pendingState = null as UpdateSta
   const bridge = {
     isElectron,
     getUpdateState: () => Promise.resolve(pendingState),
+    getUpdatePendingOutcome: () => Promise.resolve(pendingOutcome),
+    acknowledgeUpdateStall: vi.fn(() => Promise.resolve(true)),
     requestUpdateCheck: vi.fn(() => Promise.resolve(true)),
     onUpdateAvailable: subscribe('available'),
     onUpdateDownloadProgress: subscribe('progress'),
@@ -57,6 +68,7 @@ function installFakeBridge({ isElectron = true, pendingState = null as UpdateSta
     startUpdateDownload: bridge.startUpdateDownload,
     quitAndInstall: bridge.quitAndInstall,
     requestUpdateCheck: bridge.requestUpdateCheck,
+    acknowledgeUpdateStall: bridge.acknowledgeUpdateStall,
   };
 }
 
@@ -167,6 +179,81 @@ describe('UpdateBanner', () => {
     await screen.findByText('Mise à jour disponible - v99.0.0');
 
     expect(bridge.requestUpdateCheck).not.toHaveBeenCalled();
+  });
+
+  // ── An update that installed nothing ──────────────────────────────────────
+  //
+  // Installing silently removed the one signal a shopkeeper used to have: a
+  // frozen progress bar. An NSIS update can deadlock waiting on the temporary
+  // uninstaller it runs to remove the old version, and antivirus sandboxing
+  // causes exactly that. Without these, the till closes for an update and never
+  // comes back with nothing on screen to say why.
+
+  it('explains a previous update that never installed', async () => {
+    installFakeBridge({
+      pendingOutcome: { outcome: 'stalled', targetVersion: '1.14.0', fromVersion: '1.13.0', attempts: 1 },
+    });
+    render(<UpdateBanner />);
+
+    expect(await screen.findByText("La mise à jour v1.14.0 ne s'est pas installée")).toBeInTheDocument();
+    // Reassuring them about their data is the whole point of speaking up.
+    expect(screen.getByText(/Vos données sont intactes/)).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+  });
+
+  it('names the antivirus once the same update has failed twice', async () => {
+    // A first stall is worth retrying. A second means waiting will not fix it,
+    // so the advice has to change from "try again" to "act".
+    installFakeBridge({
+      pendingOutcome: { outcome: 'stalled', targetVersion: '1.14.0', fromVersion: '1.13.0', attempts: 2 },
+    });
+    render(<UpdateBanner />);
+
+    expect(await screen.findByText(/Deuxième échec/)).toBeInTheDocument();
+    expect(screen.getByText(/antivirus bloque l'installation/)).toBeInTheDocument();
+  });
+
+  it('retires the warning only when the merchant acknowledges it', async () => {
+    const bridge = installFakeBridge({
+      pendingOutcome: { outcome: 'stalled', targetVersion: '1.14.0', fromVersion: '1.13.0', attempts: 1 },
+    });
+    const { container } = render(<UpdateBanner />);
+    await screen.findByText("La mise à jour v1.14.0 ne s'est pas installée");
+
+    // Clearing the marker at startup instead would mean a merchant who looked
+    // away never learns of it, and a machine that stalls every time stays silent
+    // after the first attempt.
+    expect(bridge.acknowledgeUpdateStall).not.toHaveBeenCalled();
+
+    act(() => { screen.getByRole('button', { name: "J'ai compris" }).click(); });
+
+    expect(bridge.acknowledgeUpdateStall).toHaveBeenCalledTimes(1);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('keeps the failure on screen instead of offering the same update again', async () => {
+    // Otherwise the shopkeeper is sent round the identical loop - download,
+    // restart, nothing happens - without the cause ever being named.
+    const bridge = installFakeBridge({
+      pendingOutcome: { outcome: 'stalled', targetVersion: '1.14.0', fromVersion: '1.13.0', attempts: 1 },
+    });
+    render(<UpdateBanner />);
+    await screen.findByText("La mise à jour v1.14.0 ne s'est pas installée");
+
+    bridge.fireAvailable({ version: '1.14.0' });
+    bridge.fireDownloaded({ version: '1.14.0' });
+
+    expect(screen.getByText("La mise à jour v1.14.0 ne s'est pas installée")).toBeInTheDocument();
+    expect(screen.queryByText('Mise à jour prête - v1.14.0')).not.toBeInTheDocument();
+  });
+
+  it('says nothing when the previous update did install', async () => {
+    // Success needs no announcement; only main.mjs records it, in the log.
+    const bridge = installFakeBridge({ pendingOutcome: null });
+    const { container } = render(<UpdateBanner />);
+
+    await vi.waitFor(() => expect(bridge.requestUpdateCheck).toHaveBeenCalled());
+    expect(container).toBeEmptyDOMElement();
   });
 
   it('stays silent outside Electron so the web build is unaffected', () => {

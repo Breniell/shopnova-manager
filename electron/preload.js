@@ -88,6 +88,24 @@ contextBridge.exposeInMainWorld('legwan', {
   /** Called if a safety backup prevents update installation. */
   onUpdateInstallBlocked: (cb) => subscribe('update-install-blocked', cb, () => undefined),
 
+  /**
+   * Ask whether the previous installation attempt simply never happened.
+   *
+   * A silent install gives no feedback by construction: the app quits, hands an
+   * installer to Windows, and whatever follows is out of reach. An NSIS update
+   * can stall forever waiting on the temporary uninstaller it runs to remove the
+   * old version, and antivirus sandboxing does cause exactly that. Behind the
+   * wizard the shopkeeper at least saw a frozen progress bar; silently, the till
+   * closes and never returns with nothing on screen. So the next launch compares
+   * the version it was trying to become with the one it actually is.
+   *
+   * Returns { outcome: 'stalled', targetVersion, fromVersion, attempts } or null.
+   */
+  getUpdatePendingOutcome: () => ipcRenderer.invoke('update-pending-outcome'),
+
+  /** Retire the warning once the merchant has actually read it. */
+  acknowledgeUpdateStall: () => ipcRenderer.invoke('update-acknowledge-stall'),
+
   automaticBackup: {
     save: (payload, reason, force = false) => ipcRenderer.invoke('backup:saveAutomatic', payload, reason, force),
     onBeforeUpdate: (cb) => {

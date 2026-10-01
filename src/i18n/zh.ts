@@ -1,4 +1,4 @@
-﻿import type { Translations } from './fr';
+import type { Translations } from './fr';
 
 const zh: Translations = {
   nav: {
@@ -1195,6 +1195,10 @@ const zh: Translations = {
     availableDesc:'Legwan 的新版本已可用。',
     download:     '下载',
     later:        '稍后',
+    stalled:        '版本 {version} 的更新未安装',
+    stalledDesc:    'Legwan 已以旧版本重新启动。您的数据完好无损。请重试更新；若再次失败，说明杀毒软件正在阻止它。',
+    stalledRepeatDesc: '第二次失败：杀毒软件正在阻止安装。请将 Legwan 添加为例外，或手动安装新版本。您的数据完好无损。',
+    stalledAck:     '明白了',
   },
 
   ...(import.meta.env.VITE_ENABLE_SUPERADMIN === 'true' ? {

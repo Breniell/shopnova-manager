@@ -1,4 +1,4 @@
-﻿import type { Translations } from './fr';
+import type { Translations } from './fr';
 
 const tr: Translations = {
   nav: {
@@ -1195,6 +1195,10 @@ const tr: Translations = {
     availableDesc:"Legwan'ın yeni bir sürümü mevcut.",
     download:     'İndir',
     later:        'Sonra',
+    stalled:        'v{version} güncellemesi kurulmadı',
+    stalledDesc:    'Legwan eski sürümüyle yeniden başladı. Verileriniz sağlam. Güncellemeyi yeniden deneyin; yine başarısız olursa antivirüsünüz engelliyor.',
+    stalledRepeatDesc: 'İkinci başarısızlık: antivirüsünüz kurulumu engelliyor. Legwan\'ı istisna olarak ekleyin veya yeni sürümü elle kurun. Verileriniz sağlam.',
+    stalledAck:     'Anladım',
   },
 
   ...(import.meta.env.VITE_ENABLE_SUPERADMIN === 'true' ? {

@@ -4,9 +4,14 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import {
+  clearPendingUpdate,
   createDiagnosticLogger,
   createRendererRecoveryController,
+  evaluatePendingUpdate,
+  pendingUpdatePath,
   pickAutoUpdater,
+  readPendingUpdate,
+  recordUpdateAttempt,
   sanitizeDiagnosticValue,
   saveAutomaticBackup,
 } from '../electron/runtime-support.mjs';
@@ -252,5 +257,125 @@ test('automatic backup rejects an unrelated JSON document', () => {
     payload: '{"hello":"world"}',
     appVersion: '1.5.0',
   }), /Invalid Legwan backup/);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+// ── Noticing an update that installed nothing ───────────────────────────────
+//
+// The decision is pure, so every branch is reachable here. The persistence is
+// tested with real files on purpose: the trial anchor had 77 tests on its pure
+// logic and none on what it wrote to disk, and that is exactly where it failed.
+
+test('a successful update is recognised and leaves nothing behind', () => {
+  assert.deepEqual(
+    evaluatePendingUpdate({
+      marker: { targetVersion: '1.14.0', fromVersion: '1.13.0', attempts: 1 },
+      currentVersion: '1.14.0',
+    }),
+    { outcome: 'installed', version: '1.14.0' },
+  );
+});
+
+test('an update that left the version untouched is reported as stalled', () => {
+  // The deadlock signature: the installer ran and changed nothing at all.
+  assert.deepEqual(
+    evaluatePendingUpdate({
+      marker: { targetVersion: '1.14.0', fromVersion: '1.13.0', attempts: 1 },
+      currentVersion: '1.13.0',
+    }),
+    { outcome: 'stalled', targetVersion: '1.14.0', fromVersion: '1.13.0', attempts: 1 },
+  );
+});
+
+test('a corrupt or absent marker never invents a failure', () => {
+  // Alarming a shopkeeper because of a bad disk write would be worse than
+  // staying quiet - there is no evidence of anything having gone wrong.
+  for (const marker of [null, undefined, 'nonsense', 42, {}, { targetVersion: '' }, { fromVersion: '1.13.0' }]) {
+    assert.deepEqual(evaluatePendingUpdate({ marker, currentVersion: '1.13.0' }), { outcome: 'none' });
+  }
+});
+
+test('a marker overtaken by a manual install is stale, not a failure', () => {
+  // The merchant installed something else by hand in between, so the marker no
+  // longer describes anything that happened.
+  assert.deepEqual(
+    evaluatePendingUpdate({
+      marker: { targetVersion: '1.14.0', fromVersion: '1.13.0', attempts: 1 },
+      currentVersion: '1.15.0',
+    }),
+    { outcome: 'stale' },
+  );
+});
+
+test('a repeated stall is counted, because the advice changes', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'legwan-pending-'));
+  const file = pendingUpdatePath(root);
+
+  const first = recordUpdateAttempt({ filePath: file, targetVersion: '1.14.0', currentVersion: '1.13.0' });
+  assert.equal(first.attempts, 1);
+  assert.equal(
+    evaluatePendingUpdate({ marker: readPendingUpdate(file), currentVersion: '1.13.0' }).attempts,
+    1,
+  );
+
+  // Same jump attempted again after a stall: the count has to survive the restart,
+  // otherwise a machine whose antivirus blocks every update is told "try again"
+  // forever instead of being told to act.
+  const second = recordUpdateAttempt({ filePath: file, targetVersion: '1.14.0', currentVersion: '1.13.0' });
+  assert.equal(second.attempts, 2);
+  assert.equal(
+    evaluatePendingUpdate({ marker: readPendingUpdate(file), currentVersion: '1.13.0' }).attempts,
+    2,
+  );
+
+  // A different target is a different story and starts its own count.
+  assert.equal(
+    recordUpdateAttempt({ filePath: file, targetVersion: '1.15.0', currentVersion: '1.13.0' }).attempts,
+    1,
+  );
+
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('the marker survives a restart and can be retired', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'legwan-pending-cycle-'));
+  const file = pendingUpdatePath(root);
+
+  recordUpdateAttempt({ filePath: file, targetVersion: '1.14.0', currentVersion: '1.13.0' });
+  assert.ok(fs.existsSync(file), 'nothing was written, so the next launch would learn nothing');
+
+  const written = readPendingUpdate(file);
+  assert.equal(written.targetVersion, '1.14.0');
+  assert.equal(written.fromVersion, '1.13.0');
+  assert.ok(!Number.isNaN(Date.parse(written.attemptedAt)), 'attemptedAt is not a readable date');
+
+  clearPendingUpdate(file);
+  assert.equal(fs.existsSync(file), false);
+  assert.equal(readPendingUpdate(file), null);
+  // Clearing something already gone must not throw: it runs on every clean launch.
+  clearPendingUpdate(file);
+
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('unreadable marker contents are treated as no marker at all', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'legwan-pending-corrupt-'));
+  const file = pendingUpdatePath(root);
+  fs.writeFileSync(file, '{ this is not json', 'utf8');
+  assert.equal(readPendingUpdate(file), null);
+  assert.deepEqual(
+    evaluatePendingUpdate({ marker: readPendingUpdate(file), currentVersion: '1.13.0' }),
+    { outcome: 'none' },
+  );
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('recording an attempt creates the directory it needs', () => {
+  // userData exists in practice, but a first launch writing into a path whose
+  // parent is missing must not take the update down with it.
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'legwan-pending-mkdir-'));
+  const file = pendingUpdatePath(path.join(root, 'does', 'not', 'exist'));
+  recordUpdateAttempt({ filePath: file, targetVersion: '1.14.0', currentVersion: '1.13.0' });
+  assert.ok(fs.existsSync(file));
   fs.rmSync(root, { recursive: true, force: true });
 });

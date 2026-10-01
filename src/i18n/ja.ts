@@ -1,4 +1,4 @@
-﻿import type { Translations } from './fr';
+import type { Translations } from './fr';
 
 const ja: Translations = {
   nav: {
@@ -1195,6 +1195,10 @@ const ja: Translations = {
     availableDesc:'Legwanの新バージョンが利用可能です。',
     download:     'ダウンロード',
     later:        '後で',
+    stalled:        'バージョン {version} の更新はインストールされませんでした',
+    stalledDesc:    'Legwan は以前のバージョンで再起動しました。データは無傷です。更新をもう一度お試しください。再び失敗する場合はウイルス対策ソフトが妨げています。',
+    stalledRepeatDesc: '2 回目の失敗です。ウイルス対策ソフトがインストールを妨げています。Legwan を例外に追加するか、新しいバージョンを手動でインストールしてください。データは無傷です。',
+    stalledAck:     '了解しました',
   },
 
   ...(import.meta.env.VITE_ENABLE_SUPERADMIN === 'true' ? {

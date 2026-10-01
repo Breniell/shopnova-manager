@@ -1,4 +1,4 @@
-﻿import type { Translations } from './fr';
+import type { Translations } from './fr';
 
 const ar: Translations = {
   nav: {
@@ -1195,6 +1195,10 @@ const ar: Translations = {
     availableDesc:'إصدار جديد من Legwan متاح.',
     download:     'تنزيل',
     later:        'لاحقاً',
+    stalled:        'لم يتم تثبيت التحديث v{version}',
+    stalledDesc:    'أعاد Legwan التشغيل بالإصدار السابق. بياناتك سليمة. أعد محاولة التحديث؛ وإن فشل مرة أخرى فإن مضاد الفيروسات يحجبه.',
+    stalledRepeatDesc: 'فشل ثانٍ: مضاد الفيروسات يحجب التثبيت. أضف Legwan إلى الاستثناءات، أو ثبّت الإصدار الجديد يدويًا. بياناتك سليمة.',
+    stalledAck:     'فهمت',
   },
 
   ...(import.meta.env.VITE_ENABLE_SUPERADMIN === 'true' ? {
