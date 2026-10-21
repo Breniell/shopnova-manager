@@ -144,4 +144,32 @@ describe('exportPDF', () => {
     exportPDF('Test', ['Col'], [['Val']]);
     expect(mockWin.document.close).toHaveBeenCalledOnce();
   });
+
+  it('renders structured summary items as styled values, never as escaped markup', () => {
+    exportPDF('Test', ['Col'], [['Val']], [{ value: '42', label: 'Ventes' }]);
+    const written: string = mockWin.document.write.mock.calls[0][0];
+    expect(written).toContain('<strong>42</strong>Ventes');
+    expect(written).not.toContain('&lt;strong&gt;');
+  });
+
+  it('still escapes HTML hidden in summary values and cells', () => {
+    exportPDF('T', ['H'], [['<img src=x onerror=alert(1)>']], [{ value: '<b>1</b>', label: '<i>x</i>' }]);
+    const written: string = mockWin.document.write.mock.calls[0][0];
+    expect(written).not.toContain('<img');
+    expect(written).not.toContain('<b>1</b>');
+    expect(written).toContain('&lt;img');
+  });
+
+  it('prints shop name, subtitle and totals row', () => {
+    exportPDF('T', ['A', 'B'], [['x', '1']], undefined, { shopName: 'Chez Awa', subtitle: 'Période : Ce mois', totals: ['TOTAL', '1'] });
+    const written: string = mockWin.document.write.mock.calls[0][0];
+    expect(written).toContain('Chez Awa');
+    expect(written).toContain('Période : Ce mois');
+    expect(written).toContain('<tfoot>');
+  });
+
+  it('returns false when the print window is blocked', () => {
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    expect(exportPDF('T', ['H'], [['v']])).toBe(false);
+  });
 });

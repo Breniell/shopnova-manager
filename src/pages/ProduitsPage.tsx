@@ -21,6 +21,9 @@ import {
   Image as ImageIcon, ChevronRight, ChevronDown, Layers,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import { getExportLabels } from '@/lib/exportLabels';
+import { productsReport } from '@/lib/reportBuilders';
 
 /** Une ligne du tableau de déclinaisons pendant la saisie. */
 interface VariantDraft {
@@ -52,7 +55,7 @@ const ProduitsPage: React.FC = () => {
   const { shop, updateShop } = useSettingsStore();
   const categories = shopCategories(shop);
   const { cart } = useSaleStore();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState<string>('');
   const [stockFilter, setStockFilter] = useState<string>('');
@@ -397,11 +400,16 @@ const ProduitsPage: React.FC = () => {
     });
   }
 
+  // L'export suit les filtres de l'écran, mais déplie les parents en déclinaisons.
+  const exportLabels = getExportLabels(locale);
+  const exportProducts = filtered.flatMap(p => [p, ...variantsOf(p)]);
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
         <h1 className="text-2xl nova-heading text-foreground">{t('produits.title')}</h1>
         <div className="flex gap-2 shrink-0">
+          <ExportMenu reports={[{ label: exportLabels.rProductsTitle, build: () => productsReport(exportLabels, exportProducts) }]} />
           <button
             onClick={() => setShowImport(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-muted hover:bg-muted/80 text-foreground transition-colors text-sm font-medium"

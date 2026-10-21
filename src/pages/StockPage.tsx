@@ -11,6 +11,9 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { getStockStatus, cn } from '@/lib/utils';
 import { Package, AlertTriangle, TrendingDown, Warehouse, Plus, X, Mail, Send } from 'lucide-react';
 import { toast } from 'sonner';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import { getExportLabels } from '@/lib/exportLabels';
+import { stockStateReport, stockMovementsReport, stockAlertsReport } from '@/lib/reportBuilders';
 import { formatFCFA, formatDateShort, formatTime } from '@/utils/formatters';
 import { useTranslation } from '@/i18n';
 import type { Product } from '@/stores/useProductStore';
@@ -44,7 +47,7 @@ function buildMailtoLink(
 }
 
 const StockPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { products } = useProductStore();
   const { movements, commitStockChange } = useStockStore();
   const { currentUser } = useAuthStore();
@@ -73,6 +76,13 @@ const StockPage: React.FC = () => {
   const lowStock = stocked.filter(p => p.stock > 0 && p.stock <= p.seuilAlerte);
   const alertProducts = [...outOfStock, ...lowStock];
   const totalValue = stocked.reduce((sum, p) => sum + p.prixAchat * p.stock, 0);
+
+  const exportLabels = getExportLabels(locale);
+  const exportReports = [
+    { label: exportLabels.rStockTitle, build: () => stockStateReport(exportLabels, products) },
+    { label: exportLabels.rMovementsTitle, build: () => stockMovementsReport(exportLabels, movements) },
+    { label: exportLabels.rAlertsTitle, build: () => stockAlertsReport(exportLabels, products) },
+  ];
 
   const suppliersWithEmail = suppliers.filter(s => s.email);
 
@@ -163,7 +173,8 @@ const StockPage: React.FC = () => {
     <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
         <h1 className="text-2xl nova-heading text-foreground">{t('stock.title')}</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <ExportMenu reports={exportReports} className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-muted hover:bg-muted/80 text-foreground transition-colors text-sm font-medium" />
           {alertProducts.length > 0 && (
             <button
               onClick={openEmailModal}

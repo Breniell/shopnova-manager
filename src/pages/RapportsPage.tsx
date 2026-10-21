@@ -5,10 +5,12 @@ import { useExpenseStore } from '@/stores/useExpenseStore';
 import { StatCard } from '@/components/ui/StatCard';
 import { NovaCard } from '@/components/ui/NovaCard';
 import { getStockStatus, cn } from '@/lib/utils';
-import { DollarSign, ShoppingCart, TrendingUp, Percent, Download, TrendingDown, Wallet } from 'lucide-react';
+import { DollarSign, ShoppingCart, TrendingUp, Percent, TrendingDown, Wallet } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid } from 'recharts';
-import { exportCSV, exportPDF } from '@/lib/export';
-import { toast } from 'sonner';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import { getExportLabels } from '@/lib/exportLabels';
+import { periodSubtitle, productSalesReport, salesLinesReport, stockAlertsReport, periodSummaryReport, dailySalesReport } from '@/lib/reportBuilders';
+import { getCategoryMeta } from '@/stores/useExpenseStore';
 import { formatPrice, getCurrentBcp47 } from '@/utils/formatters';
 import { useTranslation } from '@/i18n';
 import { useCurrentDate } from '@/hooks/useCurrentDate';
@@ -16,7 +18,7 @@ import { useCurrentDate } from '@/hooks/useCurrentDate';
 type Period = 'today' | 'week' | 'month';
 
 const RapportsPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { sales } = useSaleStore();
   const { products } = useProductStore();
   const { expenses } = useExpenseStore();
@@ -93,29 +95,24 @@ const RapportsPage: React.FC = () => {
     month: t('rapports.periodMonth'),
   };
 
-  const csvHeaders = [t('rapports.colNum'), t('rapports.colProduct'), t('rapports.colQty'), t('rapports.colRevenue'), t('rapports.colPercent')];
+  // Les exports portent sur TOUTE la période et tous les produits vendus,
+  // pas sur le seul top 10 affiché à l'écran.
+  const exportLabels = getExportLabels(locale);
+  const exportSubtitle = periodSubtitle(exportLabels, periodLabels[period], periodStart, now);
+  const exportReports = [
+    { label: exportLabels.mSummary, build: () => periodSummaryReport(exportLabels, periodSales, periodExpenses, products, e => getCategoryMeta(e.categorie).label, exportSubtitle) },
+    { label: exportLabels.mDaily, build: () => dailySalesReport(exportLabels, periodSales, periodExpenses, products, periodStart, now, exportSubtitle) },
+    { label: exportLabels.mProductSales, build: () => productSalesReport(exportLabels, periodSales, products, exportSubtitle) },
+    { label: exportLabels.mSalesLines, build: () => salesLinesReport(exportLabels, periodSales, products, exportSubtitle) },
+    { label: exportLabels.mCritical, build: () => stockAlertsReport(exportLabels, products, exportLabels.rCriticalTitle, exportLabels.rCriticalFile) },
+  ];
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
         <h1 className="text-2xl nova-heading text-foreground">{t('rapports.title')}</h1>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex gap-1">
-            <button onClick={() => {
-              const rows = top10.map((p, i) => [String(i + 1), p.nom, String(p.qty), formatPrice(p.revenue), totalRevenue > 0 ? (p.revenue / totalRevenue * 100).toFixed(1) + '%' : '0%']);
-              exportCSV('rapport-ventes', csvHeaders, rows);
-              toast.success(t('ventes.exportCsvDone'));
-            }} className="nova-btn-secondary flex items-center gap-2 px-3 py-2 text-sm">
-              <Download className="w-4 h-4" /> CSV
-            </button>
-            <button onClick={() => {
-              const rows = top10.map((p, i) => [String(i + 1), p.nom, String(p.qty), formatPrice(p.revenue), totalRevenue > 0 ? (p.revenue / totalRevenue * 100).toFixed(1) + '%' : '0%']);
-              const summary = [`<strong>${formatPrice(totalRevenue)}</strong>${t('rapports.pdfRevenue')}`, `<strong>${periodSales.length}</strong>${t('rapports.pdfSales')}`, `<strong>${formatPrice(avgCart)}</strong>${t('rapports.pdfAvgCart')}`, `<strong>${margin.toFixed(1)}%</strong>${t('rapports.pdfMargin')}`];
-              exportPDF(t('rapports.pdfTitle'), csvHeaders, rows, summary);
-            }} className="nova-btn-secondary flex items-center gap-2 px-3 py-2 text-sm">
-              <Download className="w-4 h-4" /> PDF
-            </button>
-          </div>
+          <ExportMenu reports={exportReports} />
         <div className="flex gap-1 bg-muted rounded-lg p-1">
           {(['today', 'week', 'month'] as Period[]).map((k) => (
             <button key={k} onClick={() => setPeriod(k)} className={cn('px-4 py-2 rounded-md text-sm font-medium transition-all', period === k ? 'bg-card text-foreground ' : 'text-muted-foreground hover:text-foreground')}>

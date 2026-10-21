@@ -4,10 +4,14 @@ import { NovaCard } from '@/components/ui/NovaCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Search, Plus, Edit, Trash2, Truck, X, Phone, Mail, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import { getExportLabels } from '@/lib/exportLabels';
+import { suppliersReport } from '@/lib/reportBuilders';
 import { useTranslation } from '@/i18n';
 
 const FournisseursPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const exportLabels = getExportLabels(locale);
   const { suppliers, addSupplier, updateSupplier, deleteSupplier } = useSupplierStore();
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -60,9 +64,12 @@ const FournisseursPage: React.FC = () => {
     <div className="p-4 lg:p-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-grid">
         <h1 className="text-2xl nova-heading text-foreground">{t('fournisseurs.title')}</h1>
-        <button onClick={openAdd} className="nova-btn-primary flex items-center gap-2 px-5 py-2.5">
-          <Plus className="w-4 h-4" /> {t('fournisseurs.addBtn')}
-        </button>
+        <div className="flex gap-2">
+          <ExportMenu reports={[{ label: exportLabels.rSuppliersTitle, build: () => suppliersReport(exportLabels, filtered) }]} />
+          <button onClick={openAdd} className="nova-btn-primary flex items-center gap-2 px-5 py-2.5">
+            <Plus className="w-4 h-4" /> {t('fournisseurs.addBtn')}
+          </button>
+        </div>
       </div>
 
       <div className="relative mb-6 max-w-md">

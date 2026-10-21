@@ -32,6 +32,9 @@ import {
   History, Filter, Trash2, Eye, FileX,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import { getExportLabels } from '@/lib/exportLabels';
+import { inventoryHistoryReport, inventorySessionReport, inventorySheetReport } from '@/lib/reportBuilders';
 import { useTranslation } from '@/i18n';
 
 type Tab = 'new' | 'edit' | 'history';
@@ -42,7 +45,8 @@ const REASONS: AdjustmentReason[] = [
 ];
 
 const InventairePage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const exportLabels = getExportLabels(locale);
   const { sessions, createSession, updateLine, validateSession, cancelSession, updateNotes } = useInventoryStore();
   const { products } = useProductStore();
   const { shop } = useSettingsStore();
@@ -214,11 +218,22 @@ const InventairePage: React.FC = () => {
     };
   }, [activeSession]);
 
+  // Session en cours de saisie (si on est sur l'onglet) : feuille à imprimer et
+  // état d'avancement. Historique : toutes les sessions validées.
+  const headerReports = [
+    ...(activeSession && tab === 'edit' ? [
+      { label: `${exportLabels.mInvSheet} - ${activeSession.numero}`, build: () => inventorySheetReport(exportLabels, activeSession, products) },
+      { label: `${exportLabels.mInvDetail} - ${activeSession.numero}`, build: () => inventorySessionReport(exportLabels, activeSession, products) },
+    ] : []),
+    { label: exportLabels.rInvHistTitle, build: () => inventoryHistoryReport(exportLabels, validatedSessions) },
+  ];
+
   return (
     <div className="p-4 lg:p-8 animate-fade-in">
       {/* En-tête */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-grid">
         <h1 className="text-2xl nova-heading text-foreground">{t('inventaire.title')}</h1>
+        <ExportMenu reports={headerReports} />
         {openSessions.length > 0 && tab !== 'edit' && (
           <div className="text-xs px-3 py-1.5 rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/30">
             {openSessions.length > 1
@@ -684,6 +699,10 @@ const InventairePage: React.FC = () => {
       >
         {viewedSession && (
           <div className="space-y-5">
+            <ExportMenu
+              reports={[{ label: `${exportLabels.mInvDetail} - ${viewedSession.numero}`, build: () => inventorySessionReport(exportLabels, viewedSession, products) }]}
+              className="nova-btn-secondary flex items-center gap-2 px-3 py-2 text-sm w-full justify-center"
+            />
             <div className="space-y-1 text-sm">
               <p className="text-muted-foreground">
                 <span className="font-medium">{t('inventaire.drawerScope')}</span>{' '}

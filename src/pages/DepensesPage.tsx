@@ -22,11 +22,13 @@ import { NovaCard } from '@/components/ui/NovaCard';
 import { StatCard } from '@/components/ui/StatCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { formatFCFA, formatDateShort, getCurrentBcp47 } from '@/utils/formatters';
-import { exportCSV } from '@/lib/export';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import { getExportLabels } from '@/lib/exportLabels';
+import { expensesReport } from '@/lib/reportBuilders';
 import { expenseSchema } from '@/lib/validations';
 import { cn } from '@/lib/utils';
 import {
-  Plus, Edit, Trash2, X, Search, Download,
+  Plus, Edit, Trash2, X, Search,
   TrendingDown, BarChart3, Calendar, FileText
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
@@ -59,7 +61,7 @@ const emptyForm: FormState = {
 };
 
 const DepensesPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { expenses, addExpense, updateExpense, deleteExpense } = useExpenseStore();
   const { currentUser } = useAuthStore();
   const { getCurrentSession, addCashOut } = useCashSessionStore();
@@ -247,31 +249,6 @@ const DepensesPage: React.FC = () => {
     setDeleteTarget(null);
   };
 
-  const handleExport = () => {
-    if (filteredExpenses.length === 0) {
-      toast.error(t('depenses.nothingToExport'));
-      return;
-    }
-    const headers = [
-      t('depenses.csvColDate'), t('depenses.csvColCategory'), t('depenses.csvColDescription'),
-      t('depenses.csvColBeneficiary'), t('depenses.csvColReference'), t('depenses.csvColPayment'),
-      t('depenses.csvColAmount'), t('depenses.csvColUser'), t('depenses.csvColNotes'),
-    ];
-    const rows = filteredExpenses.map(e => [
-      formatDateShort(new Date(e.date)),
-      getCategoryMeta(e.categorie).label,
-      e.description,
-      e.beneficiaire ?? '',
-      e.reference ?? '',
-      PAYMENT_MODE_LABELS[e.paymentMode],
-      String(e.montant),
-      e.userName,
-      e.notes ?? '',
-    ]);
-    exportCSV(`depenses-${new Date().toISOString().slice(0, 10)}`, headers, rows);
-    toast.success(t('depenses.csvExported'));
-  };
-
   const periodLabels: Record<Period, string> = {
     today: t('depenses.periodToday'),
     week:  t('depenses.periodWeek'),
@@ -287,6 +264,23 @@ const DepensesPage: React.FC = () => {
     month: t('depenses.btnMonth'),
     all:   t('depenses.btnAll'),
   };
+
+  const exportLabels = getExportLabels(locale);
+  const exportReports = [{
+    label: exportLabels.rExpensesTitle,
+    build: () => expensesReport(
+      exportLabels,
+      filteredExpenses,
+      {
+        date: t('depenses.csvColDate'), category: t('depenses.csvColCategory'), description: t('depenses.csvColDescription'),
+        beneficiary: t('depenses.csvColBeneficiary'), reference: t('depenses.csvColReference'), payment: t('depenses.csvColPayment'),
+        amount: t('depenses.csvColAmount'), user: t('depenses.csvColUser'), notes: t('depenses.csvColNotes'),
+      },
+      e => getCategoryMeta(e.categorie).label,
+      e => PAYMENT_MODE_LABELS[e.paymentMode],
+      `${exportLabels.period} : ${periodLabel}`,
+    ),
+  }];
 
   const n = filteredExpenses.length;
   const totalFooter = (n > 1 ? t('depenses.totalFooterPlural') : t('depenses.totalFooter')).replace('{n}', String(n));
@@ -310,14 +304,7 @@ const DepensesPage: React.FC = () => {
               </button>
             ))}
           </div>
-          <button
-            onClick={handleExport}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted text-muted-foreground hover:text-foreground transition-colors text-sm"
-            title={t('depenses.exportTitle')}
-          >
-            <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">{t('depenses.exportBtn')}</span>
-          </button>
+          <ExportMenu reports={exportReports} />
           <button onClick={openAdd} className="nova-btn-primary flex items-center gap-2 px-5 py-2.5">
             <Plus className="w-4 h-4" /> {t('depenses.addBtn')}
           </button>

@@ -30,13 +30,16 @@ import {
   Wallet, CreditCard, AlertCircle, Search, TrendingDown
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import { getExportLabels } from '@/lib/exportLabels';
+import { creditOpenSalesReport, creditClientsReport, creditPaymentsReport } from '@/lib/reportBuilders';
 
 const CreditPage: React.FC = () => {
   const { sales, applyCreditPayment } = useSaleStore();
   const { payments } = usePaymentStore();
   const { customers, getCustomerById } = useCustomerStore();
   const { currentUser } = useAuthStore();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   const [activeTab, setActiveTab] = useState<'clients' | 'sales' | 'payments'>('clients');
   const [search, setSearch] = useState('');
@@ -120,6 +123,21 @@ const CreditPage: React.FC = () => {
     });
   }, [payments, search, getCustomerById]);
 
+  const exportLabels = getExportLabels(locale);
+  const exportReports = [
+    { label: exportLabels.rCreditOpenTitle, build: () => creditOpenSalesReport(exportLabels, filteredOpenSales, payments) },
+    { label: exportLabels.rCreditClientsTitle, build: () => creditClientsReport(exportLabels, filteredClients) },
+    {
+      label: exportLabels.rCreditPaymentsTitle,
+      build: () => creditPaymentsReport(
+        exportLabels,
+        filteredPayments,
+        id => { const c = getCustomerById(id); return c ? `${c.prenom} ${c.nom}` : ''; },
+        id => sales.find(s => s.id === id)?.saleNumber ?? '',
+      ),
+    },
+  ];
+
   // ── Ouverture du modal d'encaissement ────────────────────────────────────
   const openPayModal = (sale: Sale) => {
     setPaymentTarget(sale);
@@ -177,7 +195,10 @@ const CreditPage: React.FC = () => {
 
   return (
     <div className="p-4 lg:p-8 animate-fade-in">
-      <h1 className="text-2xl nova-heading text-foreground mb-6">{t('credit.title')}</h1>
+      <div className="flex items-center justify-between mb-6 gap-3">
+        <h1 className="text-2xl nova-heading text-foreground">{t('credit.title')}</h1>
+        <ExportMenu reports={exportReports} />
+      </div>
 
       {/* KPI */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-grid mb-6">

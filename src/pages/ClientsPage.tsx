@@ -15,6 +15,9 @@
 import React, { useState, useMemo } from 'react';
 import { useCustomerStore, Customer } from '@/stores/useCustomerStore';
 import { useSaleStore } from '@/stores/useSaleStore';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import { getExportLabels } from '@/lib/exportLabels';
+import { customersReport } from '@/lib/reportBuilders';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { NovaCard } from '@/components/ui/NovaCard';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -29,7 +32,7 @@ import { cn } from '@/lib/utils';
 import { useTranslation } from '@/i18n';
 
 const ClientsPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { customers, addCustomer, updateCustomer, archiveCustomer, unarchiveCustomer, deleteCustomer } = useCustomerStore();
   const { sales } = useSaleStore();
   const { currentUser } = useAuthStore();
@@ -84,6 +87,8 @@ const ClientsPage: React.FC = () => {
       })
       .sort((a, b) => `${a.prenom} ${a.nom}`.localeCompare(`${b.prenom} ${b.nom}`));
   }, [customers, search, showArchived]);
+
+  const exportLabels = getExportLabels(locale);
 
   // ── Actions ──────────────────────────────────────────────────────────────
   const openAdd = () => {
@@ -188,9 +193,12 @@ const ClientsPage: React.FC = () => {
       {/* En-tête */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-grid">
         <h1 className="text-2xl nova-heading text-foreground">{t('clients.title')}</h1>
-        <button onClick={openAdd} className="nova-btn-primary flex items-center gap-2 px-5 py-2.5">
-          <Plus className="w-4 h-4" /> {t('clients.addBtn')}
-        </button>
+        <div className="flex gap-2">
+          <ExportMenu reports={[{ label: exportLabels.rCustomersTitle, build: () => customersReport(exportLabels, filtered, stats.salesByCustomer) }]} />
+          <button onClick={openAdd} className="nova-btn-primary flex items-center gap-2 px-5 py-2.5">
+            <Plus className="w-4 h-4" /> {t('clients.addBtn')}
+          </button>
+        </div>
       </div>
 
       {/* KPI */}

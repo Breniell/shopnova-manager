@@ -10,8 +10,11 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Receipt, Search, Eye, Printer, CalendarIcon, Download, XCircle, AlertTriangle, ShoppingCart } from 'lucide-react';
-import { exportCSV, exportPDF } from '@/lib/export';
+import { Receipt, Search, Eye, Printer, CalendarIcon, XCircle, AlertTriangle, ShoppingCart } from 'lucide-react';
+import { ExportMenu } from '@/components/ui/ExportMenu';
+import { getExportLabels } from '@/lib/exportLabels';
+import { salesListReport, salesLinesReport } from '@/lib/reportBuilders';
+import { useProductStore } from '@/stores/useProductStore';
 import { toast } from 'sonner';
 import { formatPrice, formatFCFA, formatTime, formatDateShort, formatDate } from '@/utils/formatters';
 import { useTranslation } from '@/i18n';
@@ -33,7 +36,8 @@ const StatusBadgeSale: React.FC<{ status?: string }> = ({ status }) => {
 };
 
 const VentesPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const { products } = useProductStore();
   const { sales, refundSale } = useSaleStore();
   const { currentUser } = useAuthStore();
   const [search, setSearch] = useState('');
@@ -82,6 +86,19 @@ const VentesPage: React.FC = () => {
   const totalRevenue = activeFiltered.reduce((sum, s) => sum + s.total, 0);
   const avgSale = activeFiltered.length > 0 ? Math.round(totalRevenue / activeFiltered.length) : 0;
 
+  // Ce que l'écran filtre, l'export le reprend : mêmes ventes, mêmes dates.
+  const exportLabels = getExportLabels(locale);
+  const exportSubtitle = [
+    dateFrom || dateTo
+      ? `${exportLabels.period} : ${dateFrom ? `${exportLabels.from} ${format(dateFrom, 'dd/MM/yyyy')} ` : ''}${dateTo ? `${exportLabels.to} ${format(dateTo, 'dd/MM/yyyy')}` : ''}`.trim()
+      : `${exportLabels.period} : ${exportLabels.allPeriods}`,
+    search ? `"${search}"` : '',
+  ].filter(Boolean).join(' - ');
+  const exportReports = [
+    { label: exportLabels.mSalesSummary, build: () => salesListReport(exportLabels, filtered, exportSubtitle) },
+    { label: exportLabels.mSalesLines, build: () => salesLinesReport(exportLabels, filtered, products, exportSubtitle) },
+  ];
+
   const handleRefund = () => {
     if (!refundTarget || !currentUser) return;
     if (!refundReason.trim()) { toast.error(t('ventes.reasonRequired')); return; }
@@ -97,44 +114,7 @@ const VentesPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
         <h1 className="text-2xl nova-heading text-foreground">{t('ventes.title')}</h1>
         <div className="flex gap-1 shrink-0">
-          <button onClick={() => {
-            const headers = [t('ventes.colId'), 'Date', 'Heure', t('ventes.colCashier'), t('ventes.colItems'), t('ventes.colTotal'), t('ventes.colPayment'), t('ventes.colStatus')];
-            const rows = filtered.map(s => [
-              s.saleNumber,
-              formatDateShort(new Date(s.date)),
-              formatTime(new Date(s.date)),
-              s.userName,
-              String(s.items.reduce((sum, i) => sum + i.quantity, 0)),
-              formatFCFA(s.total),
-              s.paymentMode,
-              s.status === 'refunded' ? t('ventes.statusCancelled') : t('ventes.statusValidated'),
-            ]);
-            exportCSV('historique-ventes', headers, rows);
-            toast.success(t('ventes.exportCsvDone'));
-          }} className="nova-btn-secondary flex items-center gap-2 px-3 py-2 text-sm">
-            <Download className="w-4 h-4" /> CSV
-          </button>
-          <button onClick={() => {
-            const headers = [t('ventes.colId'), 'Date', 'Heure', t('ventes.colCashier'), t('ventes.colItems'), t('ventes.colTotal'), t('ventes.colPayment'), t('ventes.colStatus')];
-            const rows = filtered.map(s => [
-              s.saleNumber,
-              formatDateShort(new Date(s.date)),
-              formatTime(new Date(s.date)),
-              s.userName,
-              String(s.items.reduce((sum, i) => sum + i.quantity, 0)),
-              formatFCFA(s.total),
-              s.paymentMode,
-              s.status === 'refunded' ? t('ventes.statusCancelled') : t('ventes.statusValidated'),
-            ]);
-            const summary = [
-              `<strong>${activeFiltered.length}</strong>${t('ventes.activeCount')}`,
-              `<strong>${formatFCFA(totalRevenue)}</strong>${t('ventes.colTotal')}`,
-              `<strong>${formatFCFA(avgSale)}</strong>${t('ventes.summaryAvg')}`,
-            ];
-            exportPDF(t('ventes.pdfTitle'), headers, rows, summary);
-          }} className="nova-btn-secondary flex items-center gap-2 px-3 py-2 text-sm">
-            <Download className="w-4 h-4" /> PDF
-          </button>
+          <ExportMenu reports={exportReports} />
         </div>
       </div>
 
