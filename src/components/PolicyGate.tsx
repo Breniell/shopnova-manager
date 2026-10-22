@@ -11,13 +11,13 @@ import { cn } from '@/lib/utils';
 import { CheckCircle2, ScrollText, Shield, ChevronDown, UserPlus, KeyRound, Cloud } from 'lucide-react';
 import { hashPin, generateSalt } from '@/lib/crypto';
 import { setGeoConsent } from '@/lib/consent';
+import { POLICY_REVISION, isPolicyRecordValid, buildPolicyRecord } from '@/lib/policyAcceptance';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { fr, en, es, pt, de, tr, ar, ja, zh } from '@/i18n';
 import type { Translations } from '@/i18n/fr';
 import { ALL_LOCALES, LOCALE_LABELS, LOCALE_TO_BCP47 } from '@/i18n/types';
 import type { SupportedLocale } from '@/i18n/types';
 
-const POLICY_VERSION    = __APP_VERSION__;
 const STORAGE_KEY       = 'legwan-policy-accepted';
 const PENDING_ADMIN_KEY = 'legwan-pending-admin';
 const LOCALE_KEY        = 'legwan-locale';
@@ -41,19 +41,9 @@ const dicts: Record<SupportedLocale, Translations> = { fr, en, es, pt, de, tr, a
 
 // ─── Policy acceptance ────────────────────────────────────────────────────────
 
-interface PolicyRecord {
-  version: string;
-  accepted: boolean;
-  name: string;
-  date: string;
-}
-
 function isPolicyAccepted(): boolean {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return false;
-    const record: PolicyRecord = JSON.parse(raw);
-    return record.accepted && record.version === POLICY_VERSION;
+    return isPolicyRecordValid(localStorage.getItem(STORAGE_KEY));
   } catch { return false; }
 }
 
@@ -62,12 +52,7 @@ function isNewInstall(): boolean {
 }
 
 function savePolicyAcceptance(name: string): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({
-    version: POLICY_VERSION,
-    accepted: true,
-    name: name.trim(),
-    date: new Date().toISOString(),
-  }));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(buildPolicyRecord(name, __APP_VERSION__)));
 }
 
 // ─── PIN dots ─────────────────────────────────────────────────────────────────
@@ -409,7 +394,7 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
         </div>
         <div>
           <h1 className="text-base font-bold text-foreground">{T.title}</h1>
-          <p className="text-xs text-muted-foreground">{T.version} {POLICY_VERSION} · {T.readHint}</p>
+          <p className="text-xs text-muted-foreground">{T.version} {POLICY_REVISION} · {T.readHint}</p>
         </div>
         <div className="ml-auto flex items-center gap-3">
           {/* Language selector */}
@@ -468,7 +453,7 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
           ))}
 
           <p className="text-xs text-muted-foreground text-center pb-4">
-            Legwan Privacy Policy - {T.version} {POLICY_VERSION} - {T.inForce}
+            Legwan Privacy Policy - {T.version} {POLICY_REVISION} - {T.inForce}
           </p>
         </div>
       </div>
@@ -517,7 +502,7 @@ export const PolicyGate: React.FC<{ children: React.ReactNode }> = ({ children }
                 {checked && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
               </div>
               <span className="text-sm text-muted-foreground">
-                {T.checkLabel}{' '}<strong className="text-foreground">{T.checkBold}</strong>{' '}({T.version} {POLICY_VERSION}).
+                {T.checkLabel}{' '}<strong className="text-foreground">{T.checkBold}</strong>{' '}({T.version} {POLICY_REVISION}).
               </span>
             </label>
           )}
