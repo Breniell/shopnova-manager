@@ -31,7 +31,7 @@ Elles sont identiques pour les deux formulaires.
 | Nom du produit | Legwan |
 | Version | 1.13.0 |
 | Éditeur | Legwan |
-| Contact | support@legwan.cm |
+| Contact | knbdevsolutions@gmail.com |
 | URL de téléchargement | https://github.com/Breniell/shopnova-manager/releases/latest |
 
 Vérifier l'empreinte avant l'envoi, pour être certain de soumettre le fichier
@@ -62,7 +62,7 @@ $f.Name
 Formulaire : <https://www.avast.com/false-positive-file-form.php>
 
 - **Type de soumission** : *File is incorrectly detected* (fichier détecté à tort)
-- **Email** : support@legwan.cm
+- **Email** : knbdevsolutions@gmail.com
 - **Fichier** : l'installeur ci-dessus
 - **Detection name** : `Autosandbox / CyberCapture - no signature detection`
 - **Alert ID** : `N/A`

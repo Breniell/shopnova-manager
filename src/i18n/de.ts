@@ -332,7 +332,7 @@ const de: Translations = {
     inForce:   'Aktualisiert am 18. Juni 2026',
     sections: {
       s1title: '1. Vorstellung',
-      s1:      'Legwan ist eine Ladenverwaltungssoftware (Kasse, Lager, Berichte, Kredit) von Legwan (knbdevsolutions@gmail.com). Sie funktioniert hauptsächlich offline: Alle Verkaufs- und Bestandsdaten werden lokal auf Ihrem Gerät gespeichert. Durch die Installation und Nutzung dieser Software stimmen Sie den hier beschriebenen Bedingungen zu.',
+      s1:      'Legwan ist eine Ladenverwaltungssoftware (Kasse, Lager, Berichte, Kredit) von KNB (knbdevsolutions@gmail.com). Sie funktioniert hauptsächlich offline: Alle Verkaufs- und Bestandsdaten werden lokal auf Ihrem Gerät gespeichert. Durch die Installation und Nutzung dieser Software stimmen Sie den hier beschriebenen Bedingungen zu.',
 
       s2title: '2. Lokal gespeicherte Daten',
       s2:      'Legwan speichert auf Ihrem Gerät nur die für den Betrieb Ihres Geschäfts erforderlichen Informationen:\n\n• Benutzerkonten: Vor- und Nachname, Rolle, PIN-Code (PBKDF2-Hash - nie im Klartext lesbar)\n• Geschäftsinformationen: Name, Adresse, Telefonnummer\n• Produktkatalog: Bezeichnung, Preise, Bestand\n• Verkäufe und Transaktionen\n• Lagerbewegungen (Eingänge und Ausgänge)\n• Kassensitzungen und -abschlüsse\n• Lieferanten und Kunden\n• Ausgaben und Inventarsitzungen\n• Lizenzschlüssel\n\nEs werden keine Bank- oder Zahlungsdaten erhoben. Ihre Finanzdaten (Umsatz, Beträge) verlassen Ihr Gerät nie.',

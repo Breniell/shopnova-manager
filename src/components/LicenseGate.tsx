@@ -37,9 +37,10 @@ import {
   type GateStatus,
 } from '@/lib/license/gate';
 import { getBoutiqueId } from '@/services/boutiqueService';
+import { SUPPORT_EMAIL } from '@/lib/support';
 
 const PUBKEY_CONFIGURED = !!import.meta.env.VITE_LICENSE_PUBKEY;
-const SUPPORT_CONTACT   = import.meta.env.VITE_SUPPORT_CONTACT ?? 'knbdevsolutions@gmail.com';
+const SUPPORT_CONTACT   = SUPPORT_EMAIL;
 
 // ─── Gate context (read by child routes) ─────────────────────────────────────
 

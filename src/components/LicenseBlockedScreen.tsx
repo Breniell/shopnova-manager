@@ -5,8 +5,9 @@ import { getLicenseString } from '@/lib/license/store';
 import { getBoutiqueId } from '@/services/boutiqueService';
 import { LicenseActivationForm } from '@/components/LicenseActivationForm';
 import type { GateStatus } from '@/lib/license/gate';
+import { SUPPORT_EMAIL } from '@/lib/support';
 
-const SUPPORT_CONTACT = import.meta.env.VITE_SUPPORT_CONTACT ?? 'knbdevsolutions@gmail.com';
+const SUPPORT_CONTACT = SUPPORT_EMAIL;
 
 interface Props {
   status:      Exclude<GateStatus, 'checking' | 'valid' | 'trial' | 'grace'>;

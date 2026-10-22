@@ -332,7 +332,7 @@ const tr: Translations = {
     inForce:   '18 Haziran 2026\'da güncellendi',
     sections: {
       s1title: '1. Tanıtım',
-      s1:      'Legwan, Legwan (knbdevsolutions@gmail.com) tarafından yayınlanan bir mağaza yönetim yazılımıdır (kasa, stok, raporlar, kredi). Ağırlıklı olarak çevrimdışı çalışır: tüm satış ve stok verileriniz yerel makinenizde saklanır. Bu yazılımı yükleyip kullanarak bu gizlilik politikasında belirtilen koşulları kabul etmiş olursunuz.',
+      s1:      'Legwan, KNB (knbdevsolutions@gmail.com) tarafından yayınlanan bir mağaza yönetim yazılımıdır (kasa, stok, raporlar, kredi). Ağırlıklı olarak çevrimdışı çalışır: tüm satış ve stok verileriniz yerel makinenizde saklanır. Bu yazılımı yükleyip kullanarak bu gizlilik politikasında belirtilen koşulları kabul etmiş olursunuz.',
 
       s2title: '2. Yerel olarak saklanan veriler',
       s2:      'Legwan, makinenizde yalnızca mağazanızın işleyişi için gerekli bilgileri saklar:\n\n• Kullanıcı hesapları: ad, soyad, rol, PIN kodu (PBKDF2 hash - düz metin olarak asla okunamaz)\n• Mağaza bilgileri: ad, adres, telefon numarası\n• Ürün kataloğu: ürün adı, fiyatlar, stok\n• Satışlar ve işlemler\n• Stok hareketleri (girişler ve çıkışlar)\n• Kasa oturumları ve kapanışları\n• Tedarikçiler ve müşteriler\n• Giderler ve envanter oturumları\n• Lisans anahtarı\n\nHiçbir banka veya ödeme verisi toplanmaz. Finansal verileriniz (ciro, tutarlar) cihazınızı asla terk etmez.',

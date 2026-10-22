@@ -348,7 +348,7 @@ const fr = {
     // avant toute distribution commerciale à grande échelle.
     sections: {
       s1title: '1. Présentation',
-      s1:      'Legwan est un logiciel de gestion de boutique (caisse, stocks, rapports, crédit) édité par Legwan (knbdevsolutions@gmail.com). Il fonctionne principalement hors-ligne : toutes vos données de vente et de stock sont stockées localement sur votre machine. En installant et en utilisant ce logiciel, vous acceptez les conditions décrites dans la présente politique de confidentialité.',
+      s1:      'Legwan est un logiciel de gestion de boutique (caisse, stocks, rapports, crédit) édité par KNB (knbdevsolutions@gmail.com). Il fonctionne principalement hors-ligne : toutes vos données de vente et de stock sont stockées localement sur votre machine. En installant et en utilisant ce logiciel, vous acceptez les conditions décrites dans la présente politique de confidentialité.',
 
       s2title: '2. Données enregistrées localement',
       s2:      'Legwan enregistre sur votre machine uniquement les informations nécessaires au fonctionnement de votre boutique :\n\n• Comptes utilisateurs : prénom, nom, rôle, code PIN (chiffré PBKDF2 - non lisible en clair)\n• Informations boutique : nom, adresse, numéro de téléphone\n• Catalogue produits : désignation, prix, stock\n• Ventes et transactions\n• Mouvements de stock (entrées et sorties)\n• Clôtures et sessions de caisse\n• Fournisseurs et clients\n• Dépenses et inventaires\n• Clé de licence\n\nAucune donnée bancaire ou de paiement n\'est collectée. Vos données financières (chiffre d\'affaires, montants) ne quittent jamais votre appareil.',

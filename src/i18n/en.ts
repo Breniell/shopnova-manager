@@ -332,7 +332,7 @@ const en: Translations = {
     inForce:   'Updated June 18, 2026',
     sections: {
       s1title: '1. Presentation',
-      s1:      'Legwan is a shop management software (cash register, inventory, reports, credit) published by Legwan (knbdevsolutions@gmail.com). It works primarily offline: all your sales and stock data are stored locally on your machine. By installing and using this software, you accept the conditions described in this privacy policy.',
+      s1:      'Legwan is a shop management software (cash register, inventory, reports, credit) published by KNB (knbdevsolutions@gmail.com). It works primarily offline: all your sales and stock data are stored locally on your machine. By installing and using this software, you accept the conditions described in this privacy policy.',
 
       s2title: '2. Data stored locally',
       s2:      'Legwan stores on your machine only the information needed for your shop to operate:\n\n• User accounts: first name, last name, role, PIN code (PBKDF2-hashed - never readable in clear text)\n• Shop information: name, address, phone number\n• Product catalogue: name, prices, stock\n• Sales and transactions\n• Stock movements (in and out)\n• Cash register sessions and closings\n• Suppliers and customers\n• Expenses and inventory sessions\n• Licence key\n\nNo banking or payment data is collected. Your financial data (revenue, amounts) never leaves your device.',

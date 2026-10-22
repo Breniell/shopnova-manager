@@ -38,8 +38,9 @@ import type { BackupData } from '@/lib/backup/types';
 import { useLicenseGate } from '@/components/LicenseGate';
 import { LicenseActivationForm } from '@/components/LicenseActivationForm';
 import { LocalCloudMigrationAssistant } from '@/components/LocalCloudMigrationAssistant';
+import { SUPPORT_EMAIL } from '@/lib/support';
 
-const SUPPORT_CONTACT = import.meta.env.VITE_SUPPORT_CONTACT ?? 'knbdevsolutions@gmail.com';
+const SUPPORT_CONTACT = SUPPORT_EMAIL;
 
 const ParametresPage: React.FC = () => {
   const { shop, updateShop } = useSettingsStore();

@@ -332,7 +332,7 @@ const es: Translations = {
     inForce:   'Actualizado el 18 de junio de 2026',
     sections: {
       s1title: '1. Presentación',
-      s1:      'Legwan es un software de gestión de tiendas (caja registradora, inventario, informes, crédito) editado por Legwan (knbdevsolutions@gmail.com). Funciona principalmente sin conexión: todos sus datos de ventas y stock se almacenan localmente en su máquina. Al instalar y usar este software, acepta las condiciones descritas en esta política de privacidad.',
+      s1:      'Legwan es un software de gestión de tiendas (caja registradora, inventario, informes, crédito) editado por KNB (knbdevsolutions@gmail.com). Funciona principalmente sin conexión: todos sus datos de ventas y stock se almacenan localmente en su máquina. Al instalar y usar este software, acepta las condiciones descritas en esta política de privacidad.',
 
       s2title: '2. Datos almacenados localmente',
       s2:      'Legwan almacena en su máquina únicamente la información necesaria para el funcionamiento de su tienda:\n\n• Cuentas de usuario: nombre, apellido, rol, código PIN (hash PBKDF2 - nunca legible en texto claro)\n• Información de la tienda: nombre, dirección, número de teléfono\n• Catálogo de productos: nombre, precios, stock\n• Ventas y transacciones\n• Movimientos de stock (entradas y salidas)\n• Sesiones y cierres de caja\n• Proveedores y clientes\n• Gastos e inventarios\n• Clave de licencia\n\nNo se recopilan datos bancarios ni de pago. Sus datos financieros (ingresos, importes) nunca salen de su dispositivo.',

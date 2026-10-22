@@ -10,6 +10,7 @@
  *                               then upgrades to GPS if it arrives within the timeout.
  * reverseGeocode()            - (lat, lng) → street address via OpenStreetMap Nominatim
  */
+import { SUPPORT_EMAIL } from '@/lib/support';
 
 export type LocationSource    = 'gps' | 'ip' | 'manual';
 export type LocationPrecision = 'gps' | 'city' | 'street';
@@ -249,7 +250,7 @@ export async function reverseGeocode(lat: number, lng: number, zoom = 18): Promi
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=${zoom}&addressdetails=1`;
     const res = await fetch(url, {
-      headers: { 'User-Agent': `Legwan/${__APP_VERSION__} (${import.meta.env.VITE_SUPPORT_CONTACT ?? 'knbdevsolutions@gmail.com'})` },
+      headers: { 'User-Agent': `Legwan/${__APP_VERSION__} (${SUPPORT_EMAIL})` },
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return null;
