@@ -71,3 +71,39 @@ describe('useStockStore - atomic manual stock changes', () => {
     expect(useStockStore.getState().movements).toHaveLength(0);
   });
 });
+
+describe('useStockStore - correction d\'un stock mal saisi', () => {
+  const correction = (quantity: number) => ({
+    ...entry,
+    type: 'ajustement' as const,
+    quantity,
+    reason: 'erreur_saisie' as const,
+    supplier: undefined,
+    unitPrice: undefined,
+  });
+
+  it('corrige à la baisse un stock de départ trop élevé', () => {
+    const movement = useStockStore.getState().commitStockChange(correction(-62));
+    expect(useProductStore.getState().products[0].stock).toBe(10);
+    expect(movement.stockBefore).toBe(72);
+    expect(movement.stockAfter).toBe(10);
+    expect(movement.reason).toBe('erreur_saisie');
+  });
+
+  it('corrige à la hausse un stock de départ trop faible', () => {
+    useStockStore.getState().commitStockChange(correction(28));
+    expect(useProductStore.getState().products[0].stock).toBe(100);
+  });
+
+  it('garde la trace de la correction dans l\'historique', () => {
+    useStockStore.getState().commitStockChange(correction(-2));
+    const [m] = useStockStore.getState().movements;
+    expect(m.type).toBe('ajustement');
+    expect(m.quantity).toBe(-2);
+  });
+
+  it('refuse de rendre le stock négatif', () => {
+    expect(() => useStockStore.getState().commitStockChange(correction(-73))).toThrow();
+    expect(useProductStore.getState().products[0].stock).toBe(72);
+  });
+});

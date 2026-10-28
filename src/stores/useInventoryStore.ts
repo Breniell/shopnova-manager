@@ -131,6 +131,12 @@ interface InventoryState {
     }
   ) => { success: true; session: InventorySession } | { success: false; missingReasons: string[] };
 
+  /**
+   * Applique un même motif à toutes les lignes en écart qui n'en ont pas, en une
+   * seule écriture. Renvoie le nombre de lignes renseignées.
+   */
+  applyReasonToGaps: (sessionId: string, reason: AdjustmentReason) => number;
+
   // Sélecteurs
   getOpenSessions: () => InventorySession[];
   getValidatedInRange: (start: Date, end: Date) => InventorySession[];
@@ -251,6 +257,31 @@ export const useInventoryStore = create<InventoryState>()((set, get) => ({
     });
   },
 
+  applyReasonToGaps: (sessionId, reason) => {
+    const session = get().sessions.find(s => s.id === sessionId);
+    if (!session) throw new Error('Session introuvable');
+    if (session.status === 'validated' || session.status === 'cancelled') {
+      throw new Error('Session figée, modification impossible');
+    }
+    let applied = 0;
+    const updated: InventorySession = {
+      ...session,
+      lines: session.lines.map(line => {
+        if (line.stockCompte === null || line.ecart === 0 || line.reason) return line;
+        applied += 1;
+        return { ...line, reason };
+      }),
+    };
+    if (applied === 0) return 0;
+    set(state => ({ sessions: state.sessions.map(s => s.id === sessionId ? updated : s) }));
+    fsSaveInventorySession(getBoutiqueId(), updated).catch((err) => {
+      enqueue('inventorySession', updated);
+      toast.error("Échec d'enregistrement - nouvelle tentative automatique");
+      console.warn('[outbox] inventorySession enqueued:', err);
+    });
+    return applied;
+  },
+
   validateSession: (sessionId, userId, userName, deps) => {
     const session = get().sessions.find(s => s.id === sessionId);
     if (!session) throw new Error('Session introuvable');
@@ -268,7 +299,8 @@ export const useInventoryStore = create<InventoryState>()((set, get) => ({
 
     if (linesWithEcart.length > MAX_ATOMIC_INVENTORY_ADJUSTMENTS) {
       throw new Error(
-        `Trop d'écarts pour une validation atomique (${linesWithEcart.length}/${MAX_ATOMIC_INVENTORY_ADJUSTMENTS})`,
+        `Trop d'écarts pour une seule validation (${linesWithEcart.length}, maximum ${MAX_ATOMIC_INVENTORY_ADJUSTMENTS}). ` +
+        `Faites l'inventaire par catégorie : chaque session peut corriger jusqu'à ${MAX_ATOMIC_INVENTORY_ADJUSTMENTS} produits.`,
       );
     }
 

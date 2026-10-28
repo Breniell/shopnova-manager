@@ -313,3 +313,45 @@ describe('useInventoryStore - selectors', () => {
     )).toHaveLength(0);
   });
 });
+
+describe('useInventoryStore - applyReasonToGaps', () => {
+  const setup = () => {
+    const products = [
+      makeProduct({ id: 'p1', stock: 10 }),
+      makeProduct({ id: 'p2', stock: 20 }),
+      makeProduct({ id: 'p3', stock: 5 }),
+    ];
+    useProductStore.setState({ products });
+    const s = useInventoryStore.getState().createSession({ scope: 'complet', products, userId: 'u1', userName: 'Gérant' });
+    const { updateLine } = useInventoryStore.getState();
+    updateLine(s.id, 'p1', { stockCompte: 4 });                 // écart -6
+    updateLine(s.id, 'p2', { stockCompte: 20 });                // aucun écart
+    updateLine(s.id, 'p3', { stockCompte: 9, reason: 'casse' }); // écart +4, motif déjà choisi
+    return s.id;
+  };
+
+  it('renseigne seulement les écarts sans motif, sans écraser un motif existant', () => {
+    const id = setup();
+    const n = useInventoryStore.getState().applyReasonToGaps(id, 'erreur_saisie');
+    const lines = useInventoryStore.getState().sessions.find(s => s.id === id)!.lines;
+    expect(n).toBe(1);
+    expect(lines.find(l => l.productId === 'p1')?.reason).toBe('erreur_saisie');
+    expect(lines.find(l => l.productId === 'p2')?.reason).toBeUndefined();
+    expect(lines.find(l => l.productId === 'p3')?.reason).toBe('casse');
+  });
+
+  it('rend la session validable une fois les motifs appliqués', () => {
+    const id = setup();
+    useInventoryStore.getState().applyReasonToGaps(id, 'erreur_saisie');
+    const result = useInventoryStore.getState().validateSession(id, 'u1', 'Gérant', { getProductPrixAchat: () => 1000 });
+    expect(result.success).toBe(true);
+    expect(useProductStore.getState().products.find(p => p.id === 'p1')?.stock).toBe(4);
+  });
+
+  it('refuse une session déjà validée', () => {
+    const id = setup();
+    useInventoryStore.getState().applyReasonToGaps(id, 'erreur_saisie');
+    useInventoryStore.getState().validateSession(id, 'u1', 'Gérant', { getProductPrixAchat: () => 1000 });
+    expect(() => useInventoryStore.getState().applyReasonToGaps(id, 'vol')).toThrow();
+  });
+});

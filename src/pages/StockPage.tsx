@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useProductStore, bearsStock } from '@/stores/useProductStore';
-import { useStockStore } from '@/stores/useStockStore';
+import { useStockStore, ADJUSTMENT_REASON_LABELS } from '@/stores/useStockStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useSupplierStore } from '@/stores/useSupplierStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -9,9 +9,10 @@ import { StatCard } from '@/components/ui/StatCard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { getStockStatus, cn } from '@/lib/utils';
-import { Package, AlertTriangle, TrendingDown, Warehouse, Plus, X, Mail, Send } from 'lucide-react';
+import { Package, AlertTriangle, TrendingDown, Warehouse, Plus, X, Mail, Send, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { ExportMenu } from '@/components/ui/ExportMenu';
+import { StockCorrectionModal } from '@/components/ui/StockCorrectionModal';
 import { getExportLabels } from '@/lib/exportLabels';
 import { stockStateReport, stockMovementsReport, stockAlertsReport } from '@/lib/reportBuilders';
 import { formatFCFA, formatDateShort, formatTime } from '@/utils/formatters';
@@ -63,6 +64,7 @@ const StockPage: React.FC = () => {
   const [supplier, setSupplier] = useState('');
   const [notes, setNotes] = useState('');
 
+  const [showCorrection, setShowCorrection] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
   const [selectedAlertProducts, setSelectedAlertProducts] = useState<Set<string>>(new Set());
@@ -188,6 +190,13 @@ const StockPage: React.FC = () => {
               </span>
             </button>
           )}
+          <button
+            onClick={() => setShowCorrection(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-muted hover:bg-muted/80 text-foreground transition-colors text-sm font-medium"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            {locale === 'fr' ? 'Corriger le stock' : 'Correct stock'}
+          </button>
           <button onClick={() => setShowModal(true)} className="nova-btn-primary flex items-center gap-2 px-5 py-2.5 shrink-0">
             <Plus className="w-4 h-4" /> {t('stock.entryBtn')}
           </button>
@@ -287,7 +296,7 @@ const StockPage: React.FC = () => {
                       <td className="p-3 money text-right text-muted-foreground hidden md:table-cell">{m.stockBefore}</td>
                       <td className="p-3 text-sm text-right text-foreground tabular-nums hidden md:table-cell">{m.stockAfter}</td>
                       <td className="p-3 text-sm text-muted-foreground hidden sm:table-cell">{m.userName}</td>
-                      <td className="p-3 text-sm text-muted-foreground hidden lg:table-cell">{m.supplier || m.notes || '-'}</td>
+                      <td className="p-3 text-sm text-muted-foreground hidden lg:table-cell">{[m.reason ? ADJUSTMENT_REASON_LABELS[m.reason] : '', m.supplier, m.notes].filter(Boolean).join(' - ') || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -384,6 +393,8 @@ const StockPage: React.FC = () => {
           )}
         </>
       )}
+
+      <StockCorrectionModal open={showCorrection} onClose={() => setShowCorrection(false)} products={stocked} />
 
       {/* ── Stock entry modal ── */}
       {showModal && (

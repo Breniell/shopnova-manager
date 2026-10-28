@@ -36,7 +36,7 @@ import { creditOpenSalesReport, creditClientsReport, creditPaymentsReport } from
 
 const CreditPage: React.FC = () => {
   const { sales, applyCreditPayment } = useSaleStore();
-  const { payments } = usePaymentStore();
+  const { payments, reversePayment } = usePaymentStore();
   const { customers, getCustomerById } = useCustomerStore();
   const { currentUser } = useAuthStore();
   const { t, locale } = useTranslation();
@@ -137,6 +137,48 @@ const CreditPage: React.FC = () => {
       ),
     },
   ];
+
+  // ── Annulation d'un règlement saisi par erreur ───────────────────────────
+  // Gérant seulement : l'annulation retire de l'argent encaissé. Le règlement
+  // d'origine reste visible, une écriture d'annulation le contrebalance.
+  const isGerant = currentUser?.role === 'gérant';
+  const reversedIds = useMemo(
+    () => new Set(payments.filter(p => p.kind === 'reversal' && p.reversesPaymentId).map(p => p.reversesPaymentId as string)),
+    [payments],
+  );
+  const reverseText = locale === 'fr'
+    ? {
+        action: 'Annuler',
+        title: 'Annuler ce règlement',
+        confirm: 'Annuler le règlement de {amount} ? Le solde du client sera rétabli. Le règlement reste visible dans l\'historique.',
+        done: 'Règlement annulé',
+        reversed: 'Annulé',
+        reversal: 'Annulation',
+        column: 'Action',
+      }
+    : {
+        action: 'Cancel',
+        title: 'Cancel this payment',
+        confirm: 'Cancel the payment of {amount}? The customer balance will be restored. The payment stays visible in the history.',
+        done: 'Payment cancelled',
+        reversed: 'Cancelled',
+        reversal: 'Reversal',
+        column: 'Action',
+      };
+
+  const handleReverse = (paymentId: string, amount: number) => {
+    if (!currentUser) return;
+    if (!confirm(reverseText.confirm.replace('{amount}', formatFCFA(amount)))) return;
+    try {
+      reversePayment(paymentId, {
+        userId: currentUser.id,
+        userName: `${currentUser.prenom} ${currentUser.nom}`,
+      });
+      toast.success(reverseText.done);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('credit.paymentError'));
+    }
+  };
 
   // ── Ouverture du modal d'encaissement ────────────────────────────────────
   const openPayModal = (sale: Sale) => {
@@ -447,6 +489,7 @@ const CreditPage: React.FC = () => {
                     <th className="text-right p-3">{t('credit.colTotal')}</th>
                     <th className="text-left p-3">{t('credit.colPayMode')}</th>
                     <th className="text-left p-3">{t('credit.colCashier')}</th>
+                    <th className="text-right p-3">{reverseText.column}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -465,6 +508,21 @@ const CreditPage: React.FC = () => {
                           {p.channel === 'especes' ? t('credit.cashChannel') : `📱 ${p.mobileOperator?.toUpperCase() ?? 'Mobile'}`}
                         </td>
                         <td className="p-3 text-sm text-muted-foreground">{p.userName}</td>
+                        <td className="p-3 text-right">
+                          {p.kind === 'reversal' ? (
+                            <span className="text-xs text-muted-foreground">{reverseText.reversal}</span>
+                          ) : reversedIds.has(p.id) ? (
+                            <span className="text-xs text-destructive">{reverseText.reversed}</span>
+                          ) : isGerant ? (
+                            <button
+                              onClick={() => handleReverse(p.id, p.amount)}
+                              title={reverseText.title}
+                              className="text-xs px-2.5 py-1 rounded-lg border border-border bg-muted hover:bg-destructive/15 hover:text-destructive hover:border-destructive/30 transition-colors"
+                            >
+                              {reverseText.action}
+                            </button>
+                          ) : null}
+                        </td>
                       </tr>
                     );
                   })}

@@ -18,10 +18,11 @@ import { productImages } from '@/assets/productImages';
 import { compressImageToDataUrl } from '@/lib/imageUtils';
 import {
   Search, Plus, Edit, Trash2, Package, X, Camera, Hash, Tag, Upload, Loader2,
-  Image as ImageIcon, ChevronRight, ChevronDown, Layers,
+  Image as ImageIcon, ChevronRight, ChevronDown, Layers, SlidersHorizontal,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ExportMenu } from '@/components/ui/ExportMenu';
+import { StockCorrectionModal } from '@/components/ui/StockCorrectionModal';
 import { getExportLabels } from '@/lib/exportLabels';
 import { productsReport } from '@/lib/reportBuilders';
 
@@ -56,6 +57,8 @@ const ProduitsPage: React.FC = () => {
   const categories = shopCategories(shop);
   const { cart } = useSaleStore();
   const { t, locale } = useTranslation();
+  // Correction d'un stock mal saisi : id du produit visé, ou null si fermé.
+  const [correctionId, setCorrectionId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState<string>('');
   const [stockFilter, setStockFilter] = useState<string>('');
@@ -401,6 +404,7 @@ const ProduitsPage: React.FC = () => {
   }
 
   // L'export suit les filtres de l'écran, mais déplie les parents en déclinaisons.
+  const stockCorrectionTitle = locale === 'fr' ? 'Corriger le stock' : 'Correct stock';
   const exportLabels = getExportLabels(locale);
   const exportProducts = filtered.flatMap(p => [p, ...variantsOf(p)]);
 
@@ -555,6 +559,15 @@ const ProduitsPage: React.FC = () => {
                               <Tag className="w-4 h-4" />
                             </button>
                           )}
+                          {!parent && (
+                            <button
+                              onClick={() => setCorrectionId(p.id)}
+                              title={stockCorrectionTitle}
+                              className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                            >
+                              <SlidersHorizontal className="w-4 h-4" />
+                            </button>
+                          )}
                           <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
                             <Edit className="w-4 h-4" />
                           </button>
@@ -593,6 +606,13 @@ const ProduitsPage: React.FC = () => {
                           <td className="p-3 money text-right text-muted-foreground hidden md:table-cell">{variant.seuilAlerte}</td>
                           <td className="p-3 text-right">
                             <div className="flex justify-end gap-1 opacity-0 group-hover/variant:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => setCorrectionId(variant.id)}
+                                title={stockCorrectionTitle}
+                                className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                              >
+                                <SlidersHorizontal className="w-4 h-4" />
+                              </button>
                               <button
                                 onClick={() => setLabelProduct(variant)}
                                 title={t('produits.labelPrintBtn')}
@@ -865,8 +885,16 @@ const ProduitsPage: React.FC = () => {
                                 // Le stock d'une déclinaison existante ne se
                                 // modifie que par une entrée de stock, comme
                                 // pour tout autre produit.
-                                <div className="nova-input py-1.5 text-sm text-muted-foreground flex items-center">
-                                  {t('produits.colStock')} : {variant.stock}
+                                <div className="nova-input py-1.5 text-sm text-muted-foreground flex items-center justify-between gap-2">
+                                  <span>{t('produits.colStock')} : {products.find(p => p.id === variant.id)?.stock ?? variant.stock}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setCorrectionId(variant.id)}
+                                    title={stockCorrectionTitle}
+                                    className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                                  >
+                                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                                  </button>
                                 </div>
                               ) : (
                                 <input
@@ -1066,6 +1094,23 @@ const ProduitsPage: React.FC = () => {
                 )}
               </div>
 
+              {editingProduct && !isParent(editingProduct) && !form.hasVariants && (
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t('produits.colStock')}</label>
+                  <div className="flex items-center gap-3">
+                    <div className="nova-input flex-1 text-muted-foreground tabular-nums">
+                      {products.find(p => p.id === editingProduct.id)?.stock ?? editingProduct.stock}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCorrectionId(editingProduct.id)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-muted hover:bg-muted/80 text-sm text-foreground transition-colors"
+                    >
+                      <SlidersHorizontal className="w-4 h-4" /> {stockCorrectionTitle}
+                    </button>
+                  </div>
+                </div>
+              )}
               {!editingProduct && !form.hasVariants && (
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">{t('produits.labelInitialStock')}</label>
@@ -1121,6 +1166,12 @@ const ProduitsPage: React.FC = () => {
 
       {/* Import depuis un tableur */}
       <ProductImportModal open={showImport} onClose={() => setShowImport(false)} />
+      <StockCorrectionModal
+        open={correctionId !== null}
+        onClose={() => setCorrectionId(null)}
+        products={products.filter(p => !isParent(p))}
+        productId={correctionId ?? undefined}
+      />
     </div>
   );
 };

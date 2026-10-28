@@ -47,7 +47,8 @@ const REASONS: AdjustmentReason[] = [
 const InventairePage: React.FC = () => {
   const { t, locale } = useTranslation();
   const exportLabels = getExportLabels(locale);
-  const { sessions, createSession, updateLine, validateSession, cancelSession, updateNotes } = useInventoryStore();
+  const { sessions, createSession, updateLine, validateSession, cancelSession, updateNotes, applyReasonToGaps } = useInventoryStore();
+  const [bulkReason, setBulkReason] = useState<AdjustmentReason>('erreur_saisie');
   const { products } = useProductStore();
   const { shop } = useSettingsStore();
   const categories = shopCategories(shop);
@@ -136,6 +137,16 @@ const InventairePage: React.FC = () => {
   const handleLineNotes = (productId: string, notes: string) => {
     if (!activeSession) return;
     updateLine(activeSession.id, productId, { notes });
+  };
+
+  const handleBulkReason = () => {
+    if (!activeSession) return;
+    try {
+      const n = applyReasonToGaps(activeSession.id, bulkReason);
+      toast.success(locale === 'fr' ? `Motif appliqué à ${n} ligne(s)` : `Reason applied to ${n} line(s)`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('common.error'));
+    }
   };
 
   // ── Validation ───────────────────────────────────────────────────────────
@@ -489,6 +500,27 @@ const InventairePage: React.FC = () => {
                   )}
                 </div>
               </NovaCard>
+
+              {/* Motif en masse : des stocks de départ faux donnent des dizaines d'écarts */}
+              {(sessionStats?.missingReason ?? 0) > 0 && (
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <span className="text-xs text-amber-500 flex-1">
+                    {locale === 'fr'
+                      ? `${sessionStats?.missingReason} écart(s) sans motif. Appliquez le même motif à tous :`
+                      : `${sessionStats?.missingReason} gap(s) without a reason. Apply the same reason to all:`}
+                  </span>
+                  <select
+                    value={bulkReason}
+                    onChange={e => setBulkReason(e.target.value as AdjustmentReason)}
+                    className="nova-input py-1.5 text-xs"
+                  >
+                    {REASONS.map(r => <option key={r} value={r}>{ADJUSTMENT_REASON_LABELS[r]}</option>)}
+                  </select>
+                  <button onClick={handleBulkReason} className="nova-btn-secondary px-3 py-1.5 text-xs whitespace-nowrap">
+                    {locale === 'fr' ? 'Appliquer à tous' : 'Apply to all'}
+                  </button>
+                </div>
+              )}
 
               {/* Filtre */}
               <div className="flex items-center gap-grid">
