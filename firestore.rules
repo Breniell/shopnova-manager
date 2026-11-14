@@ -217,7 +217,14 @@ service cloud.firestore {
                             || request.resource.data.imageUrl.size() <= 250000))
                     || (isStaffMember(boutiqueId)
                         && resource.data.diff(request.resource.data).affectedKeys()
-                             .hasOnly(['stock', 'updatedAt']));
+                             .hasOnly(['stock', 'updatedAt'])
+                        // A cashier only ever sells (increment(-qty)). Restocks,
+                        // corrections and refunds are manager operations, so a
+                        // staff identity may never raise or overwrite a stock
+                        // level - that would hide shrinkage before an inventory.
+                        && request.resource.data.stock is number
+                        && resource.data.get('stock', 0) is number
+                        && request.resource.data.stock <= resource.data.get('stock', 0));
     }
 
     match /boutiques/{boutiqueId}/sales/{docId} {
@@ -259,7 +266,17 @@ service cloud.firestore {
     }
 
     match /boutiques/{boutiqueId}/customers/{docId} {
-      allow read, create, update: if hasBoutiqueAccess(boutiqueId);
+      allow read: if hasBoutiqueAccess(boutiqueId);
+      // The credit ceiling is a manager decision. A cashier may register or
+      // edit a customer but can neither set, raise nor remove plafondCredit -
+      // otherwise any till could grant itself unlimited credit sales.
+      allow create: if isManager(boutiqueId)
+                    || (hasBoutiqueAccess(boutiqueId)
+                        && !('plafondCredit' in request.resource.data));
+      allow update: if isManager(boutiqueId)
+                    || (hasBoutiqueAccess(boutiqueId)
+                        && !resource.data.diff(request.resource.data).affectedKeys()
+                              .hasAny(['plafondCredit']));
       allow delete: if isManager(boutiqueId);
     }
 
@@ -307,7 +324,16 @@ service cloud.firestore {
     }
 
     match /boutiques/{boutiqueId}/meta/{docId} {
-      allow read, write: if hasBoutiqueAccess(boutiqueId);
+      allow read: if hasBoutiqueAccess(boutiqueId);
+      allow write: if isManager(boutiqueId);
+      // Staff tills only advance the receipt counter. Rewinding it would make
+      // receipt numbers collide and let a sale be passed off as another one.
+      allow create, update: if hasBoutiqueAccess(boutiqueId)
+                            && docId == 'saleCounter'
+                            && request.resource.data.keys().hasOnly(['value'])
+                            && request.resource.data.value is number
+                            && (resource == null
+                                || request.resource.data.value >= resource.data.get('value', 0));
     }
 
     match /boutiques/{boutiqueId}/suppliers/{docId} {
@@ -395,7 +421,11 @@ service cloud.firestore {
                    && request.resource.data.telephone is string
                    && request.resource.data.telephone.size() <= 50
                    && request.resource.data.version is string
-                   && request.resource.data.version.size() <= 20;
+                   && request.resource.data.version.size() <= 20
+                   // The heartbeat has ~11 top-level fields. Bound the shape so
+                   // a tampered client cannot park arbitrary data in the
+                   // developer's monitoring collection.
+                   && request.resource.data.size() <= 25;
       // Developer reads any entry — verified via Firebase custom claim, not email
       allow read: if request.auth != null
                   && request.auth.token.superadmin == true;

@@ -128,6 +128,9 @@ const ClientsPage: React.FC = () => {
       return;
     }
 
+    // Le plafond de credit est une decision du gerant : un caissier ne peut ni
+    // le fixer, ni le relever, ni le supprimer. La cle est omise (et non mise a
+    // undefined) pour que la fusion de updateCustomer conserve la valeur actuelle.
     const data = {
       prenom: form.prenom.trim(),
       nom: form.nom.trim(),
@@ -135,7 +138,7 @@ const ClientsPage: React.FC = () => {
       email: form.email.trim() || undefined,
       adresse: form.adresse.trim() || undefined,
       notes: form.notes.trim() || undefined,
-      plafondCredit,
+      ...(isGerant ? { plafondCredit } : {}),
     };
 
     try {
@@ -452,7 +455,8 @@ const ClientsPage: React.FC = () => {
                 <input
                   type="number" value={form.plafondCredit} min="0"
                   onChange={e => setForm({ ...form, plafondCredit: e.target.value })}
-                  className="nova-input w-full"
+                  disabled={!isGerant}
+                  className="nova-input w-full disabled:opacity-60 disabled:cursor-not-allowed"
                   placeholder={t('clients.creditLimitPlaceholder')}
                 />
                 <p className="text-[10px] text-muted-foreground mt-1">

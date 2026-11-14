@@ -8,6 +8,18 @@ export function isThermalAvailable(): boolean {
 
 // ── Text helpers ──────────────────────────────────────────────────────────────
 
+/**
+ * The logo is interpolated into an HTML attribute. It comes from the shop
+ * settings, which are synchronised from Firestore, so it is untrusted input:
+ * a value such as `x" onerror="...` would break out of `src`. Only a plain
+ * base64 raster data URL is accepted; anything else is simply not printed.
+ */
+export function isSafeImageDataUrl(value: unknown): value is string {
+  return typeof value === 'string'
+    && value.length <= 400_000
+    && /^data:image\/(?:png|jpe?g|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/.test(value);
+}
+
 function pad(text: string, width: number, dir: 'left' | 'right' = 'left'): string {
   const s = String(text);
   if (s.length >= width) return s.slice(0, width);
@@ -213,7 +225,7 @@ export function buildReceiptHtml(sale: Sale, shop: ShopSettings, paymentLabel: s
   .logo { max-height: 18mm; max-width: 80%; object-fit: contain; }
 </style>
 </head><body>
-${data.shopLogoDataUrl ? `<div class="logo-wrap"><img class="logo" src="${data.shopLogoDataUrl}" /></div>` : ''}
+${isSafeImageDataUrl(data.shopLogoDataUrl) ? `<div class="logo-wrap"><img class="logo" src="${data.shopLogoDataUrl}" /></div>` : ''}
 ${lineHtml}
 </body></html>`;
 }

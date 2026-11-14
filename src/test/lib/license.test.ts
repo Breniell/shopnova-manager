@@ -211,3 +211,25 @@ describe('parseLicense', () => {
     expect(parsed?.holder?.contact).toBe('+225 07 00 00 00');
   });
 });
+
+// ─── Security audit 2026-11: signed but malformed payloads ───────────────────
+
+describe('verifyLicenseRaw - malformed signed payloads', () => {
+  it('rejects a correctly signed payload without expiresAt (would never expire)', async () => {
+    const { expiresAt: _omit, ...rest } = basePayload();
+    const lic = await signPayload(rest as unknown as LicensePayload);
+    const res = await verify(lic, { now: Date.now() + 100 * 365 * 24 * 60 * 60 * 1000 });
+    expect(res.valid).toBe(false);
+    expect(res.reason).toBe('bad_format');
+  });
+
+  it('rejects a signed payload whose expiresAt is not a finite number', async () => {
+    const lic = await signPayload({ ...basePayload(), expiresAt: '9999999999999' as unknown as number });
+    expect((await verify(lic)).reason).toBe('bad_format');
+  });
+
+  it('rejects a signed payload without a boutique binding', async () => {
+    const lic = await signPayload({ ...basePayload(), boutiqueId: '' });
+    expect((await verify(lic, { boutiqueId: '' })).reason).toBe('bad_format');
+  });
+});

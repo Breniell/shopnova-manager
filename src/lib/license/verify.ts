@@ -111,6 +111,18 @@ export async function verifyLicenseRaw(
 
   if (!sigOk) return { valid: false, reason: 'bad_signature' };
 
+  // ── 2b. Shape (defence in depth) ─────────────────────────────────────────────
+  // A signed payload missing expiresAt used to compare `now > undefined`, which
+  // is false: the licence never expired. Reject anything malformed even if a
+  // signing mistake on the publisher side produced it.
+  if (
+    typeof payload !== 'object' || payload === null
+    || typeof payload.boutiqueId !== 'string' || payload.boutiqueId.length === 0
+    || typeof payload.expiresAt !== 'number' || !Number.isFinite(payload.expiresAt)
+  ) {
+    return { valid: false, reason: 'bad_format' };
+  }
+
   // ── 3. Expiry ────────────────────────────────────────────────────────────────
   if (opts.now > payload.expiresAt) {
     return { valid: false, reason: 'expired', payload };
