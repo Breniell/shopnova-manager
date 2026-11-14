@@ -192,13 +192,21 @@ export async function getBoutiqueRecoveryStatus(): Promise<BoutiqueRecoveryStatu
   };
 }
 
+/**
+ * The recovery account signs in as the boutique owner UID: it can read and
+ * rewrite every sale, customer and setting of the shop. Firebase only
+ * enforces 6 characters, which an online guessing attack gets through, so a
+ * new link requires more. Existing accounts keep signing in unchanged.
+ */
+export const RECOVERY_PASSWORD_MIN_LENGTH = 10;
+
 export async function linkBoutiqueRecoveryAccount(email: string, password: string): Promise<string> {
   if (!isFirebaseConfigured) {
     throw new Error('Firebase n est pas configure. Ajoutez les variables Firebase dans .env.');
   }
 
-  if (password.length < 6) {
-    throw new Error('Le mot de passe doit contenir au moins 6 caracteres.');
+  if (password.length < RECOVERY_PASSWORD_MIN_LENGTH) {
+    throw new Error(`Le mot de passe doit contenir au moins ${RECOVERY_PASSWORD_MIN_LENGTH} caracteres.`);
   }
 
   await initBoutique();

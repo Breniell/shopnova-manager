@@ -290,6 +290,23 @@ function createWindow() {
     event.preventDefault();
   });
 
+  // The about:blank print popups allowed above are same-origin with the app.
+  // Lock them where they are: they may never navigate anywhere or spawn
+  // further windows, so a document written into one cannot turn it into a
+  // browser pointed at a remote page.
+  win.webContents.on('did-create-window', (child) => {
+    child.webContents.on('will-navigate', (event, url) => {
+      event.preventDefault();
+      openExternalUrl(url);
+    });
+    child.webContents.on('will-redirect', (event) => event.preventDefault());
+    child.webContents.on('will-attach-webview', (event) => event.preventDefault());
+    child.webContents.setWindowOpenHandler(({ url }) => {
+      openExternalUrl(url);
+      return { action: 'deny' };
+    });
+  });
+
   win.webContents.on('did-navigate', (_event, url) => {
     if (showingLoadError && url.startsWith('data:text/html')) return;
     if (isTrustedAppUrl(url)) showingLoadError = false;
@@ -627,10 +644,22 @@ function printHtml(html, printerName, paperWidth) {
   printInProgress = true;
 
   return new Promise((resolve, reject) => {
+    // A receipt is static markup built from shop data that syncs from the
+    // cloud. It needs no script at all, so none is allowed to run, and the
+    // hidden window can neither navigate nor open anything.
     const printWindow = new BrowserWindow({
       show: false,
-      webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, devTools: false },
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+        devTools: false,
+        javascript: false,
+        webviewTag: false,
+      },
     });
+    printWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    printWindow.webContents.on('will-navigate', (event) => event.preventDefault());
     let settled = false;
     const timeout = setTimeout(() => finish(new Error('Print job timed out')), 30_000);
 

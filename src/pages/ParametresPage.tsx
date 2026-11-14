@@ -29,6 +29,7 @@ import {
   getBoutiqueRecoveryErrorMessage,
   getBoutiqueRecoveryStatus,
   linkBoutiqueRecoveryAccount,
+  RECOVERY_PASSWORD_MIN_LENGTH,
   sendBoutiqueRecoveryPasswordReset,
   type BoutiqueRecoveryStatus,
 } from '@/services/boutiqueService';
@@ -287,7 +288,10 @@ const ParametresPage: React.FC = () => {
 
   const handleEnableRecovery = async () => {
     if (!recoveryEmail.trim()) { toast.error(t('settings.recovery.emailLabel')); return; }
-    if (recoveryPassword.length < 6) { toast.error(t('settings.recovery.passwordLabel')); return; }
+    if (recoveryPassword.length < RECOVERY_PASSWORD_MIN_LENGTH) {
+      toast.error(`${t('settings.recovery.passwordLabel')} : ${RECOVERY_PASSWORD_MIN_LENGTH} min.`);
+      return;
+    }
     if (recoveryPassword !== recoveryPasswordConfirm) { toast.error(t('settings.recovery.confirmLabel')); return; }
 
     setIsRecoverySaving(true);

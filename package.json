@@ -45,7 +45,8 @@
     "staff:claims": "node scripts/set-staff-claims.mjs",
     "firestore:deploy-rules": "node scripts/deploy-firestore-rules.mjs",
     "prepare-release": "npm run lint && npm run typecheck && npm run security:prod && npm test && npm run test:electron-runtime && npm run release:client",
-    "release": "npm run prepare-release"
+    "release": "npm run prepare-release",
+    "test:security-rules": "firebase emulators:exec --only firestore --project demo-legwan \"node --test tests/security/firestore-rules.attack.test.mjs\""
   },
   "dependencies": {
     "electron-updater": "^6.8.3"
