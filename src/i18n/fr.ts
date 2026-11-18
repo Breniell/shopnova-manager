@@ -460,7 +460,7 @@ const fr = {
     changeToGive:              "Monnaie à rendre: {n}",
     mobileRefPlaceholder:      "Réf. reçue par SMS (ex. CI240612.1534.A12345)",
     momoInstructionsMtn:       "Demandez au client de composer *126*4*{code}*{amount}# et de valider.",
-    momoInstructionsOrange:    "Demandez au client de composer #150*4*{code}*{amount}# et de valider.",
+    momoInstructionsOrange:    "Demandez au client de composer #150*47#, d'entrer le code marchand {code} et le montant {amount} FCFA, puis de valider avec son code secret Orange Money.",
     momoNoCodeWarning:         "Code marchand non configuré",
     momoGoToSettings:          "Configurer dans Paramètres",
     momoSmsConfirm:            "J'ai reçu le SMS de confirmation",

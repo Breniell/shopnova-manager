@@ -397,7 +397,7 @@ const ar: Translations = {
     changeToGive:              "الباقي: {n}",
     mobileRefPlaceholder:      "المرجع المستلم عبر SMS (مثال: CI240612.1534.A12345)",
     momoInstructionsMtn:       "اطلب من العميل الضغط على *126*4*{code}*{amount}# والتأكيد.",
-    momoInstructionsOrange:    "اطلب من العميل الضغط على #150*4*{code}*{amount}# والتأكيد.",
+    momoInstructionsOrange:    "اطلب من العميل الضغط على #150*47#، ثم إدخال رمز التاجر {code} والمبلغ {amount} FCFA، ثم التأكيد برمزه السري لـ Orange Money.",
     momoNoCodeWarning:         "رمز التاجر غير مُعيَّن",
     momoGoToSettings:          "الإعداد في الإعدادات",
     momoSmsConfirm:            "استلمت رسالة SMS التأكيد",

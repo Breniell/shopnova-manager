@@ -397,7 +397,7 @@ const zh: Translations = {
     changeToGive:              "找零: {n}",
     mobileRefPlaceholder:      "短信收到的参考号 (例: CI240612.1534.A12345)",
     momoInstructionsMtn:       "请客户拨打 *126*4*{code}*{amount}# 并确认。",
-    momoInstructionsOrange:    "请客户拨打 #150*4*{code}*{amount}# 并确认。",
+    momoInstructionsOrange:    "请客户拨打 #150*47#，输入商户代码 {code} 和金额 {amount} FCFA，然后用其 Orange Money 密码确认。",
     momoNoCodeWarning:         "商户代码未配置",
     momoGoToSettings:          "在设置中配置",
     momoSmsConfirm:            "我已收到确认短信",

@@ -397,7 +397,7 @@ const ja: Translations = {
     changeToGive:              "お釣り: {n}",
     mobileRefPlaceholder:      "SMSで受信した参照 (例: CI240612.1534.A12345)",
     momoInstructionsMtn:       "お客様に *126*4*{code}*{amount}# を入力して確認するよう依頼してください。",
-    momoInstructionsOrange:    "お客様に #150*4*{code}*{amount}# を入力して確認するよう依頼してください。",
+    momoInstructionsOrange:    "お客様に #150*47# をダイヤルし、加盟店コード {code} と金額 {amount} FCFA を入力して、Orange Money の暗証番号で確認するよう依頼してください。",
     momoNoCodeWarning:         "加盟店コードが設定されていません",
     momoGoToSettings:          "設定で構成する",
     momoSmsConfirm:            "確認SMSを受信しました",

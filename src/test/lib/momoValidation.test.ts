@@ -74,7 +74,24 @@ describe('momoDialString', () => {
     expect(momoDialString('mtn', '123456', 5000)).toBe('*126*4*123456*5000#');
   });
 
-  it('returns correct Orange Money USSD string', () => {
-    expect(momoDialString('orange', '654321', 12500)).toBe('#150*4*654321*12500#');
+  it('returns the official Orange Money merchant-payment menu, without code or amount', () => {
+    // orangemoney.orange.cm : composer #150*47#, saisir le code marchand puis
+    // le montant, valider avec le code secret. Aucun raccourci officiel.
+    expect(momoDialString('orange', '654321', 12500)).toBe('#150*47#');
+  });
+});
+
+describe('momo instructions (i18n)', () => {
+  it('every locale gives the official Orange Money steps, never the old #150*4* string', async () => {
+    const { ALL_LOCALES } = await import('@/i18n/types');
+    for (const locale of ALL_LOCALES) {
+      const { default: dict } = await import(`@/i18n/${locale}.ts`);
+      const orange: string = dict.caisse.momoInstructionsOrange;
+      expect(orange, locale).toContain('#150*47#');
+      expect(orange, locale).toContain('{code}');
+      expect(orange, locale).toContain('{amount}');
+      expect(orange, locale).not.toContain('#150*4*');
+      expect(dict.caisse.momoInstructionsMtn, locale).toContain('*126*4*{code}*{amount}#');
+    }
   });
 });

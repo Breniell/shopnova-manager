@@ -397,7 +397,7 @@ const tr: Translations = {
     changeToGive:              "Para üstü: {n}",
     mobileRefPlaceholder:      "SMS ile alınan ref. (örn. CI240612.1534.A12345)",
     momoInstructionsMtn:       "Müşteriden *126*4*{code}*{amount}# tuşlayıp onaylamasını isteyin.",
-    momoInstructionsOrange:    "Müşteriden #150*4*{code}*{amount}# tuşlayıp onaylamasını isteyin.",
+    momoInstructionsOrange:    "Müşteriden #150*47# tuşlamasını, {code} satıcı kodunu ve {amount} FCFA tutarını girmesini, ardından Orange Money gizli koduyla onaylamasını isteyin.",
     momoNoCodeWarning:         "Satıcı kodu yapılandırılmamış",
     momoGoToSettings:          "Ayarlarda yapılandır",
     momoSmsConfirm:            "Onay SMS'ini aldım",

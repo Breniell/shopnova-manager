@@ -397,7 +397,7 @@ const en: Translations = {
     changeToGive:              "Change to give: {n}",
     mobileRefPlaceholder:      "Ref. received by SMS (e.g. CI240612.1534.A12345)",
     momoInstructionsMtn:       "Ask the customer to dial *126*4*{code}*{amount}# and confirm.",
-    momoInstructionsOrange:    "Ask the customer to dial #150*4*{code}*{amount}# and confirm.",
+    momoInstructionsOrange:    "Ask the customer to dial #150*47#, enter merchant code {code} and the amount {amount} FCFA, then confirm with their Orange Money PIN.",
     momoNoCodeWarning:         "Merchant code not configured",
     momoGoToSettings:          "Configure in Settings",
     momoSmsConfirm:            "I have received the confirmation SMS",

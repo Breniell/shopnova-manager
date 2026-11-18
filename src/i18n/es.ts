@@ -397,7 +397,7 @@ const es: Translations = {
     changeToGive:              "Cambio a devolver: {n}",
     mobileRefPlaceholder:      "Ref. recibida por SMS (ej. CI240612.1534.A12345)",
     momoInstructionsMtn:       "Pida al cliente que marque *126*4*{code}*{amount}# y valide.",
-    momoInstructionsOrange:    "Pida al cliente que marque #150*4*{code}*{amount}# y valide.",
+    momoInstructionsOrange:    "Pida al cliente que marque #150*47#, introduzca el código de comerciante {code} y el importe {amount} FCFA, y valide con su código secreto Orange Money.",
     momoNoCodeWarning:         "Código de comerciante no configurado",
     momoGoToSettings:          "Configurar en Ajustes",
     momoSmsConfirm:            "He recibido el SMS de confirmación",

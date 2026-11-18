@@ -397,7 +397,7 @@ const de: Translations = {
     changeToGive:              "Herausgeld: {n}",
     mobileRefPlaceholder:      "Per SMS erhaltene Ref. (z.B. CI240612.1534.A12345)",
     momoInstructionsMtn:       "Bitten Sie den Kunden, *126*4*{code}*{amount}# zu wählen und zu bestätigen.",
-    momoInstructionsOrange:    "Bitten Sie den Kunden, #150*4*{code}*{amount}# zu wählen und zu bestätigen.",
+    momoInstructionsOrange:    "Bitten Sie den Kunden, #150*47# zu wählen, den Händlercode {code} und den Betrag {amount} FCFA einzugeben und mit seinem Orange-Money-Geheimcode zu bestätigen.",
     momoNoCodeWarning:         "Händlercode nicht konfiguriert",
     momoGoToSettings:          "In Einstellungen konfigurieren",
     momoSmsConfirm:            "Ich habe die Bestätigungs-SMS erhalten",
