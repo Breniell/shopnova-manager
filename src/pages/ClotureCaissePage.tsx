@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useSaleStore } from '@/stores/useSaleStore';
 import { useCaisseStore } from '@/stores/useCaisseStore';
+import { useHeldSaleStore } from '@/stores/useHeldSaleStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { usePaymentStore } from '@/stores/usePaymentStore';
 import { useCashSessionStore, CASHOUT_TYPE_LABELS } from '@/stores/useCashSessionStore';
@@ -35,6 +36,9 @@ const ClotureCaissePage: React.FC = () => {
   const { clotures, fondDeCaisse, addCloture, setFondDeCaisse } = useCaisseStore();
   const { currentUser } = useAuthStore();
   const { payments } = usePaymentStore();
+  // Ventes mises en attente sur ce poste : pas encore encaissées, donc absentes
+  // des totaux. On les rappelle pour qu'aucun client ne reparte sans payer.
+  const heldSalesCount = useHeldSaleStore(s => s.heldSales.length);
   const { getCurrentSession, closeSession, deleteCashOut, cashOuts } = useCashSessionStore();
   const [activeTab, setActiveTab] = useState<'cloture' | 'historique'>('cloture');
   const [counts, setCounts] = useState<Record<number, string>>({});
@@ -232,6 +236,14 @@ const ClotureCaissePage: React.FC = () => {
 
       {activeTab === 'cloture' && (
         <>
+          {heldSalesCount > 0 && (
+            <div className="flex items-start gap-2 p-3 mb-4 rounded-lg bg-amber-500/10 border border-amber-500/30" role="alert" data-testid="cloture-held-warning">
+              <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+              <p className="text-sm text-amber-500">
+                {t('cloture.heldSalesWarning').replace('{n}', String(heldSalesCount))}
+              </p>
+            </div>
+          )}
           {/* KPIs - row 1 */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <StatCard icon={<DollarSign className="w-4 h-4 text-primary" />} iconBg="bg-primary/20" value={formatFCFA(totalEspeces)} label={t('cloture.cashSales')} />
