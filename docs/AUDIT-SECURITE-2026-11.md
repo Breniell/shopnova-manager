@@ -131,10 +131,17 @@ Autres vérifications : `typecheck` OK, `lint` 0 erreur, 750 tests unitaires OK,
    identifiant machine ou à un compte.
 4. **Client créé sans plafond = crédit illimité (faible, produit).** Envisager
    un plafond par défaut à 0 pour les clients créés par un caissier.
-5. **Electron 41 (faible en pratique).** Avis « high » corrigé seulement en
-   45.x (version majeure). Impact limité ici, car seule la géolocalisation est
-   autorisée et aucun gestionnaire HID/USB n'est enregistré. À planifier avec
-   des tests de packaging. Même chose pour `zod` 3 → 4.
+5. **Electron 41 (faible en pratique). Corrigé le 18/11/2026.** Electron est
+   passé à 43.8.11, qui couvre tous les avis. La 45.x n'a pas été retenue : la
+   prise en charge de Windows 32 bits (ia32) a été retirée dans la 44, alors que
+   l'installeur NSIS en contient une. `zod` est passé de 3 à 4.6.7.
+   - Depuis Electron 42, `npm install` ne télécharge plus le binaire. Pour le
+     récupérer, lancer `npm run electron:install` ; `smoke:offline` le fait
+     tout seul.
+   - Reste ouvert : l'avis picomatch GHSA-fc5q-39xc-vjpf. Aucune version
+     corrigée n'existe, et il ne touche que l'outillage de build.
+     `scripts/audit-gate.mjs` l'accepte, avec sa justification, jusqu'au
+     28/02/2027.
 6. **`security:prod` donne un faux « 0 ».** `npm audit --omit=dev` ignore le
    code embarqué, car tout est en `devDependencies` et bundlé par Vite. Auditer
    sans `--omit=dev` ou déplacer les bibliothèques d'exécution dans
