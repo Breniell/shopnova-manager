@@ -87,7 +87,7 @@ export const HeldSalesListDialog: React.FC<HeldSalesListDialogProps> = ({ open, 
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-lg bg-card border-border">
+      <DialogContent className="sm:max-w-lg bg-card border-border" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <PauseCircle className="w-5 h-5 text-primary" />
