@@ -6,13 +6,22 @@ export function isValidMomoRef(ref: string): boolean {
 }
 
 /**
- * Returns the USSD dialling string the customer must enter to pay.
- * MTN MoMo Cameroon : *126*4*<code>*<amount>#
- * Orange Money Cameroon : #150*4*<code>*<amount>#
+ * Returns the USSD code the customer must dial to start paying the merchant.
+ *
+ * MTN MoMo Cameroon (mtn.cm) : one string carries everything,
+ *   *126*4*<code>*<amount>#
+ *
+ * Orange Money Cameroon (orangemoney.orange.cm, « Paiement marchand ») : the
+ * customer dials the menu #150*47#, then types the merchant code and the
+ * amount when prompted, and confirms with their Orange Money secret code.
+ * No official one-shot string with code and amount exists, so none is built
+ * here: a made-up shortcut would send customers to the wrong menu. `code` and
+ * `amount` are therefore ignored for Orange; the steps are spelled out in the
+ * `caisse.momoInstructionsOrange` translation instead.
  */
 export function momoDialString(operator: MobileOperator, code: string, amount: number): string {
   if (operator === 'mtn') return `*126*4*${code}*${amount}#`;
-  return `#150*4*${code}*${amount}#`;
+  return '#150*47#';
 }
 
 export interface CanValidateMomoOpts {

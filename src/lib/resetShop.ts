@@ -16,6 +16,7 @@ import { fsResetShopData, type ResetScope, type ResetReport } from '@/services/f
 import { getBoutiqueId, getRegisterCode } from '@/services/boutiqueService';
 import { useProductStore } from '@/stores/useProductStore';
 import { useSaleStore } from '@/stores/useSaleStore';
+import { useHeldSaleStore } from '@/stores/useHeldSaleStore';
 import { useCustomerStore } from '@/stores/useCustomerStore';
 import { useSupplierStore } from '@/stores/useSupplierStore';
 import { useExpenseStore } from '@/stores/useExpenseStore';
@@ -46,6 +47,8 @@ export async function resetShopData(scope: ResetScope): Promise<ResetReport> {
   if (scope.sales) {
     useSaleStore.getState()._setSales([]);
     useSaleStore.getState().clearCart();
+    // Les ventes en attente sont des paniers de ce poste : elles partent avec.
+    useHeldSaleStore.getState().clearAll();
     // Le compteur de vente est aussi local à cette caisse, et `_setSaleCounter`
     // ne redescend jamais sous la valeur enregistrée : sans ce nettoyage, la
     // numérotation repartirait de l'ancienne séquence.
