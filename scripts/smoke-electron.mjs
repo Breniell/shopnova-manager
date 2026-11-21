@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -16,6 +16,15 @@ const args = packaged ? [] : [path.join(root, 'electron', 'launcher.cjs')];
 if (!fs.existsSync(path.join(root, 'dist', 'index.html'))) {
   console.error('dist/index.html is missing; run npm run electron:build:client first.');
   process.exit(1);
+}
+if (!packaged && !fs.existsSync(executable)) {
+  // Since Electron 42 the npm package no longer downloads its binary in a
+  // postinstall script; it is fetched on demand. Do that here so a fresh
+  // `npm ci` is enough to run the smoke test.
+  console.log('Electron binary not downloaded yet; running install-electron...');
+  spawnSync(process.execPath, [path.join(root, 'node_modules', 'electron', 'install.js')], {
+    cwd: root, stdio: 'inherit',
+  });
 }
 if (!fs.existsSync(executable)) {
   console.error(`Electron executable is missing: ${executable}`);
