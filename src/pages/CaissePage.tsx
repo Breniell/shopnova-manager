@@ -5,7 +5,11 @@ import { useSaleStore, PaymentMode, MobileOperator } from '@/stores/useSaleStore
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useCashSessionStore } from '@/stores/useCashSessionStore';
 import { usePaymentStore } from '@/stores/usePaymentStore';
+import { useCustomerStore } from '@/stores/useCustomerStore';
 import type { Customer } from '@/stores/useCustomerStore';
+import { useHeldSaleStore } from '@/stores/useHeldSaleStore';
+import type { HeldSaleIssue } from '@/stores/useHeldSaleStore';
+import { HoldSaleDialog, HeldSalesListDialog, ReplaceCartDialog } from '@/components/ui/HeldSaleDialogs';
 import { checkCreditLimit, getCustomerOutstanding } from '@/lib/credit';
 import { useTranslation } from '@/i18n';
 import { formatPrice, formatFCFA } from '@/utils/formatters';
@@ -26,7 +30,7 @@ import { isThermalAvailable, buildReceiptHtml } from '@/lib/thermalPrint';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { getStockStatus, cn } from '@/lib/utils';
 import { productImages } from '@/assets/productImages';
-import { Search, ScanBarcode, Minus, Plus, Trash2, ShoppingCart, Check, Package, X, Pencil, Handshake, Banknote, Smartphone, NotebookPen, AlertTriangle } from 'lucide-react';
+import { Search, ScanBarcode, Minus, Plus, Trash2, ShoppingCart, Check, Package, X, Pencil, Handshake, Banknote, Smartphone, NotebookPen, AlertTriangle, PauseCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Sale } from '@/stores/useSaleStore';
 
@@ -64,6 +68,19 @@ const CaissePage: React.FC = () => {
   const [discountAuthOpen, setDiscountAuthOpen] = useState(false);
   const [discountAuthorizedBy, setDiscountAuthorizedBy] = useState<{ userId: string; userName: string } | null>(null);
   const [mobileView, setMobileView] = useState<'products' | 'cart'>('products');
+  // ── Ventes en attente ──────────────────────────────────────────────────────
+  const { heldSales, holdCurrentCart, resumeHeldSale, removeHeldSale } = useHeldSaleStore();
+  const [showHoldDialog, setShowHoldDialog] = useState(false);
+  const [showHeldList, setShowHeldList] = useState(false);
+  /** Vente à reprendre, en attente de la décision sur le panier courant. */
+  const [replaceTargetId, setReplaceTargetId] = useState<string | null>(null);
+  /** Écarts constatés à la reprise (stock, prix, client), à faire vérifier. */
+  const [resumeNotes, setResumeNotes] = useState<string[] | null>(null);
+  /**
+   * Autorisation de remise à rétablir après la reprise. L'effet qui remet
+   * l'autorisation à zéro à chaque changement de panier la consomme une fois.
+   */
+  const restoredDiscountAuthRef = useRef<{ userId: string; userName: string } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   // ── Physical barcode scanner (USB HID / Bluetooth pistol-type) ─────────────
@@ -235,7 +252,16 @@ const CaissePage: React.FC = () => {
 
   // Une autorisation vaut pour un panier et un taux précis : toute modification
   // de l'un ou de l'autre la reprend à zéro.
-  useEffect(() => { setDiscountAuthorizedBy(null); }, [discount, cart]);
+  // Exception : la reprise d'une vente en attente rend l'autorisation obtenue
+  // pour ce même panier, si rien n'y a changé entre-temps.
+  useEffect(() => {
+    if (restoredDiscountAuthRef.current) {
+      setDiscountAuthorizedBy(restoredDiscountAuthRef.current);
+      restoredDiscountAuthRef.current = null;
+    } else {
+      setDiscountAuthorizedBy(null);
+    }
+  }, [discount, cart]);
 
   const canValidate = cart.length > 0 && !isProcessing && !discountNeedsAuth && (
     paymentMode === 'especes' ? (amountReceived && (parseInt(amountReceived, 10) || 0) >= total) :
@@ -296,13 +322,100 @@ const CaissePage: React.FC = () => {
 
     setIsDone(false);
     if (!autoPrinted) setShowReceipt(true);
+    resetCheckoutState();
+  };
+
+  /** Remet à zéro tout ce qui accompagne le panier (paiement, client, échéance). */
+  const resetCheckoutState = () => {
     setAmountReceived('');
     setMobileRef('');
     setConfirmationReceived(false);
     setMobileRefError(null);
     setSelectedCustomer(null);
     setDueDate('');
+    setPaymentMode('especes');
+    setResumeNotes(null);
     setMobileView('products');
+  };
+
+  const customerLabel = selectedCustomer ? `${selectedCustomer.prenom} ${selectedCustomer.nom}` : '';
+
+  /**
+   * Met le panier de côté. Rien n'est vendu : ni stock ni numéro de reçu. Le
+   * montant reçu et la référence MoMo ne sont pas gardés : ils seront saisis
+   * quand le client paiera vraiment.
+   */
+  const holdCart = (label: string) => {
+    if (!currentUser || cart.length === 0) return;
+    const held = holdCurrentCart({
+      label,
+      discountAuthorizedBy,
+      customerId: selectedCustomer?.id,
+      customerName: selectedCustomer ? customerLabel : undefined,
+      paymentMode,
+      mobileOperator: paymentMode === 'mobile_money' ? mobileOperator : undefined,
+      dueDate: paymentMode === 'credit' && dueDate ? dueDate : undefined,
+      userId: currentUser.id,
+      userName: `${currentUser.prenom} ${currentUser.nom}`,
+    }, products);
+    resetCheckoutState();
+    toast.success(t('caisse.heldToast').replace('{label}', held.label || t('caisse.heldUnnamed')));
+  };
+
+  const describeIssue = (issue: HeldSaleIssue): string => {
+    switch (issue.kind) {
+      case 'missing': return t('caisse.heldIssueMissing').replace('{name}', issue.nom);
+      case 'outOfStock': return t('caisse.heldIssueOutOfStock').replace('{name}', issue.nom);
+      case 'stockReduced': return t('caisse.heldIssueStock')
+        .replace('{name}', issue.nom)
+        .replace('{available}', String(issue.available))
+        .replace('{requested}', String(issue.requested));
+      case 'priceChanged': return t(issue.negotiationDropped ? 'caisse.heldIssuePriceNegotiation' : 'caisse.heldIssuePrice')
+        .replace('{name}', issue.nom)
+        .replace('{before}', formatFCFA(issue.before))
+        .replace('{after}', formatFCFA(issue.after));
+    }
+  };
+
+  const performResume = (id: string) => {
+    const { held, issues, discountAuthorizationKept } = resumeHeldSale(id, products);
+    const notes = issues.map(describeIssue);
+
+    const customer = held.customerId
+      ? useCustomerStore.getState().customers.find(c => c.id === held.customerId) ?? null
+      : null;
+    if (held.customerId && !customer) notes.push(t('caisse.heldCustomerMissing'));
+    if (held.discountAuthorizedBy && !discountAuthorizationKept) notes.push(t('caisse.heldDiscountReauth'));
+    restoredDiscountAuthRef.current = discountAuthorizationKept ? held.discountAuthorizedBy ?? null : null;
+
+    setSelectedCustomer(customer);
+    setPaymentMode(held.paymentMode);
+    if (held.mobileOperator) setMobileOperator(held.mobileOperator);
+    setDueDate(held.dueDate ?? '');
+    setAmountReceived('');
+    setMobileRef('');
+    setConfirmationReceived(false);
+    setMobileRefError(null);
+    setResumeNotes(notes.length > 0 ? notes : null);
+    setShowHeldList(false);
+    setMobileView('cart');
+    if (notes.length > 0) toast.warning(t('caisse.heldIssuesTitle'));
+    else toast.success(t('caisse.heldResumed'));
+  };
+
+  const requestResume = (id: string) => {
+    // Jamais d'écrasement : un panier en cours est d'abord mis en attente.
+    if (cart.length > 0) { setReplaceTargetId(id); return; }
+    performResume(id);
+  };
+
+  const confirmReplace = () => {
+    const id = replaceTargetId;
+    setReplaceTargetId(null);
+    if (!id) return;
+    holdCart(customerLabel);
+    if (useSaleStore.getState().cart.length > 0) return;
+    performResume(id);
   };
 
   /**
@@ -348,24 +461,55 @@ const CaissePage: React.FC = () => {
           <ShoppingCart className="w-5 h-5 text-primary" aria-hidden="true" />
           <h2 className="nova-heading text-foreground">{t('caisse.cartTitle')}</h2>
         </div>
-        {cart.length > 0 && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          {heldSales.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowHeldList(true)}
+              className="relative inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-amber-500 bg-amber-500/10 hover:bg-amber-500/20 transition-colors"
+              aria-label={`${t('caisse.heldListTitle')} (${heldSales.length})`}
+              title={t('caisse.heldListTitle')}
+            >
+              <PauseCircle className="w-4 h-4" aria-hidden="true" />
+              {t('caisse.heldListButton')}
+              <span className="ml-0.5 bg-amber-500 text-white text-[10px] font-bold min-w-4 h-4 px-1 rounded-full flex items-center justify-center" data-testid="held-count">
+                {heldSales.length}
+              </span>
+            </button>
+          )}
+          {cart.length > 0 && (
+          <>
             <span className="bg-primary/20 text-primary text-xs font-medium px-2.5 py-1 rounded-full">
               {cartCount > 1
                 ? t('caisse.cartArticlePlural').replace('{n}', String(cartCount))
                 : t('caisse.cartArticle').replace('{n}', String(cartCount))}
             </span>
             <button
-              onClick={clearCart}
+              onClick={() => { clearCart(); setResumeNotes(null); }}
               className="p-1.5 rounded-lg hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
               aria-label={t('caisse.clearCartAriaLabel')}
               title={t('caisse.clearCartAriaLabel')}
             >
               <X className="w-4 h-4" />
             </button>
-          </div>
-        )}
+          </>
+          )}
+        </div>
       </div>
+
+      {resumeNotes && (
+        <div className="mx-4 lg:mx-5 mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 space-y-1.5 shrink-0" role="alert">
+          <p className="text-xs font-semibold text-amber-500 flex items-center gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5" /> {t('caisse.heldIssuesTitle')}
+          </p>
+          <ul className="text-xs text-foreground list-disc pl-5 space-y-0.5">
+            {resumeNotes.map((note, i) => <li key={i}>{note}</li>)}
+          </ul>
+          <button type="button" onClick={() => setResumeNotes(null)} className="text-[11px] text-primary underline">
+            {t('caisse.heldIssuesDismiss')}
+          </button>
+        </div>
+      )}
 
       {/* Customer picker */}
       <div className="px-4 lg:px-5 pt-3 pb-2 border-b border-border shrink-0">
@@ -706,6 +850,16 @@ const CaissePage: React.FC = () => {
                 t('caisse.validate')
               )}
             </button>
+            {/* Client qui tarde à payer : on met le panier de côté pour servir le suivant. */}
+            <button
+              type="button"
+              onClick={() => setShowHoldDialog(true)}
+              disabled={isProcessing || isDone}
+              className="w-full min-h-[44px] rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:text-amber-500 hover:border-amber-500/50 hover:bg-amber-500/10 transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <PauseCircle className="w-4 h-4" aria-hidden="true" />
+              {t('caisse.holdSale')}
+            </button>
           </div>
         </>
       )}
@@ -896,6 +1050,25 @@ const CaissePage: React.FC = () => {
         onScan={handleBarcodeScanned}
       />
       <ReceiptModal sale={receiptSale} open={showReceipt} onClose={() => setShowReceipt(false)} />
+
+      <HoldSaleDialog
+        open={showHoldDialog}
+        defaultLabel={customerLabel}
+        onClose={() => setShowHoldDialog(false)}
+        onConfirm={label => { setShowHoldDialog(false); holdCart(label); }}
+      />
+      <HeldSalesListDialog
+        open={showHeldList}
+        heldSales={heldSales}
+        onClose={() => setShowHeldList(false)}
+        onResume={requestResume}
+        onDelete={removeHeldSale}
+      />
+      <ReplaceCartDialog
+        open={!!replaceTargetId}
+        onClose={() => setReplaceTargetId(null)}
+        onConfirm={confirmReplace}
+      />
 
       {/* Choix d'une déclinaison avant l'ajout au panier */}
       <VariantPicker
